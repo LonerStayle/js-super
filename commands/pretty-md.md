@@ -1,3 +1,9 @@
+---
+description: "feature 디렉토리의 모든 <slug>-*.md 파일에 포맷만 정리하는 pass 를 보조 에이전트로 백그라운드 실행. 의미는 1:1 보존."
+argument-hint: "[<slug>]"
+disable-model-invocation: true
+---
+
 # /pretty-md
 
 `<slug>` 인자는 선택입니다. 누락 시 `scripts/auto_flow.find_latest_slug(Path("docs/features"))` 를 호출해서 가장 최근 폴더를 자동으로 선택합니다.

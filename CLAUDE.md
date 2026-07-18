@@ -127,7 +127,7 @@ Before proposing changes to skill design, workflow philosophy, or architecture, 
 
 ## generating-html ↔ change-history 결합
 
-`generating-html` skill은 "doc이 still 초안 단계인지" 판정하는 신호로 **`## 변경이력` footer가 비어 있는지 여부**를 직접 사용한다 (`skills/generating-html/SKILL.md` line 27/60/167/197). 즉:
+`generating-html` skill은 "doc이 still 초안 단계인지" 판정하는 신호로 **`## 변경이력` footer가 비어 있는지 여부**를 직접 사용한다 (`skills/generating-html/SKILL.md` 의 HARD-GATE / When-to-Use 표 / preflight 검사 / dot 다이어그램 4개 판정 지점). 즉:
 
 - footer entry 0건 → 초안 → generating-html 발동
 - footer entry 1건 이상 → live doc → generating-html skip
@@ -703,7 +703,7 @@ grep -c "silent log monitor (v2.4+)" skills/generating-html/SKILL.md
 ### 회귀 catch grep (release 직전 메인 dogfood)
 
 ```bash
-grep -c "--no-ask 플래그 (v2.5+)" \
+grep -c -E "no-ask.? 플래그 \(v2\.5\+\)" \
   skills/brainstorming/SKILL.md \
   skills/tech-design/SKILL.md \
   skills/writing-plans/SKILL.md \
@@ -714,9 +714,8 @@ grep -c "--no-ask 플래그 (v2.5+)" \
   skills/auto-executing-plans/SKILL.md
 # expected: 각 ≥ 1
 
-grep -l "--no-ask" \
+grep -l -e "--no-ask" \
   skills/og-brainstorming/SKILL.md \
-  skills/og-tech-design/SKILL.md \
   skills/og-writing-plans/SKILL.md \
   skills/og-executing-plans/SKILL.md \
   commands/fast-tasks.md \
@@ -812,7 +811,7 @@ v2.5.2+ 에서 9 skill body 에 `## Checklist` 섹션 신규 추가 — `using-s
 
 - `og-brainstorming` — 이미 Checklist 보유 (upstream 그대로 답습)
 - 워크트리 2 (`worktree-merge-back`, `worktree-remove`) — Step 수 적음, 사용자 catch 우선순위 낮음
-- `api-auto-testing`, `finishing-a-development-branch`, `subagent-driven-development` — 사용자 의사 미선택
+- `finishing-a-development-branch`, `subagent-driven-development` — 사용자 의사 미선택
 - 1회성 / 메타 skill — `change-history`, `risk-annotation`, `generating-html`, `verifying-spec`, `using-superpowers`, `writing-skills` 등 (task 분해 의미 없음)
 
 ### og-* mirror 룰 예외 (D-4)

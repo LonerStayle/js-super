@@ -1,6 +1,7 @@
 ---
-description: "사용자가 /new-skill 슬래시를 명시 호출했을 때만 발동. 자유 텍스트 한 줄을 받아 프로젝트 또는 전체(글로벌) <slug>/SKILL.md 1 파일로 자동 생성 + js-super 출처 표식 부여."
+description: "자유 텍스트 한 줄을 받아 프로젝트 또는 전체(글로벌) <slug>/SKILL.md 1 파일로 자동 생성 + js-super 출처 표식 부여."
 argument-hint: "[<slug>] [--project|--global] [--force] [--dry-run] <자유 텍스트 설명>"
+disable-model-invocation: true
 ---
 
 # New Skill 빌더 (프로젝트 / 전체 skill 자동 생성)

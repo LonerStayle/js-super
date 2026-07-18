@@ -1,6 +1,7 @@
 ---
-description: "사용자가 /list-skills 슬래시를 명시 호출했을 때만 발동. js-super 가 만든 skill (출처 표식 .js-super-skill.json 보유) 만 프로젝트 + 전체 두 스코프에서 조회."
+description: "js-super 가 만든 skill (출처 표식 .js-super-skill.json 보유) 만 프로젝트 + 전체 두 스코프에서 조회."
 argument-hint: "(인자 없음)"
+disable-model-invocation: true
 ---
 
 # List Skills 빌더 (js-super skill 조회)
