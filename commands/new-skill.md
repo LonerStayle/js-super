@@ -45,11 +45,25 @@ argument-hint: "[<slug>] [--project|--global] [--force] [--dry-run] <자유 텍�
 
 - **`--project` 명시** → `<SKILL_BASE>` = `<project-root>/.claude/skills` (현재 작업 디렉토리 기준 `.claude/skills`). 없으면 생성.
 - **`--global` 명시** → `<SKILL_BASE>` = `~/.claude/skills`
-- **둘 다 없음** → 다음 한 줄로 사용자에게 묻고 응답을 기다립니다 (응답 전 진행 X):
+- **둘 다 없음** → **`AskUserQuestion` 도구로 스코프를 묻습니다** (응답 전 진행 X):
 
-  > 이 skill 을 어디에 만들까요? **프로젝트** (현재 프로젝트의 `.claude/skills/`, 이 프로젝트에서만 발동) 또는 **전체** (`~/.claude/skills/`, 모든 프로젝트에서 발동) 중 골라주세요.
+  ```json
+  {
+    "questions": [
+      {
+        "question": "이 skill 을 어디에 만들까요?",
+        "header": "생성 스코프",
+        "multiSelect": false,
+        "options": [
+          {"label": "프로젝트", "description": "현재 프로젝트의 `.claude/skills/` — 이 프로젝트에서만 발동"},
+          {"label": "전체(글로벌)", "description": "`~/.claude/skills/` — 모든 프로젝트에서 발동"}
+        ]
+      }
+    ]
+  }
+  ```
 
-  사용자 응답("프로젝트" / "전체" / "project" / "global" 등)을 파싱해서 `<SKILL_BASE>` 확정. 모호하면 1회 재질문 후 확정.
+  사용자 선택("프로젝트" / "전체")으로 `<SKILL_BASE>` 확정. 모호하면 1회 재질문 후 확정. `AskUserQuestion` 이 없는 하네스면 위 질문을 prose 로 대체.
 - 확정된 스코프 값(`project` / `global`)은 § 5 의 마커 파일 `scope` 필드에 기록합니다.
 
 ## 3. LLM 분해 (5 단계)
@@ -106,7 +120,7 @@ step 폭주 catch 시 다음 한 줄을 사용자에게:
 - 존재 Y + `--force` 명시 X → § 5 의 abort 분기로
 - 존재 Y + `--force` 명시 Y → § 5 의 백업 + 덮어쓰기 분기로
 
-**확정한 스코프 위치만 검증 X**. 반대 스코프(`--project` 면 글로벌, `--global` 이면 프로젝트) 또는 js-super 의 `<plugin>/skills/` cache 의 동일 이름 skill 은 사용자 catch 영역 (§ 6 보고 메시지 끝에 안내).
+**확정한 스코프 위치만 검증한다.** 반대 스코프(`--project` 면 글로벌, `--global` 이면 프로젝트) 또는 js-super 의 `<plugin>/skills/` cache 의 동일 이름 skill 은 검증 X — 사용자 catch 영역 (§ 6 보고 메시지 끝에 안내).
 
 ## 4. 사전 검증 룰 (Write 직전)
 

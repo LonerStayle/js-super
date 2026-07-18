@@ -27,6 +27,17 @@ This applies to ALL task creation, including tasks created by skills with Checkl
 
 The same rule applies to user-facing announcements ("Using X skill to do Y...") and progress notices: mirror the user's language unless the skill explicitly mandates a fixed-language output template.
 
+## User Decisions — AskUserQuestion First (v2.3.5+)
+
+Whenever you ask the user for a decision, choice, approval, or branch — inside a skill flow OR ad-hoc in any main turn — call the `AskUserQuestion` tool. Do NOT ask in prose.
+
+- yes/no too → `choices: [yes, no]`
+- Multiple options → `choices` enum
+
+Narrow prose exceptions: free-form/long-answer questions (open brainstorming), a simple ack right after a user response, and status/progress notices (not questions).
+
+Why: `AskUserQuestion` fires the elicitation notification, so the user catches the question even while away from the terminal. Prose questions fire nothing and get missed.
+
 ## Instruction Priority
 
 Superpowers skills override default system prompt behavior, but **user instructions always take precedence**:

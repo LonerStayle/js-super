@@ -1,6 +1,6 @@
 ---
 name: auto-brainstorming
-description: auto-flow 진입점 — Socratic clarifying Q (1~5개 적응) + AI 자동 approach 선택 + 자동 section 작성 + change-history 자동 + auto-tech-design 자동 invoke. 사용자 입력은 clarifying Q 답변에만. AskUserQuestion / Visual Companion / generating-html 호출 X.
+description: auto-flow 진입점 — Socratic clarifying Q (1~5개 적응) + AI 자동 approach 선택 + 자동 section 작성 + change-history 자동 + auto-tech-design 자동 invoke. 사용자 입력은 clarifying Q 답변에만. AskUserQuestion / Visual Companion 호출 X. generating-html 은 Step 4.5 에서 백그라운드(fire-and-forget) 호출.
 ---
 
 # Auto Brainstorming → <slug>-requirements.md (Socratic auto)
@@ -9,54 +9,21 @@ js-super:auto-brainstorming 은 명시적 사용자 invoke (`/auto-brainstorm <�
 
 **Announce at start:** "auto-brainstorming skill 로 자동 진행하겠습니다 (Socratic clarifying Q + AI 자동 chain)."
 
-## 사용자 질문 룰 (v2.0.3+) — 항상 AskUserQuestion
+## 사용자 질문 룰 — Socratic prose only (auto-flow)
 
-이 skill 흐름 안에서 사용자에게 질문할 일이 생기면 **반드시** `AskUserQuestion`
-도구로 호출한다. 산문으로 "~ 할까요?" 한 줄 던지지 마라.
+auto-flow 는 clarifying Q&A 구간을 제외하면 자동 진행이 핵심이다. 따라서 이 skill 흐름의 사용자 질문(clarifying / Socratic)은 **prose (메인 turn 자유 텍스트)** 로 처리하고 `AskUserQuestion` 도구는 호출하지 않는다.
 
-### Why
-
-Notification 훅 (`elicitation_dialog` 매처) 이 알람을 발화하려면 도구 호출이
-실제로 일어나야 함. 산문 질문은 훅이 못 잡아서 사용자가 놓침 (v1.1.8 신고 재발).
-
-### How to apply
-
-- clarifying / Socratic / 모호점 확인 / 게이트 / 모드 선택 — 모두 포함
-- 단답 yes/no 도 prose X → `AskUserQuestion` choices `[yes, no]` 사용
-- 다중 선택은 enum choices 또는 multi-question batching (의미 결합 시 max 4 questions[])
-- **Socratic 자유 응답**: AskUserQuestion 의 question 본문에 "자유롭게 답해주세요. 별도 옵션 선택 불필요" + dummy choice `[알겠음]` 1개 → 트리거만 발화, 응답은 다음 turn prose
-- **예외**: 본문 자체의 알람-friendly 안내문 (`ℹ️ Auto-proceeding ...`) 는 질문 아니라 안내 — 도구 호출 불필요
+- clarifying / Socratic 질문 — prose 로 한 번에 1개씩
+- 자동 진행 안내 (`ℹ️ Auto-proceeding ...`) — 질문이 아니라 안내, 그대로 prose
+- 일반 js-super `brainstorming` 의 v2.0.3+ "항상 AskUserQuestion" 룰은 **auto-flow 에는 적용되지 않는다** (사용자 결정 — `auto-executing-plans` 와 동일한 prose-default).
 
 ### Other / 모호 응답 처리 (v2.1.1+)
 
-사용자가 "Other" 자유 응답 또는 "모르겠음 / 이해 안 됨" 류 답변 catch 시 → **그 질문만 단독 재호출 + prose 설명 추가**. 다음 단계 자동 진행 X (anchor 질문 강제 X 룰은 명확 yes/no 답변에만 적용).
+사용자가 "모르겠음 / 이해 안 됨" 류 답변 catch 시 → **그 질문만 prose 로 다시 던지고 설명 추가**. 다음 단계 자동 진행 X (명확한 답변에만 자동 진행).
 
 ### 예외 — `--no-ask` 플래그 (v2.5+)
 
-사용자가 슬래시 명령에 `--no-ask` 토큰을 **명시** 한 경우에만 진입. 메인 자체 판단으로 활성화 X.
-
-- 모든 사용자 질문을 prose (메인 turn 자유 텍스트) 로 처리
-- `AskUserQuestion` 도구 호출 **0 보장**
-- 게이트 자체는 살아 있음 — 사용자 prose 응답 기다림
-- 알람 fire X (사용자가 명시 invoke 했으니 인지 가정)
-
-#### skill 진입 시 1회 boilerplate
-
-skill 진입 직후 다음 한 줄을 prose 로 출력:
-
-> ℹ️ `--no-ask` 모드 진입 — AskUserQuestion 도구 호출 X, 응답 알람 X. 백그라운드 작업 중이면 응답 시점을 직접 체크해주세요.
-
-#### 위험 명령 진입 직전 보강
-
-critical 7 케이스 (파일 삭제 / `git push --force` / DB migration / mass commit / 외부 메시지 등) 실행 직전에는 다음 한 줄을 prose 로 출력:
-
-> ⚠️ 위험 명령 진입 — 응답 기다림. 백그라운드 작업 중이면 직접 catch 해주세요.
-
-`⚠️` 마커 + 별도 줄로 일반 prose 보다 두드러지게.
-
-#### auto-* 4 skill 추가 룰
-
-내부 escalation 경로 (BLOCKED 자가복구 실패 / critical 7 재질문 / Other 모호 응답 재질문) 에서도 `AskUserQuestion` 호출 **0 보장**. clarifying Q 자체는 그대로 prose 유지.
+auto-flow 는 이미 prose-default 라 `--no-ask` 는 **no-op** (추가 분기 없음). 사용자가 명시해도 동작은 동일하며, `AskUserQuestion` 호출 0 은 기본값으로 이미 보장된다.
 
 ## Checklist
 

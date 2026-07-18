@@ -81,7 +81,7 @@ Per-wave loop 보다 먼저 1회만 실행. 모든 task 완료까지 wave 구조
 
 1. **Read plan tasks** — `<slug>-implementation-plan.md` 의 §1 단계별 작업 모든 task block.
 2. **Parse files + deps** — 각 task block 의 `**Files:**` (Create/Modify/Test) 섹션 + step 본문에서 task ID 참조 추출 (예: "Task 1 의 helper 사용" → deps=[1]).
-3. **Parse model hint** — task block 의 `**Model**:` 줄 (`haiku`/`sonnet`/`opus`). 없으면 `sonnet` 디폴트.
+3. **Parse model hint (informational)** — task block 의 `**Model**:` 줄을 DAG 복잡도 표시용으로만 파싱 (implementer 는 항상 haiku 고정 — Model Selection 참조). 없으면 DAG 표시상 `sonnet` (`scripts/dag_builder.py` 의 `Task.model` 기본값 — 복잡도 힌트일 뿐, 실제 implementer dispatch 는 항상 haiku).
 4. **Build waves** — `scripts/dag_builder.py:build_waves` 호출:
 
 ```bash
@@ -109,22 +109,24 @@ for w in waves:
 
 ## Model Selection
 
-서브에이전트 dispatch 시 **task 복잡도에 맞는 가장 가벼운 모델** 을 plan 의 `**Model**:` 필드에서 읽어 주입. 명시 안 되면 `sonnet` 디폴트.
+**Implementer 서브에이전트는 항상 `haiku` 고정** (v2.0.0 byte-copy — 구현은 plan 의 `**수정 후**` 블록을 기계적으로 byte-copy 하는 작업이라 추론 모델이 불필요). plan 의 `**Model**:` 필드는 v1.1.14(byte-copy 이전)의 잔재로 **implementer dispatch 모델을 바꾸지 않는다** — DAG 표시용 복잡도 힌트로만 파싱한다. task 가 byte-copy 로 감당 안 되면 implementer 가 `BLOCKED` 보고 → 메인이 reorder(sonnet) dispatch (아래 W-2 Stage 1/2/3 참조).
 
-| Task 신호 | 권장 모델 |
+**Spec reviewer 서브에이전트** 는 항상 **sonnet** 고정 (D11). implementer 모델과 무관.
+
+참고 — plan 의 `**Model**:` 힌트가 나타내는 task 복잡도 (dispatch 모델은 바꾸지 않음):
+
+| Task 신호 | 복잡도 힌트 |
 |---|---|
 | 1-2 파일 + 명확한 spec, 기계적 구현 | **haiku** |
 | 다중 파일 통합 / 패턴 매칭 / 디버깅 | **sonnet** |
 | 설계 판단 / 광범위 코드베이스 이해 / 리뷰 | **opus** |
 
-**Spec reviewer 서브에이전트** 는 항상 **sonnet** 고정 (D11). implementer hint 와 무관.
-
 dispatch 예시:
 ```
 Task tool (general-purpose):
-  model: "<plan task의 **Model**: 값, 없으면 sonnet>"
+  model: "haiku"   # implementer 는 항상 haiku 고정 (byte-copy)
   description: "Implement Task N: ..."
-  prompt: <implementer-prompt 템플릿, {{MODEL}} 치환됨>
+  prompt: <implementer-prompt 템플릿>
 ```
 
 ## Checklist
@@ -148,7 +150,7 @@ Wave i/N 시작: task <list> 병렬 실행…
 ### W-2. Pair-parallel dispatch
 
 For each task in this wave (in plan order), 두 dispatch 를 한 메시지에 묶어 **병렬** 실행 (Agent tool multiple calls in single message):
-- Implementer (`./implementer-prompt.md`, `model: <task.model>`, 디폴트 sonnet)
+- Implementer (`./implementer-prompt.md`, `model: "haiku"` 고정 — byte-copy)
 - Spec reviewer 는 implementer 가 `Status: DONE` + manifest 작성 후 dispatch (`./spec-reviewer-prompt.md`, `model: "sonnet"` 고정)
 
 페어 병렬 = wave 안 task **간** 병렬 (task A 와 task B 동시), task **안** 의 impl→review 는 직렬.
@@ -345,7 +347,7 @@ Wave 1/3 시작: task 1, 2 병렬 실행…
 
 [Single message with 2 Agent tool calls in parallel:
   - Implementer task 1 (model: haiku)
-  - Implementer task 2 (model: sonnet)]
+  - Implementer task 2 (model: haiku)]   # implementer 는 항상 haiku 고정
 
 [Both return: Status DONE + manifest written to buffer]
 
@@ -390,7 +392,7 @@ Wave 3/3 시작: task 5...
 ```
 
 **핵심 패턴**:
-1. dispatch 는 항상 **plan 의 Model 필드 주입 (없으면 sonnet)** — 부모 모델 상속 회피
+1. dispatch 는 항상 **명시 모델 주입** (implementer=haiku 고정, spec-reviewer=sonnet 고정) — 부모 모델 상속 회피
 2. wave 단위 pair-parallel — task **간** 병렬, task **안** impl→review 직렬
 3. wave finalization 단계에서 메인이 plan order 직렬 commit (implementer 는 commit X)
 4. post-hoc conflict 검출 → 충돌 시 plan order 늦은 task rollback + 다음 wave 재배치
@@ -476,7 +478,7 @@ subagent execute 흐름의 핵심 UX 룰. 사용자가 subagent 모드를 선택
 | task 병렬 vs 순차 (wave 분할) | plan 의 dependencies 만족 시 wave-parallel default (v2.0.0+ Per-wave Sequence) |
 | task 묶음 (same-file mechanical 3-AND 룰 만족 시) | 묶음 default (v2.0.1+) |
 | task 안 보조 결정 (변수명 / format / order of imports) | plan 의 `**원본**` + `**수정본**` byte-copy 우선, 없으면 implementer 자율 |
-| implementer dispatch model 선택 (haiku / sonnet) | plan 의 `**Model**:` 필드 우선, 없으면 기본 룰 |
+| implementer dispatch model | 항상 haiku 고정 (byte-copy) — plan 의 `**Model**:` 필드로 바뀌지 않음 |
 | wave 완료 후 다음 wave 진입 타이밍 | 자동 진입 (게이트 X) |
 | 중간 결과 보고 빈도 | 매 task X, 매 wave 단위 OR BLOCKED 시만 |
 
@@ -508,7 +510,7 @@ prose 질문 좁은 예외:
 - 사용자 응답 직후 확인용 단순 ack (그래도 AskUserQuestion yes/no 권장)
 - 질문 아닌 상태 보고 / 진행 알림
 
-본 룰은 프로젝트 `CLAUDE.md` 의 글로벌 "AskUserQuestion 도구 우선 (v2.3.5+)" 룰의 skill body 측 cross-reference.
+본 룰은 `using-superpowers` (매 세션 주입) 의 "User Decisions — AskUserQuestion First (v2.3.5+)" 전역 룰의 skill body 측 cross-reference.
 
 ## Anti-Patterns (v2.3.5)
 
@@ -518,7 +520,7 @@ prose 질문 좁은 예외:
 | 매 wave 완료 후 "다음 wave 진입할까요?" 게이트 | 룰 3 위반. 모드 선택 = 진행 위임. |
 | "같은 파일이라 묶을까요?" 게이트 | 룰 2 위반. 3-AND 룰 (v2.0.1+) 으로 자동 판정. |
 | BLOCKED → 곧장 사용자 재질문 (reorder skip) | 룰 4 위반. reorder dispatch 자동 시도 우선. |
-| implementer model 변경 시 게이트 | 룰 2 위반. plan 의 `**Model**:` 필드 우선. |
+| implementer model 변경 시 게이트 | 룰 2 위반. implementer 는 haiku 고정 (byte-copy). |
 | 변수명 / format / import 순서 게이트 | 룰 2 위반. plan byte-copy 우선, 없으면 implementer 자율. |
 | 사용자 모드 선택 무시하고 subagent → inline 자동 전환 권유 | 룰 1 위반. 모드 변경은 명시 동의 필수. |
 | 모든 mid-flight 결정을 "안전성" 명목으로 게이트 | 과보호. 룰 1 7 케이스 외엔 자율. |
@@ -528,5 +530,5 @@ prose 질문 좁은 예외:
 | critical 재질문을 prose 로 ("force-push 해도 될까요?") | critical 일수록 AskUserQuestion + 알람 fire 필수. |
 | AskUserQuestion 호출 직후 prose 추가 질문 (이중 질문) | 한 turn 한 도구 호출 / 답변 흐름 보존. |
 | "Y/N?" 한 글자 응답 유도 prose | AskUserQuestion (yes/no) 사용. |
-| skill body boilerplate 만 따르고 ad-hoc 결정엔 prose | CLAUDE.md 글로벌 룰 위반. 전역 적용. |
+| skill body boilerplate 만 따르고 ad-hoc 결정엔 prose | using-superpowers 전역 룰 위반. 전역 적용. |
 | AskUserQuestion 호출이 overhead 라며 prose fallback | 일관성 ≫ 호출 비용. |

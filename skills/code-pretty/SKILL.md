@@ -142,7 +142,7 @@ Three categories. Apply only when there is a CONCRETE, ARTICULABLE readability i
 - Do NOT touch prose, headings, lists, tables, frontmatter, or `## 변경이력`
 - Do NOT extract magic numbers to named constants
 - Do NOT flatten nested if statements
-- Do NOT split or merge functions
+- Do NOT split or merge functions — 유일 예외: Category C 의 "duplicate inline helpers — ONLY when call-site contexts are byte-identical" 케이스만 허용
 - Do NOT rename anything unless context is overwhelming (Category B last bullet)
 - Do NOT change behavior, side-effects, exception flow, or output
 - Do NOT modify a target block if it is already well-formatted (consistent whitespace, no obvious readability issues, no Category B / C candidates) — leave byte-identical

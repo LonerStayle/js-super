@@ -6,7 +6,7 @@ Use this template when dispatching a spec compliance reviewer subagent under `js
 
 ```
 Task tool (general-purpose):
-  model: "sonnet"   # default — line-by-line code-vs-spec comparison. Drop to "haiku" for trivial mechanical tasks. See SKILL.md "Model Selection".
+  model: "sonnet"   # FIXED — spec reviewer is always sonnet (D11). Do NOT drop to haiku. See SKILL.md "Model Selection".
   description: "Review spec compliance for Task N"
   prompt: |
     You are reviewing whether an implementation matches its specification.

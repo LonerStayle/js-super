@@ -12,4 +12,4 @@ v2.5.1+ 신규 슬래시 명령:
 
 사용 예시:
 - `/worktree-remove` — safe 삭제 (default, 머지 안 됐으면 안내 후 종료)
-- `/worktree-remove --force` — 머지 안 된 브랜치도 강제 삭제 + 워크트리 dirty 도 강제 제거
+- `/worktree-remove --force` — 머지 안 된 브랜치도 강제 삭제(`-D`). (미커밋 변경사항이 있으면 `--force` 여도 Step 1 에서 종료됩니다 — 먼저 commit/stash/discard 후 재호출.)

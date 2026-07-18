@@ -7,7 +7,7 @@
 ## 동작
 
 1. 인자 `<slug>` 확인 (또는 latest slug 추론)
-2. `docs/features/<slug>/<slug>-{requirements,tech-design,implementation-plan}.md` 중 존재하는 모든 `.md` 검출
+2. `docs/features/<date>-<slug>/<slug>-{requirements,tech-design,implementation-plan}.md` 중 존재하는 모든 `.md` 검출 (feature 폴더에는 날짜 접두어가 붙으므로, slug 만 알 때는 `docs/features/*-<slug>/` 로 glob 해서 실제 폴더를 찾을 것)
 3. 각 `.md` 에 대해 Subagent dispatch:
    - `subagent_type`: `general-purpose`
    - `model`: `sonnet`

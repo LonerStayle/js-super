@@ -1,6 +1,6 @@
 ---
 name: auto-writing-plans
-description: auto-flow 3단계 — requirements + tech-design 읽기 + AI 자동 task 분해 (TDD bite-sized + Model hint 자동) + RISK 코드 지점 §2 자동 + verifying-spec 자동 + code-pretty 호출 X (D-T12 와 일관) + change-history 자동 + auto-executing-plans 자동 invoke. AskUserQuestion / generating-html 호출 X.
+description: auto-flow 3단계 — requirements + tech-design 읽기 + AI 자동 task 분해 (TDD bite-sized + Model hint 자동) + RISK 코드 지점 §2 자동 + verifying-spec 자동 + code-pretty 호출 X (D-T12 와 일관) + change-history 자동 + auto-executing-plans 자동 invoke. AskUserQuestion 호출 X. generating-html 은 Step 4.6 에서 백그라운드(fire-and-forget) 호출.
 ---
 
 # Auto Writing Plans → <slug>-implementation-plan.md (auto)

@@ -40,7 +40,7 @@ Output `.html` file: `<ABSOLUTE_HTML_PATH>` (same directory, same basename, `.ht
 
 | `.md` 패턴 | `.html` 변환 |
 |---|---|
-| DAG / dependency / flow / component-relation | Mermaid diagram (flowchart / sequence / state / graph) — Mermaid theme 도 자유 선택 (dark / forest / neutral / custom) |
+| DAG / dependency / flow / component-relation | **inline SVG** 로 그린 flow / graph 도식 (box + 화살표 + 그룹 색) — 색감 / 톤 자유. (`.md` 에 Mermaid 소스가 있으면 동등한 inline SVG 로 옮기고, 원본 코드는 collapse 로 보존 가능) |
 | 표 / 비교 항목 | striped + sticky header + 셀 ✅/❌ 색깔 강조 + hover row |
 | 코드 블록 | syntax highlight (`pre code.language-...`) + 우상단 copy 버튼 (JS OK) + 언어 라벨 |
 | H1 / H2 / H3 | 적극 색감 + 배경 강조 / divider / icon-like 장식 / animated underline |
@@ -49,7 +49,7 @@ Output `.html` file: `<ABSOLUTE_HTML_PATH>` (same directory, same basename, `.ht
 | 추상 규칙 / 책임 분리 / 매트릭스 | 콘셉트 도식 — box + 화살표 (Unicode / CSS / inline SVG) + 그룹 색 |
 | 위험 카테고리 (breaking/side-effect/race) | 색깔 카드 — red/orange/purple 톤별 + 위험도 시각 (펄스 / 글로우) |
 | 단계별 흐름 / TDD step / wave | stepper / timeline / horizontal scroll cards — animated progress |
-| Acceptance / 검증 체크리스트 | ☐/☑ + interactive toggle (`<details>` 또는 checkbox) |
+| Acceptance / 검증 체크리스트 | ☐/☑ + checkbox 스타일 시각 강조 (항상 펼침 — `<details>` 로 hide 금지, 아래 "Primary content" 룰) |
 | Non-goals / EXCLUSIONS / 영구 생략 | 취소선 + 회색 box + ❌ prefix / faded 톤 |
 | 미정 결정 표 (U-N / D-T-N) | infographic 카드 — decision badge + 강조 결과 + 이유 + 색감 |
 
@@ -64,7 +64,7 @@ Output `.html` file: `<ABSOLUTE_HTML_PATH>` (same directory, same basename, `.ht
 - 코드 블록 copy 버튼
 - Dark-mode toggle 버튼 (auto + 수동 둘 다)
 - Smooth scroll + scroll-triggered animation (Intersection Observer)
-- Mermaid diagram pan/zoom
+- 다이어그램 (inline SVG) pan/zoom
 - Hover tooltip (CSS / inline JS)
 - Animated 진입 (fade-in / slide-in on scroll)
 
@@ -110,8 +110,8 @@ v2.2.4 의 "Wow first" 는 **첫 viewport 에서** 발생해야 한다:
 # Self-contained rules (보존)
 
 - Inline CSS only (no `<link href="https://...">`)
-- Inline SVG / Mermaid inline JS only (no CDN reference)
-- Mermaid: embed `mermaid.min.js` content directly inside `<script>` tag (one self-contained block)
+- 다이어그램은 **inline SVG 또는 CSS 도식**으로 self-contained 하게 그린다 (offline 에서 항상 렌더됨, CDN 불필요)
+- Mermaid 런타임(`mermaid.min.js`)을 통째로 `<script>` 에 인라인하려 하지 마라 — 용량이 크고 신뢰성 낮다. 다이어그램은 **inline SVG 로 직접 그린다**. `.md` 에 Mermaid 소스가 있으면 (a) 동등한 inline SVG 로 옮기거나 (b) 코드 블록으로 보존(collapse OK).
 - Interaction JS: inline `<script>` 안에만. external `<script src=...>` 금지
 - Browser offline (file://) double-click renders correctly + 모든 인터랙션 동작
 

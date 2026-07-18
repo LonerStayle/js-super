@@ -89,7 +89,7 @@ Result branches:
 - `static-env-token` → activate Block B (env var fixture)
 - `unknown` → ask the user once: "어떻게 인증하나요? 로그인 엔드포인트 / 정적 토큰 / OAuth?"
 
-Files to write under `docs/features/<...>/api-tests/`:
+Files to write under `docs/features/<date>-<slug>/api-tests/`:
 
 1. **conftest.py** — copy from `templates/api-tests/conftest.py.template`, activate the right block, and append data fixtures matching the user's paste:
    ```python
@@ -117,10 +117,10 @@ def test_withdraw_success(api_client, test_user, test_product):
 
 ```bash
 source .venv/bin/activate
-pytest docs/features/<...>/api-tests/scenario-*.py \
+pytest docs/features/<date>-<slug>/api-tests/scenario-*.py \
        -v --tb=short \
        --json-report \
-       --json-report-file=docs/features/<...>/api-tests/results/$(date +%Y-%m-%d-%H%M).json
+       --json-report-file=docs/features/<date>-<slug>/api-tests/results/$(date +%Y-%m-%d-%H%M).json
 ```
 
 Dependencies are listed in repo-root `requirements-dev.txt`. If a user's project lacks them, instruct: `pip install pytest requests pytest-json-report` and rerun.
@@ -175,8 +175,8 @@ The user's choice routes back to either /execute-plan (cascading code fix) or sc
 ## Acceptance
 
 After /api-test completes:
-1. ≥ 1 scenario file under `docs/features/<...>/api-tests/`
-2. ≥ 1 JSON result file under `docs/features/<...>/api-tests/results/`
+1. ≥ 1 scenario file under `docs/features/<date>-<slug>/api-tests/`
+2. ≥ 1 JSON result file under `docs/features/<date>-<slug>/api-tests/results/`
 3. <slug>-implementation-plan.md `## 변경이력` has a fresh `[API테스트]` entry with PASS/FAIL/ERROR counts
 4. Failure cases (if any) surfaced with concrete next-action options
 

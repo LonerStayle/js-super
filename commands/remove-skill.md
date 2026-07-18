@@ -9,7 +9,7 @@ argument-hint: "<slug> [--project|--global] [--force] [--dry-run]"
 
 ## 1. 사전 검증
 
-`$ARGUMENTS` 첫 토큰이 slug 인자입니다 (필수). 누락 시 다음 안내 후 중단:
+`$ARGUMENTS` 에서 **`--` 로 시작하지 않는 첫 토큰**(첫 kebab-case 토큰)이 slug 인자입니다 (필수, 위치 무관 — `--dry-run` 등 플래그가 앞에 와도 됨, § 2 파싱 규칙과 동일). slug 토큰이 아예 없으면 다음 안내 후 중단:
 
 > 어떤 skill 을 정리할지 slug 를 알려주세요.
 >
@@ -56,11 +56,27 @@ LS 도구로 `<project-root>/.claude/skills/` + `~/.claude/skills/` 목록 가�
 
 ### 4-0'. 모호 (양쪽 다 존재 + 스코프 플래그 없음)
 
-다음 한 줄로 어느 스코프를 정리할지 prose 로 1회 확인 후 진행 (응답 전 변경 X):
+**`AskUserQuestion` 도구로 어느 스코프를 정리할지 묻습니다** (응답 전 변경 X):
 
-> `<slug>` 가 프로젝트와 전체(글로벌) 양쪽에 있습니다. 어느 쪽을 정리할까요? `--project` 또는 `--global` 로 다시 호출하시거나, "프로젝트" / "전체" 로 답해주세요.
+```json
+{
+  "questions": [
+    {
+      "question": "`<slug>` 가 프로젝트와 전체(글로벌) 양쪽에 있습니다. 어느 쪽을 정리할까요?",
+      "header": "정리 스코프",
+      "multiSelect": false,
+      "options": [
+        {"label": "프로젝트", "description": "현재 프로젝트의 `.claude/skills/<slug>/`"},
+        {"label": "전체(글로벌)", "description": "`~/.claude/skills/<slug>/`"}
+      ]
+    }
+  ]
+}
+```
 
-### 4-0. 출처 표식 검사 (차단 게이트 — 다른 모든 분기보다 먼저)
+사용자 선택("프로젝트" / "전체")으로 `<TARGET>` 확정. `AskUserQuestion` 이 없는 하네스면 위 질문을 prose 로 대체 (`--project` / `--global` 로 재호출 안내 포함).
+
+### 4-0. 출처 표식 검사 (차단 게이트 — `<TARGET>` 확정 후, 4-2/4-3/4-4 실행 분기보다 먼저)
 
 `<TARGET>/.js-super-skill.json` 존재 여부 LS 도구로 확인:
 
@@ -71,7 +87,7 @@ js-super 가 만들지 않은 skill (다른 플러그인 / 사용자 직접 생�
 
 ### 4-2. `--dry-run` 명시 (변경 X)
 
-§ 5-3 보고 양식으로 메인 응답 — `<TARGET>` 이 어디로 rename / 삭제되는지 안내. Bash / Edit / Write 도구 호출 X.
+§ 5-3 보고 양식으로 메인 응답 — `<TARGET>` 이 어디로 rename / 삭제되는지 안내. Bash / Edit / Write 도구 호출 X. **`--force` 와 함께 와도 `--dry-run` 이 우선** — 미리보기만 하고 절대 삭제하지 않는다 (안전 우선).
 
 ### 4-3. default safe-rename
 
@@ -125,7 +141,7 @@ rename: <TARGET>/ → <TARGET>.removed-<timestamp>/
 
 대상 (스코프: <project|global>): <TARGET>/ (<크기> KB, 마지막 수정 <timestamp>)
 출처 표식: <TARGET>/.js-super-skill.json (존재 — 정리 가능)
-변경 예정: <TARGET>.removed-<timestamp>/ (safe-rename)
+변경 예정: <`--force` 도 함께 지정됐으면 `rm -rf <TARGET>/` (hard-delete, 회복 불가) / 아니면 `<TARGET>.removed-<timestamp>/` (safe-rename)>
 
 --force 옵션 시 회복 불가 hard-delete.
 
