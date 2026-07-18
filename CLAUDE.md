@@ -325,6 +325,32 @@ v2.5.1 에서 `worktree-merge-back` Step 3 의 충돌 처리가 "모든 충돌 �
 요약: 단일 skill body + slash command + 3 fixture + CLAUDE.md 결합 메모 변경은
 묶어서 처리. 5+ 파일 atomic patch.
 
+### v2.5.2+ 분기 — Step 1 dirty 자동 커밋은 안전 (destructive 아님)
+
+v2.5.2 에서 `worktree-merge-back` Step 1 이 dirty working tree 시 "즉시 종료 + 사용자 재호출 요구" 에서 "자동 커밋 후 진행" 으로 전환됨 (사용자 명시 요청 — "커밋 안 되어 있으면 묻지 않고 알아서 커밋"). 이는 위 Anti-Pattern 표의 "사후 처리 default yes (destructive 작업 자동 실행)" 와 다름:
+
+- **허용 (v2.5.2+)**: dirty 시 `git add -A` + `git commit` 자동 실행. 커밋 메시지는 `git diff HEAD` 요약 LLM 자동 생성 (고정 문구 X). 커밋 전 파일 목록 + 메시지 prose 알림 필수 (silent 금지 — 원치 않는 파일 섞임 catch, 사용자 stop 가능).
+- **여전히 차단**: `git push --force` / worktree 제거 / `rm` 등 사후 처리 자동 실행 — 데이터 손실 계열. 커밋(로컬 이력 추가, `git reset` 으로 되돌리기 쉬움)과 push/삭제(원격·파일 파괴)는 다른 등급.
+
+즉 v2.0.4+ Anti-Pattern 표의 "사후 처리 default yes" 는 push/삭제 계열에 한정된 룰이고, 로컬 자동 커밋은 destructive 아님 → 충돌 X. HARD-GATE worktree-only / 충돌 자동 해결 금지 모두 유지.
+
+Anti-Pattern 표에 v2.5.2+ 항목 추가: silent 자동 커밋 금지 / 고정 메시지 금지 / 진행 여부 재질문 금지. skill body Anti-Patterns 표 (`skills/worktree-merge-back/SKILL.md`) 와 동기.
+
+회귀 catch grep:
+
+```bash
+# Step 1 자동 커밋 룰 존재 + 옛 "즉시 종료" 회귀 catch
+grep -F "Step 1 — Working tree 검사 + 자동 커밋 (v2.5.2+" skills/worktree-merge-back/SKILL.md
+# expected: >= 1
+grep -nE "먼저.*수동으로 commit 또는 stash 한 뒤 본 skill 을 재호출" skills/worktree-merge-back/SKILL.md
+# expected: 0 (v2.5.1 옛 종료 안내 제거 확인)
+# silent 커밋 금지 안전장치 존재
+grep -F "커밋 안 된 변경" skills/worktree-merge-back/SKILL.md
+# expected: >= 1
+```
+
+요약: skill body + slash command + 신규 fixture (H17) + CLAUDE.md 결합 메모 + 6 manifest 변경은 묶어서 처리. atomic patch.
+
 ## Other / 모호 응답 처리 룰 결합 (v2.1.1+)
 
 v2.1.1+ 에서 6곳 (5 skill + 1 command) 에 "Other / 모호 응답 처리" boilerplate

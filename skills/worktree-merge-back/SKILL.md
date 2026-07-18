@@ -1,6 +1,6 @@
-# Worktree Merge-Back (v2.5.1 — auto)
+# Worktree Merge-Back (v2.5.2 — auto)
 
-워크트리에서 진행한 feature 작업을 parent (main) 워크트리로 안전하게 머지 + 환경 파일 동기화. "Merge down before merging up" 패턴 — 충돌 해결은 feature sandbox 에서만, parent 워크트리는 항상 깨끗. v2.5.1+ 에서 자동화 강화 (parent 로컬 흡수 + 재귀 머지 자동 + env LLM 판단 + `/worktree-remove` 안내).
+워크트리에서 진행한 feature 작업을 parent (main) 워크트리로 안전하게 머지 + 환경 파일 동기화. "Merge down before merging up" 패턴 — 충돌 해결은 feature sandbox 에서만, parent 워크트리는 항상 깨끗. v2.5.1+ 에서 자동화 강화 (parent 로컬 흡수 + 재귀 머지 자동 + env LLM 판단 + `/worktree-remove` 안내). v2.5.2+ 에서 dirty working tree 자동 커밋 추가 (커밋 안 된 변경이 있으면 묻지 않고 자동 커밋 후 진행 — 사용자 명시 요청).
 
 **Announce at start:** "I'm using the worktree-merge-back skill — feature → parent merge with sandbox conflict resolution + env sync."
 
@@ -36,28 +36,51 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
 
 추가로 `git worktree list` 결과가 1개 (main 만 존재) 면 차단 — feature 워크트리 없음.
 
-## Process (v2.5.1+ — 게이트 0건, prose 보고 + 자동 진행)
+## Process (v2.5.2+ — 게이트 0건, prose 보고 + 자동 진행)
 
-v2.0.5 의 Step 3 충돌 게이트 1건도 v2.5.1+ 에서 prose 안내로 대체 (재귀 머지 자동 + semantic conflict 만 prose 안내). 신규 Step 4.5 env 동기화 추가. 모든 단계 default 권장사항 자동 진행 + 안전성 안내문.
+v2.0.5 의 Step 3 충돌 게이트 1건도 v2.5.1+ 에서 prose 안내로 대체 (재귀 머지 자동 + semantic conflict 만 prose 안내). 신규 Step 4.5 env 동기화 추가. v2.5.2+ 에서 Step 1 dirty 자동 커밋 추가 (즉시 종료 폐기 — 커밋 전 파일 목록 prose 알림). 모든 단계 default 권장사항 자동 진행 + 안전성 안내문.
 
 `Other / 모호 응답 처리 (v2.1.1+)` 섹션은 Step 3 게이트가 없어진 v2.5.1+ 흐름에서는 비활성 — Step 4.5 env 동기화 prose 보고에 대한 사용자 자유 응답은 메인이 prose 로 follow-up.
 
-### Step 1 — Working tree 검사 (자동, 게이트 X)
+### Step 1 — Working tree 검사 + 자동 커밋 (v2.5.2+ — 게이트 X, 알림 후 자동 진행)
+
+v2.5.1 까지는 dirty working tree 시 즉시 종료 + 사용자 재호출 요구였음. v2.5.2+ 에서 **자동 커밋 후 진행**으로 전환 (사용자 명시 요청 — "커밋 안 되어 있으면 묻지 않고 알아서 커밋"). 게이트 없음 (사용자에게 진행 여부 묻지 않음). 단 커밋 전 파일 목록 + 생성 메시지 prose 알림 필수 (silent 금지 — 원치 않는 파일 섞임 catch).
 
 ```bash
 git status --porcelain
 ```
 
 - 비어있음 → Step 2 자동 진행
-- 변경사항 있음 → **즉시 종료 + 안내**:
+- 변경사항 있음 → 아래 자동 커밋 절차 후 Step 2 진행:
+
+**1) 커밋 대상 파악** — 변경 의미를 알아야 메시지를 생성하므로 diff 를 읽는다:
+
+```bash
+git status --porcelain   # 파일 목록 + 상태 (M/A/D/??)
+git diff HEAD            # tracked 변경 내용 (메시지 생성 근거)
+```
+
+**2) 커밋 메시지 자동 생성** — 위 diff + 파일 목록을 보고 의미 있는 한 줄 메시지를 LLM 이 작성 (conventional-commit 스타일 권장, 예: `feat: X 추가`, `fix: Y 수정`). 고정 문구 사용 X — 나중에 이력 추적 가능하게.
+
+**3) 파일 목록 + 메시지 prose 알림** (묻지 않음, 알림만 — 사용자가 원치 않는 파일 catch + stop 가능):
 
 ```
-❌ Working tree 에 변경사항이 있습니다.
-   먼저 수동으로 commit 또는 stash 한 뒤 본 skill 을 재호출하세요.
-   (skill 이 임의 commit 메시지를 생성하지 않습니다 — 사용자 의도 보존)
+🔧 커밋 안 된 변경 <N>개 발견 → 자동 커밋 후 머지백 진행합니다:
+   - <file1> (수정)
+   - <file2> (신규)
+   - <file3> (삭제)
+   커밋 메시지: "<생성된 메시지>"
+   (원치 않는 파일이 보이면 지금 stop 하세요.)
 ```
 
-→ 게이트 없음. 사용자가 직접 처리 후 재호출. 자동 commit 안 함 (메시지 임의 생성 = 사용자 의도 손상).
+**4) 커밋 실행:**
+
+```bash
+git add -A
+git commit -m "<생성된 메시지>"
+```
+
+→ Step 2 자동 진행. 게이트 없음 (사용자에게 묻지 않음). 위 prose 알림이 유일한 안전장치 — 사용자가 목록 보고 stop 가능. 커밋은 로컬 이력 추가라 되돌리기 쉬움 (`git reset`) — destructive 아님.
 
 ### Step 2 — Parent worktree 추론 (자동)
 
@@ -201,7 +224,10 @@ symlink 발견 시 별도 prose 보고 후 사용자 선택. silent cp 절대 X.
 | `git push --force` 사용 | NEVER. push 자체를 skill 이 하지 않음 (Step 5 안내만). |
 | `cd <parent-path> && git ...` 패턴 | `git -C <parent-path>` 사용. cwd 변경 X. |
 | 사후 처리 자동 실행 (worktree 제거 / push) | 모두 안내만. 사용자가 직접 (v2.5.1+ 에서 `/worktree-remove` 단독 슬래시 명령). |
-| Step 1 dirty 시 임의 commit 메시지 생성 | NEVER. 즉시 종료 + 사용자 재호출 안내. |
+| Step 1 dirty 시 즉시 종료 + 사용자 재호출 요구 | (v2.5.2+ 폐기) 자동 커밋 후 진행. 사용자 명시 요청 — 묻지 않고 알아서 커밋. |
+| Step 1 자동 커밋을 silent (파일 목록·메시지 안 알림) 로 실행 | NEVER. 커밋 전 파일 목록 + 생성 메시지 prose 알림 필수 (원치 않는 파일 섞임 catch). |
+| Step 1 커밋 메시지를 고정 문구로 생성 | 변경 내용 요약해서 의미 있는 한 줄 메시지 (사용자 이력 추적 가능하게). |
+| Step 1 자동 커밋 후 진행 여부 재질문 | 묻지 않음. prose 알림 후 자동 진행 (게이트 X — 사용자 명시 요청). |
 
 ## Why v2.0.5 slim
 
@@ -222,6 +248,16 @@ symlink 발견 시 별도 prose 보고 후 사용자 선택. silent cp 절대 X.
   3. **D-3** Step 4.5 신규 — env 파일 LLM 판단 + 선택적 cp (silent 절대 X)
   4. **D-4** `/worktree-remove` 신규 슬래시 명령 (독립, chain X) — Step 5 안내에 호출 추가
 - 안전성 핵심 (HARD-GATE worktree-only / `--strategy ours/theirs` 자동 차단) 모두 유지.
+
+## Why v2.5.2
+
+- v2.5.1 출시 후 사용자 dogfood 결과 마찰 1건 catch: Step 1 이 dirty working tree 시 즉시 종료 + 사용자가 직접 commit 후 재호출 요구 → 워크트리에서 작업하다 커밋을 깜빡하면 머지백이 매번 중단됨.
+- 사용자 명시 요청: "커밋 안 되어 있으면 묻지 않고 알아서 커밋하게끔 진행".
+- 해결:
+  1. **E-1** Step 1 dirty 시 자동 커밋 후 진행 (즉시 종료 폐기). 게이트 없음 (진행 여부 안 물음).
+  2. **E-2** 커밋 메시지 = `git diff HEAD` 요약 LLM 자동 생성 (고정 문구 X — 이력 추적).
+  3. **E-3** 안전장치 = 커밋 전 파일 목록 + 생성 메시지 prose 알림 (silent 금지 — 원치 않는 파일 섞임 catch, 사용자 stop 가능).
+- 안전성 판단: 자동 커밋은 destructive 아님 (로컬 이력 추가, `git reset` 으로 되돌리기 쉬움). `git push --force` / `rm` / `--strategy ours/theirs` 같은 데이터 손실 계열과 다름 — v2.0.4+ / v2.5.1+ 안전성 핵심과 충돌 X. HARD-GATE worktree-only / 충돌 자동 해결 금지 모두 유지.
 
 ## Related Skills
 
