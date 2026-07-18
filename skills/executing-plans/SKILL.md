@@ -1,6 +1,6 @@
 ---
 name: executing-plans
-description: Use when you have a written implementation plan (<slug>-implementation-plan.md) to execute in a separate session with review checkpoints. js-superpowers extension — picks git-fast mode (default, uses `git diff HEAD` against working tree pre-commit for before/after extraction so per-edit Read snapshot is skipped; commits code + plan log atomically per task) or memory-fallback mode (when no git or commits forbidden). Per-edit: risk-annotation 3-checklist + RISK comments. Per-task: ONE consolidated change-history [코드-수정] entry, drastically reducing 구현계획서.md Read/Edit cost.
+description: Use when you have a written implementation plan (<slug>-implementation-plan.md) to execute in a separate session with review checkpoints. js-superpowers extension — picks git-fast mode (default, uses `git diff HEAD` against working tree pre-commit for before/after extraction so per-edit Read snapshot is skipped; commits code only per task, with a single end-of-run `[log] all tasks` commit for the plan footer) or memory-fallback mode (when no git or commits forbidden). Per-edit: risk-annotation 3-checklist + RISK comments. Change-history: git-fast batches ALL tasks into ONE end-of-run consolidated [코드-수정] entry; memory-fallback writes one consolidated entry per task — either way drastically reducing 구현계획서.md Read/Edit cost.
 ---
 
 # Executing Plans
@@ -26,7 +26,7 @@ Load plan, review critically, execute all tasks task-by-task, with strict per-ed
 - [ ] Step 1 — Plan 로드 + 비판적 검토 (Plan Loading)
 - [ ] Step 2 — Code Edit Discipline (git-fast / memory-fallback 모드 선택)
 - [ ] Per-edit — risk-annotation 3-checklist + RISK comments
-- [ ] Per-task — consolidated [코드-수정] entry 1개 (change-history)
+- [ ] 변경이력 — git-fast: 전체 task 후 end-of-run 1회 batch entry / memory-fallback: task마다 consolidated entry (change-history)
 - [ ] Step 3 — Complete Development (테스트 + finishing-a-development-branch)
 
 ## Plan Loading
@@ -128,7 +128,7 @@ This Phase 3 ordering is the **single source of truth for inline mode**. Subagen
 5. Commit if possible (some plans skip).
 
 <HARD-GATE>
-NEVER skip Phase 2 logging. In git-fast mode, **strict ordering is mandatory**: extract diff (while plan.md untouched) → edit plan.md → commit code + plan together. Reversing this (e.g., commit before diff, or edit plan before diff) will pollute future `git diff HEAD` outputs with stale log appends. In memory-fallback mode, before-snapshots must be captured BEFORE each edit (otherwise originals are gone) and held in memory until Phase 2.
+NEVER skip logging. In git-fast mode, **strict ordering is mandatory**: per task, extract the diff (`git diff HEAD`) into the accumulator WHILE plan.md is untouched → commit code only (plan.md is NOT included in the per-task commit). Do the plan.md footer append + single `[log] all tasks` commit ONCE at end-of-run (Phase 3), AFTER every task's diff has been captured. Editing or committing plan.md per-task (before the diffs are captured) pollutes future `git diff HEAD` outputs with stale log appends. In memory-fallback mode, before-snapshots must be captured BEFORE each edit (otherwise originals are gone) and held in memory until Phase 2.
 </HARD-GATE>
 
 ## Trivial-Edit Exception (skip full discipline for tiny changes)
@@ -181,13 +181,14 @@ digraph exec_flow {
     "Apply Edit (with RISK comments)" [shape=box];
     "Run tests for this task" [shape=box];
     "All pass?" [shape=diamond];
-    "[git-fast] git diff HEAD -- <code>\n→ extract before/after" [shape=box];
-    "BATCHED LOG: ONE [코드-수정] entry\nfor whole task\n(Read+Edit 구현계획서.md once)" [shape=box];
-    "[git-fast] git add <code> <plan>\n+ git commit (one atomic task commit)" [shape=box];
+    "[git-fast] git diff HEAD -- <code>\n→ accumulate (file:lines, summary, risk)\nNO footer yet" [shape=box];
+    "[git-fast] git add <code> only\n+ commit (code-only, plan untouched)" [shape=box];
+    "[memory-fallback] BATCHED LOG:\nONE [코드-수정] entry for this task\n(Read+Edit 구현계획서.md once)" [shape=box];
     "[memory-fallback] Commit if possible" [shape=box];
     "Mark task [x]" [shape=box];
     "All tasks done?" [shape=diamond];
     "Fix and retry" [shape=box];
+    "[git-fast] End-of-run consolidator:\nONE batch [코드-수정] entry\n+ [log] all tasks commit" [shape=box];
     "Use finishing-a-development-branch" [shape=doublecircle];
 
     "Load <slug>-implementation-plan.md" -> "Critical review,\nraise concerns?";
@@ -206,18 +207,19 @@ digraph exec_flow {
     "Apply Edit (with RISK comments)" -> "More edits in task?";
     "More edits in task?" -> "Run tests for this task" [label="no — task edits done"];
     "Run tests for this task" -> "All pass?";
-    "All pass?" -> "[git-fast] git diff HEAD -- <code>\n→ extract before/after" [label="yes (git-fast)"];
-    "All pass?" -> "BATCHED LOG: ONE [코드-수정] entry\nfor whole task\n(Read+Edit 구현계획서.md once)" [label="yes (memory-fallback)"];
+    "All pass?" -> "[git-fast] git diff HEAD -- <code>\n→ accumulate (file:lines, summary, risk)\nNO footer yet" [label="yes (git-fast)"];
+    "All pass?" -> "[memory-fallback] BATCHED LOG:\nONE [코드-수정] entry for this task\n(Read+Edit 구현계획서.md once)" [label="yes (memory-fallback)"];
     "All pass?" -> "Fix and retry" [label="no"];
     "Fix and retry" -> "Apply Edit (with RISK comments)";
-    "[git-fast] git diff HEAD -- <code>\n→ extract before/after" -> "BATCHED LOG: ONE [코드-수정] entry\nfor whole task\n(Read+Edit 구현계획서.md once)";
-    "BATCHED LOG: ONE [코드-수정] entry\nfor whole task\n(Read+Edit 구현계획서.md once)" -> "[git-fast] git add <code> <plan>\n+ git commit (one atomic task commit)" [label="git-fast"];
-    "BATCHED LOG: ONE [코드-수정] entry\nfor whole task\n(Read+Edit 구현계획서.md once)" -> "[memory-fallback] Commit if possible" [label="memory-fallback"];
-    "[git-fast] git add <code> <plan>\n+ git commit (one atomic task commit)" -> "Mark task [x]";
+    "[git-fast] git diff HEAD -- <code>\n→ accumulate (file:lines, summary, risk)\nNO footer yet" -> "[git-fast] git add <code> only\n+ commit (code-only, plan untouched)";
+    "[git-fast] git add <code> only\n+ commit (code-only, plan untouched)" -> "Mark task [x]";
+    "[memory-fallback] BATCHED LOG:\nONE [코드-수정] entry for this task\n(Read+Edit 구현계획서.md once)" -> "[memory-fallback] Commit if possible";
     "[memory-fallback] Commit if possible" -> "Mark task [x]";
     "Mark task [x]" -> "All tasks done?";
     "All tasks done?" -> "Pick next [ ] task" [label="no"];
-    "All tasks done?" -> "Use finishing-a-development-branch" [label="yes"];
+    "All tasks done?" -> "[git-fast] End-of-run consolidator:\nONE batch [코드-수정] entry\n+ [log] all tasks commit" [label="yes (git-fast)"];
+    "[git-fast] End-of-run consolidator:\nONE batch [코드-수정] entry\n+ [log] all tasks commit" -> "Use finishing-a-development-branch";
+    "All tasks done?" -> "Use finishing-a-development-branch" [label="yes (memory-fallback)"];
 }
 ```
 
@@ -246,12 +248,12 @@ Ask the user rather than guessing.
 |---|---|
 | (memory-fallback) Edit first, capture before-snapshot later | Always Read → snapshot → Edit. Otherwise original is gone. |
 | (git-fast) Skip the per-task commit | Commit is REQUIRED — without it, the next task's `git diff HEAD` includes both tasks' changes and the log gets fabricated. |
-| (git-fast) Edit plan.md BEFORE running `git diff` | The diff would then include the plan log append, polluting "변경 전 코드" with non-code content. Order: diff → edit plan → commit. |
-| (git-fast) Commit code first, then edit plan as separate commit | Creates two commits per task; `git diff HEAD` next task is clean but commit history is noisy. The atomic single-commit approach (code + plan together at end) is correct. |
-| (git-fast) `git add -A` or `git add .` | Sweeps unrelated untracked files into the commit. Use explicit file list from Phase 1 tuples + plan.md. |
-| (git-fast) Include plan.md in the `git diff` extract | Extract scope = code files only. Plan changes are in the same commit but not in the "변경 전 코드" block. |
+| (git-fast) Edit plan.md BEFORE running `git diff` | The diff would then include the plan log append, polluting "변경 전 코드" with non-code content. Order: per task, `git diff` → accumulate → code-only commit; the plan.md footer edit + `[log] all tasks` commit happen ONCE at end-of-run. |
+| (git-fast) Edit / commit plan.md per task | plan.md must stay untouched during the per-task code-only commits — editing it per task pollutes the next task's `git diff HEAD`. The plan footer gets ONE separate `[log] all tasks` commit at end-of-run (Phase 3). |
+| (git-fast) `git add -A` or `git add .` | Sweeps unrelated untracked files into the commit. Use the explicit code-file list from Phase 1 tuples (plan.md is NOT included — it gets its own end-of-run `[log] all tasks` commit). |
+| (git-fast) Include plan.md in the `git diff` extract | Extract scope = code files only. plan.md is never in the per-task commit or its diff — it changes only in the separate end-of-run `[log] all tasks` commit (Phase 3). |
 | Switch modes mid-run | Mode is decided at task-start mode-check. Stick to it. |
-| Batch change-history entries at session end | Per-task immediate logging. Context evaporates fast. |
+| (memory-fallback) Defer logging past each task | memory-fallback logs one consolidated entry per task — context evaporates fast, so don't defer. (git-fast is different: it accumulates in memory per task and writes ONE end-of-run batch entry — expected, not this anti-pattern.) |
 | Skip RISK annotation because "looks safe" | Run the 3-checklist. 0/3 means no annotation, but the check happens. |
 | Skip Phase 2 logging | HARD-GATE violation. Revert + redo. |
 | Marking a logic-changing edit as "trivial" to skip discipline | Triviality requires zero logic change AND 0/3 risk triggers AND ≤3 lines. Logic changes are NEVER trivial. |
@@ -277,7 +279,7 @@ After all tasks complete and verified:
 - Pick mode (git-fast vs memory-fallback) at task-start mode-check; do not switch
 - Follow plan steps exactly
 - Per-edit discipline: risk-check → apply (memory-fallback adds before-snapshot Read upfront)
-- Per-task discipline: tests pass → (git-fast: commit + git diff) → batched log → mark task done
+- Per-task discipline: tests pass → git-fast: `git diff` 누적 + code-only commit (footer log 는 end-of-run consolidator 로 연기) / memory-fallback: 이 task 에서 batched log → mark task done
 - Don't skip verifications — if a step says "run X, expect Y", run X and confirm Y
 - Reference skills when the plan says to (e.g., "use risk-annotation here")
 - Never start implementation on main/master without explicit user consent
@@ -315,7 +317,7 @@ execute-plan 실행 흐름의 핵심 UX 룰. 사용자가 모드 (inline / subag
 | task 병렬 vs 순차 실행 여부 | plan 의 dependencies 만족 시 병렬 default |
 | task 묶음 (same-file mechanical 3-AND 룰 만족 시) | 묶음 default (v2.0.1+) |
 | task 안 보조 결정 (변수명 / format / order of imports) | plan 의 `**원본**` + `**수정본**` byte-copy 우선, 없으면 LLM 자율 |
-| dispatch model 선택 (haiku / sonnet) | plan 의 `**Model**:` 필드 우선, 없으면 기본 룰 |
+| dispatch model 선택 | (subagent 모드) implementer 는 haiku 고정 (byte-copy) — plan 의 `**Model**:` 필드로 바뀌지 않음 |
 | task 완료 후 다음 task 진입 타이밍 | 자동 진입 (게이트 X) |
 | 중간 결과 보고 빈도 | 매 task X, 매 wave (3-5 task) 단위 OR BLOCKED 시만 |
 
@@ -351,9 +353,13 @@ prose 질문 좁은 예외:
 
 ## --no-ask 플래그 (v2.5+) — 짧은 reference
 
-본 skill 흐름은 `AskUserQuestion` 호출이 본문에 명시 X (clarifying Q 자체가 prose default). `--no-ask` 플래그 진입 시 추가 분기 없음 — 본문 그대로 도구 호출 0 보장.
+기본 흐름은 룰 1 (critical 7 케이스) 재질문과 BLOCKED 자가복구 3회 실패 시 `AskUserQuestion` 도구를 fire 한다 (위 "사용자 질문 = AskUserQuestion 도구" 섹션). 즉 이 skill 에는 정상적으로 AskUserQuestion 호출이 존재한다.
 
-단 내부 escalation (BLOCKED 자가복구 실패 / critical 7 재질문 / Other 모호 응답) 에서도 도구 호출 0 보장. 자세한 룰은 `skills/brainstorming/SKILL.md` 의 `### 예외 — \`--no-ask\` 플래그 (v2.5+)` 답습.
+사용자가 `--no-ask` 플래그를 **명시** 하면, 이 게이트들을 모두 **prose (메인 turn 자유 텍스트)** 로 처리하고 `AskUserQuestion` 도구 호출을 **0 보장** 한다.
+
+- 게이트 자체는 살아 있음 — critical 7 / BLOCKED escalation 결정 지점은 유지, 도구만 우회 (사용자 prose 응답 대기)
+- 알람 fire X (사용자가 명시 invoke 했으니 인지 가정)
+- 자세한 boilerplate 는 `skills/brainstorming/SKILL.md` 의 `### 예외 — \`--no-ask\` 플래그 (v2.5+)` 답습
 
 ## Anti-Patterns (v2.3.5)
 
@@ -363,7 +369,7 @@ prose 질문 좁은 예외:
 | 매 task 완료 후 "다음 task 진입할까요?" 게이트 | 룰 3 위반. 모드 선택 = 진행 위임. |
 | "같은 파일이라 묶을까요?" 게이트 | 룰 2 위반. 3-AND 룰 (v2.0.1+) 으로 자동 판정. |
 | BLOCKED → 곧장 사용자 재질문 (self-correct skip) | 룰 4 위반. 자가 복구 우선. |
-| dispatch model 변경 시 게이트 | 룰 2 위반. plan 의 `**Model**:` 필드 우선. |
+| dispatch model 변경 시 게이트 | 룰 2 위반. (subagent 모드) implementer 는 haiku 고정 (byte-copy). |
 | 변수명 / format / import 순서 게이트 | 룰 2 위반. plan byte-copy 우선, 없으면 자율. |
 | 사용자 모드 선택 무시하고 inline → subagent 자동 전환 | 룰 1 위반. 모드 변경은 명시 동의 필수. |
 | 모든 mid-flight 결정을 "안전성" 명목으로 게이트 | 과보호. 룰 1 7 케이스 외엔 자율. |

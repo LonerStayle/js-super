@@ -3,16 +3,16 @@ name: generating-html
 description: Use during the initial-creation iteration loop of <slug>-requirements.md / <slug>-tech-design.md / <slug>-implementation-plan.md. Fires before user review on every draft (v1.1.15+ unified timing — pre-review per-draft). Re-fires on each user-fix iteration. STOPS firing once the first change-history entry is logged — that boundary marks "live doc". Dispatches a single Sonnet subagent (B) in fire-and-forget mode (v2.2.1+) — generates a sibling `.html` companion (사람 전용 시각화 사본) with semantic 1:1 preservation. Main does NOT wait for the result. RAW `.md` is shown to user as-is (v2.2.1 removed the v2.2.0 A format-only pass — B alone now handles human readability). NEVER invoked on change-history appends, change-propagation cascades (use `/sync-html` instead), or partial revisions.
 ---
 
-# Generating HTML (Pre-Review Formatting)
+# Generating HTML (Pre-Review `.html` Companion)
 
-This skill prettifies a freshly written or rewritten feature MD just before the user reviews it during the initial creation phase. It exists because the agent-authored draft is content-correct but visually noisy (inconsistent header levels, ad-hoc list bullets, unaligned tables, rough spacing). This pass tightens visual hierarchy WITHOUT touching meaning, so the user reviews a clean version. The user's review is the safety net: if the format pass ever drifts meaning, they catch it BEFORE it gets locked into change-history.
+This skill generates a human-only `.html` companion of a freshly written or rewritten feature MD, just before the user reviews it during the initial creation phase. The agent-authored `.md` is content-correct but visually plain; the `.html` sidecar renders it with better visual hierarchy (Mermaid, cards, spacing) WITHOUT altering meaning. The RAW `.md` stays the review surface and the source of truth — the `.html` is a derived, human-only view. Generation is fire-and-forget: the main agent dispatches a B subagent and does NOT wait for it. The user's review of the RAW `.md` is the safety net before anything is locked into change-history.
 
-**Announce at start:** "I'm using the generating-html skill to format `<file>` before the user reviews it."
+**Announce at start:** "I'm using the generating-html skill to build an `.html` companion for `<file>` before the user reviews it (fire-and-forget)."
 
 <HARD-GATE>
 Trigger timing (v1.1.15+ 통일 — pre-review per-draft):
 
-모든 doc 타입에서 동일하게 발화: 메인이 RAW 작성 → generating-html (사용자 리뷰 직전) → 사용자가 prettified 본문 검토 → 승인 → change-history. 사용자 fix 요청 시 메인이 in-memory raw 갱신 후 generating-html 재발화 (per-draft loop).
+모든 doc 타입에서 동일하게 발화: 메인이 RAW 작성 → generating-html (사용자 리뷰 직전, `.html` 사본을 백그라운드로 생성) → 사용자가 RAW `.md` 검토 (`.html` 은 사람 전용 사이드카) → 승인 → change-history. 사용자 fix 요청 시 메인이 in-memory raw 갱신 후 generating-html 재발화 (per-draft loop).
 
 - **requirements.md** — brainstorming 흐름 끝, 사용자 리뷰 직전. user-fix 시 재발화.
 - **tech-design.md** — tech-design 흐름 끝, 사용자 리뷰 직전 (combined approval gate 와 결합). user-fix 시 재발화.
@@ -115,58 +115,11 @@ Failure handling (v2.2.1+ — fire-and-forget):
 - **B 실패** (Sonnet API 일시 장애 / verification 실패 등) → silent log "ERROR". `.html` 미생성. 사용자 다음에 `.html` 열려고 할 때 부재 인지 → `/sync-html` 수동.
 - **메인 cancel (디바운스)** → 이전 B 작업 폐기, silent log "CANCEL". 새 B dispatch.
 
-## Subagent Prompt Template
+## Subagent B Prompt
 
-The dispatched subagent receives this exact prompt (filled in with the target path):
+The dispatched B subagent uses the prompt template at `skills/generating-html/html-companion-prompt.md`, filled with `<ABSOLUTE_MD_PATH>` + `<ABSOLUTE_HTML_PATH>`. That template is the single source of truth for B's behavior — it generates a semantic 1:1 `.html` companion (self-contained inline assets, no rewording of the `.md`).
 
-```
-You are performing a STRICT format-only pass on a Korean spec document.
-
-Target file: <ABSOLUTE_PATH>
-
-Your job: improve READABILITY ONLY. The user will trust this pass to never alter meaning.
-
-# Allowed changes (formatting only)
-
-- Normalize Markdown header levels so hierarchy is consistent (e.g., one H1, H2 for top sections, H3 for subsections)
-- Convert ad-hoc bullet styles to consistent `-` bullets; align nested list indentation to 2 spaces
-- Reformat tables: align column pipes, add header separators if missing
-- Tighten spacing: exactly one blank line between sections, no trailing whitespace, no triple-blank-line gaps
-- Fix code-block fences (` ``` ` open/close), add language hints where the content makes the language obvious
-- Add a blank line before/after lists, tables, code blocks where Markdown rendering benefits
-- Convert obvious raw URLs to `<url>` autolinks if they appear standalone
-- Standardize emphasis: bold for `**...**`, italic for `*...*` (no underscores for emphasis)
-
-# FORBIDDEN — never do any of these
-
-- Do NOT reword, paraphrase, summarize, expand, or "improve" any sentence
-- Do NOT translate Korean ↔ English
-- Do NOT reorder sections, list items, table rows, or paragraphs
-- Do NOT add new content, examples, or commentary
-- Do NOT remove content, even if it looks redundant or unclear
-- Do NOT touch the YAML frontmatter (between `---` delimiters at top) — preserve byte-for-byte
-- Do NOT touch the `## 변경이력` footer or anything under it — preserve byte-for-byte
-- Do NOT change identifier strings: file names, slugs, function names, FR-N / NFR-N / CH-N IDs, Korean section headers (요구사항, 개발방향, 구현계획서, 변경이력, 위험 코드 지점, 롤백 전략, etc.)
-- Do NOT change inline code spans (` `...` `) content — only fix fence consistency
-
-# How to apply
-
-1. Read the file in full
-2. Apply ONLY allowed transformations
-3. Write the result back to the SAME file path using the Write tool (overwrite)
-4. Report: "Format pass done on <path>. Sections: <N>. Frontmatter preserved: yes/no. 변경이력 footer preserved: yes/no."
-
-# Verification before writing
-
-Before you call Write:
-- Compare your output's section header list (text only, ignoring level) to the input — they MUST match exactly, in the same order
-- Confirm the YAML frontmatter block (if present) is byte-identical
-- Confirm the `## 변경이력` heading and everything beneath it is byte-identical
-
-If ANY of these fail, do NOT write. Report the failure and stop.
-
-You have one job: make it cleaner to read. Nothing else.
-```
+**구 v2.2.0 A pass (`.md` 를 format-only 로 덮어쓰던 프롬프트) 는 v2.2.1 에서 제거됨.** 원본 `.md` 를 다시 쓰는 프롬프트를 이 파일에 인라인하거나 되살리지 마라 — B 는 오직 형제 `.html` 만 Write 한다. 이 skill 은 `.md` 를 절대 건드리지 않는다.
 
 ## Process Flow
 
@@ -175,36 +128,19 @@ digraph generating_html {
     "Calling skill ready\n(brainstorming/tech-design/writing-plans)" [shape=box];
     "Pre-flight: file exists?\n변경이력 empty?\nfilename matches pattern?" [shape=diamond];
     "STOP — log reason, return to caller" [shape=box];
-    "Dispatch subagent\n(general-purpose, model=sonnet)" [shape=box];
-    "Subagent: Read → format-only → Write" [shape=box];
-    "Main: Read file back\nspot-check headers/frontmatter/footer" [shape=box];
-    "Sanity OK?" [shape=diamond];
-    "Report to user, return to caller\n(caller now invokes change-history)" [shape=doublecircle];
-    "Roll back: ask user to choose\n(restore from memory or accept)" [shape=box];
+    "Dispatch B subagent\n(general-purpose, sonnet, run_in_background=true)" [shape=box];
+    "Main yields immediately\n(RAW .md is the review surface)" [shape=doublecircle];
+    "B writes sibling .html in background\n(self-verifies, then silent log)" [shape=box];
 
     "Calling skill ready\n(brainstorming/tech-design/writing-plans)" -> "Pre-flight: file exists?\n변경이력 empty?\nfilename matches pattern?";
     "Pre-flight: file exists?\n변경이력 empty?\nfilename matches pattern?" -> "STOP — log reason, return to caller" [label="any check fails"];
-    "Pre-flight: file exists?\n변경이력 empty?\nfilename matches pattern?" -> "Dispatch subagent\n(general-purpose, model=sonnet)" [label="all pass"];
-    "Dispatch subagent\n(general-purpose, model=sonnet)" -> "Subagent: Read → format-only → Write";
-    "Subagent: Read → format-only → Write" -> "Main: Read file back\nspot-check headers/frontmatter/footer";
-    "Main: Read file back\nspot-check headers/frontmatter/footer" -> "Sanity OK?";
-    "Sanity OK?" -> "Report to user, return to caller\n(caller now invokes change-history)" [label="yes"];
-    "Sanity OK?" -> "Roll back: ask user to choose\n(restore from memory or accept)" [label="no"];
+    "Pre-flight: file exists?\n변경이력 empty?\nfilename matches pattern?" -> "Dispatch B subagent\n(general-purpose, sonnet, run_in_background=true)" [label="all pass"];
+    "Dispatch B subagent\n(general-purpose, sonnet, run_in_background=true)" -> "Main yields immediately\n(RAW .md is the review surface)";
+    "Dispatch B subagent\n(general-purpose, sonnet, run_in_background=true)" -> "B writes sibling .html in background\n(self-verifies, then silent log)" [label="fire-and-forget"];
 }
 ```
 
-## Sanity-Check Details (post-dispatch)
-
-The main agent's spot-check after the subagent returns:
-
-| Check | How |
-|---|---|
-| Frontmatter intact | First Read line still `---`; closing `---` present at expected position |
-| Section header count unchanged | Grep `^#{1,6} ` → count matches the pre-dispatch count (which the calling skill already knows from generating the doc) |
-| `## 변경이력` heading present and footer empty | Grep `^## 변경이력` → 1 match; Grep `^### \[` after that line → 0 matches |
-| Korean identifier headers preserved | Grep for the expected Korean section names (`요구사항`, `개발방향`, `구현계획서`, etc. as applicable to the doc type) |
-
-If any check fails, the main agent reports the failure and asks the user whether to (a) accept the prettified version anyway, (b) revert (caller is responsible for restore — typically by re-running the doc-writing step from memory), or (c) skip generating-html and proceed.
+**포스트 dispatch spot-check 없음** — fire-and-forget 이므로 메인은 결과를 다시 읽지 않는다. B 가 자체 프롬프트의 "Verification before writing" 룰로 스스로 검증한 뒤 Write 하고, 실패는 `.js-super/html-regen.log` 에 남으며 사용자는 `/sync-html` 로 복구한다.
 
 ## Anti-Patterns
 
@@ -213,10 +149,10 @@ If any check fails, the main agent reports the failure and asks the user whether
 | Run generating-html as part of `change-history` entry append | NEVER. generating-html fires before the FIRST entry, and never again. |
 | Run generating-html when user requested a partial revision | NEVER. Partial revisions go through normal Edit + change-history. |
 | Skip the pre-flight `변경이력` empty check | The check is what enforces "first creation only". Don't skip. |
-| Use Opus / Haiku / main agent for the formatting | Sonnet only — Opus wastes the call, Haiku risks rephrasing Korean. |
-| Let the subagent "make the prose flow better" | Forbidden. Pass prompt forbids all rewording. |
+| Use Opus / Haiku / main agent for the `.html` companion | Sonnet only — Opus wastes the call, Haiku risks rephrasing Korean. |
+| Let the subagent "make the prose flow better" | Forbidden. The B prompt forbids all rewording of the `.md`. |
 | Reformat the `## 변경이력` footer "to match the new style" | The footer is an audit trail with byte-identical preservation. |
-| Skip the post-dispatch sanity check | The HARD-GATE on meaning preservation needs verification. |
+| Add a main-agent post-dispatch spot-check of the result | 불필요 (v2.2.1+). fire-and-forget — 메인은 결과를 읽지 않는다. B 가 자체 프롬프트로 검증 후 `.html` Write, 실패는 `/sync-html` 로 복구. |
 | Re-run generating-html if the user later complains the doc "still looks rough" | One shot only. Subsequent improvements are normal Edit + change-history entries. |
 | Read or reference the `.html` companion from any AI workflow (v2.2.0+) | NEVER. AI reads `.md` only. `.html` is human-only derived view. |
 | Reference external CDN / URL in the `.html` (v2.2.0+) | NEVER. Self-contained inline only (D4). |
@@ -240,8 +176,8 @@ If any check fails, the main agent reports the failure and asks the user whether
 A generating-html run is correct when ALL hold:
 
 1. Pre-flight checks all passed (file exists, `## 변경이력` empty, filename pattern matches)
-2. Subagent was dispatched with `model: sonnet` and the strict format-only prompt
-3. Post-dispatch sanity checks all passed (frontmatter intact, header count unchanged, footer empty, Korean identifiers preserved)
+2. B subagent was dispatched with `model: sonnet` and the html-companion prompt (`html-companion-prompt.md`)
+3. Dispatch used `run_in_background: true` and the main agent yielded immediately (did NOT wait); the RAW `.md` was left untouched as the review surface
 4. The calling skill received control back and is about to invoke `change-history` for the first entry
 5. No `## 변경이력` entry was added by generating-html itself (logging is the caller's job, with `[<doc-type>-수정]` tag for "신규 ... 결과")
 

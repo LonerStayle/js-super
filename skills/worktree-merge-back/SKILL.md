@@ -6,7 +6,7 @@
 
 ## Other / 모호 응답 처리 (v2.1.1+)
 
-본 skill 의 유일한 AskUserQuestion 게이트 (Step 3 충돌 처리) 에서 사용자가 "Other" 자유 응답 또는 "모르겠음 / 이해 안 됨" 류 답변 catch 시 → **그 질문만 단독 재호출 + prose 설명 추가**. 자동 진행 X (Step 4 진행 차단).
+본 skill 은 v2.5.1+ 에서 AskUserQuestion 게이트가 0건이다 (구 Step 3 충돌 게이트가 재귀 머지 자동 + prose 안내로 대체됨 — 아래 Process 섹션 참조). 따라서 이 "Other / 모호 응답" 룰은 **현재 흐름에서 비활성**이다. (향후 게이트가 다시 도입될 경우에만 적용: 사용자가 "Other" 자유 응답 또는 "모르겠음 / 이해 안 됨" 류 답변 catch 시 → 그 질문만 단독 재호출 + prose 설명 추가, 자동 진행 X.)
 
 ## When to Use
 
@@ -128,11 +128,16 @@ git -C "$MAIN_PATH" merge --no-ff "$FEATURE_BRANCH" \
 **대상 파일 감지**:
 
 - 후보 글롭: `.env*`, `local.properties`, `gradle-wrapper.properties`, 기타 플랫폼별 로컬 빌드 환경 파일 (`setting-up-worktrees` 의 LLM-judged Procedure 와 동일 룰)
-- 실제 비교 대상: 워크트리의 git untracked 또는 modified 파일 중 parent 와 내용이 다른 것
+- 실제 비교 대상: 워크트리에 존재하는 후보 파일 중 parent 와 내용이 다른 것 (대부분 gitignored 라 아래처럼 `--ignored` 로 스캔)
 
 ```bash
 # 후보 catch (예시)
-CANDIDATES=$(git status --porcelain | grep -E "^\?\?|^.M" | awk '{print $2}' | grep -E "\.env|local\.properties|gradle-wrapper")
+# .env* 등 로컬 빌드 환경 파일은 gitignored 라 기본 `git status` 출력엔 안 잡힘 → --ignored=matching 필수
+CURRENT_PATH=$(git rev-parse --show-toplevel)
+CANDIDATES=$(git -C "$CURRENT_PATH" status --porcelain --ignored=matching \
+  | awk '{print $2}' \
+  | grep -E "(^|/)\.env|local\.properties|gradle-wrapper\.properties" \
+  | sort -u)
 ```
 
 **LLM 판단** — 각 후보 파일의 변경 의미를 1줄 prose 보고:
@@ -158,7 +163,7 @@ cp -pP "$CURRENT_PATH/$FILE" "$MAIN_PATH/$FILE"
 
 symlink 발견 시 별도 prose 보고 후 사용자 선택. silent cp 절대 X.
 
-**절대 X**: 사용자 응답 없이 묵시적 cp 실행 (R-2 — LLM 오판 시 secret 노출). 모든 cp 결정은 prose 출력 후 사용자가 stop 가능 시점 보장.
+**절대 X**: prose 보고 없이 (silent) cp 실행 (R-2 — LLM 오판 시 secret 노출). 명확한 케이스(새 키 추가 등)의 cp 는 prose 보고 후 자동 진행하되 사용자가 언제든 stop 가능. **단 "기존 키의 값 변경"처럼 판단이 애매한 케이스는 위 룰대로 실제 사용자 응답을 기다린다** (자동 진행 X — 한쪽 값 임의 채택 방지).
 
 대상 파일 0건이면 한 줄 안내 후 Step 5 자동 진행:
 

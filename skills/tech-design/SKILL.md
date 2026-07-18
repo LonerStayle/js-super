@@ -18,9 +18,9 @@ Notification 훅 (`elicitation_dialog` 매처) 이 알람을 발화하려면 도
 ### How to apply
 
 - clarifying / Socratic / 모호점 확인 / 게이트 / 모드 선택 — 모두 포함
-- 단답 yes/no 도 prose X → `AskUserQuestion` choices `[yes, no]` 사용
-- 다중 선택은 enum choices 또는 multi-question batching (의미 결합 시 max 4 questions[])
-- **Socratic 자유 응답**: AskUserQuestion 의 question 본문에 "자유롭게 답해주세요. 별도 옵션 선택 불필요" + dummy choice `[알겠음]` 1개 → 트리거만 발화, 응답은 다음 turn prose
+- 단답 yes/no 도 prose X → `AskUserQuestion` options `[yes, no]` 사용
+- 다중 선택은 enum options 또는 multi-question batching (의미 결합 시 max 4 questions[])
+- **Socratic 자유 응답**: AskUserQuestion 의 question 본문에 "자유롭게 답해주세요. 별도 옵션 선택 불필요" + dummy option `[알겠음]` 1개 → 트리거만 발화, 응답은 다음 turn prose
 - **예외**: 본문 자체의 알람-friendly 안내문 (`ℹ️ Auto-proceeding ...`) 는 질문 아니라 안내 — 도구 호출 불필요
 
 ### Other / 모호 응답 처리 (v2.1.1+)
@@ -65,8 +65,8 @@ You MUST create a TaskCreate task for each of these items and complete them in o
 3. **적응형 7-토픽 질의응답** — `<slug>-requirements.md` 읽고 활성/비활성 토픽 판정 후 한 줄 announce. 항상 활성 4개 (1 아키텍처 / 2 컴포넌트 / 5 결정+대안 / 6 위험), 조건부 3개 (3 데이터 모델 / 4 외부 인터페이스 / 7 테스트 전략). 자세한 룰은 "Adaptive Topics" 섹션 참조. (v1.1.15+, FR-1)
 4. **자체 점검** — FR mapping coverage, alternatives present, risk categorization (no user prompt yet)
 5. **사양 정합성 검증 (사전)** — main agent runs A+C verification via `verifying-spec`, produces 4-axis report internally (Tolerance for missing skill)
-6. **문서 포맷 정리 (사용자 리뷰 전)** — format pass on the RAW draft BEFORE user review via `generating-html` skill. Re-fires on each user-fix iteration (per-draft). (v1.1.15+)
-7. **초안 검토 및 승인** — show the full PRETTIFIED `<slug>-tech-design.md` AND the verify-spec report in one message; ask once "Approve and proceed? — yes / no". On `no` → revise → loop back to step 4 (Self-review → re-verify → re-pretty → re-show prettified). Stops once first change-history entry is logged.
+6. **`.html` 동봉본 생성 (사용자 리뷰 전)** — fire `generating-html` (fire-and-forget Sonnet subagent) to build a human-only `.html` companion of the RAW draft BEFORE user review. Main does NOT wait; the RAW `.md` is untouched. Re-fires on each user-fix iteration (per-draft). (v1.1.15+)
+7. **초안 검토 및 승인** — show the full RAW `<slug>-tech-design.md` (an `.html` companion is built in the background) AND the verify-spec report in one message; ask once "Approve and proceed? — yes / no". On `no` → revise → loop back to step 4 (Self-review → re-verify → re-fire generating-html → re-show RAW). Stops once first change-history entry is logged.
 8. **변경이력 기록** — append first `[개발방향-수정]` entry via `change-history` skill
 9. **다음 단계 진입 확인** — change-history 직후 사용자에게 명시적 yes/no 게이트. On `yes` → invoke `writing-plans` via Skill tool. On `no` → exit with notice telling the user to run /write-plan later. (v1.1.12+ — restored)
 
@@ -118,7 +118,7 @@ digraph design_flow {
     "Self-review (internal)" [shape=box];
     "Run verifying-spec FIRST\n(요구사항 ↔ 개발방향)" [shape=box];
     "Invoke generating-html\n(pre-review, Sonnet subagent, per-draft)" [shape=box];
-    "Single combined approval gate\n(prettified doc + verify report)" [shape=diamond];
+    "Single combined approval gate\n(RAW doc + verify report; .html in bg)" [shape=diamond];
     "Invoke change-history" [shape=box];
     "Ask: proceed to writing-plans? (Gate #12, v1.1.12+ restored)" [shape=diamond];
     "Auto-invoke writing-plans skill" [shape=doublecircle];
@@ -139,9 +139,9 @@ digraph design_flow {
     "Q: test strategy?" -> "Self-review (internal)";
     "Self-review (internal)" -> "Run verifying-spec FIRST\n(요구사항 ↔ 개발방향)";
     "Run verifying-spec FIRST\n(요구사항 ↔ 개발방향)" -> "Invoke generating-html\n(pre-review, Sonnet subagent, per-draft)";
-    "Invoke generating-html\n(pre-review, Sonnet subagent, per-draft)" -> "Single combined approval gate\n(prettified doc + verify report)";
-    "Single combined approval gate\n(prettified doc + verify report)" -> "Self-review (internal)" [label="no — revise → re-pretty → re-show"];
-    "Single combined approval gate\n(prettified doc + verify report)" -> "Invoke change-history" [label="approve"];
+    "Invoke generating-html\n(pre-review, Sonnet subagent, per-draft)" -> "Single combined approval gate\n(RAW doc + verify report; .html in bg)";
+    "Single combined approval gate\n(RAW doc + verify report; .html in bg)" -> "Self-review (internal)" [label="no — revise → re-fire generating-html → re-show RAW"];
+    "Single combined approval gate\n(RAW doc + verify report; .html in bg)" -> "Invoke change-history" [label="approve"];
     "Invoke change-history" -> "Ask: proceed to writing-plans? (Gate #12, v1.1.12+ restored)";
     "Ask: proceed to writing-plans? (Gate #12, v1.1.12+ restored)" -> "Auto-invoke writing-plans skill" [label="yes"];
     "Ask: proceed to writing-plans? (Gate #12, v1.1.12+ restored)" -> "Exit: tell user to run /write-plan later" [label="no"];
@@ -221,17 +221,17 @@ Step 3 의 7-topic dialogue 를 사용자 마찰 줄이기 위해 adaptive 진�
 - Tolerance: if verifying-spec is not installed, skip and emit the notice (existing tolerance rule)
 
 **6. Invoke generating-html skill** (v1.1.15+ pre-review, per-draft)
-- Runs BEFORE user reviews the draft — format-only pass on the RAW content
-- Re-fires on each user-fix iteration (per-draft loop): revise RAW → generating-html → re-show prettified
+- Runs BEFORE user reviews the draft — builds a human-only `.html` companion of the RAW content (fire-and-forget; main does NOT wait). The RAW `.md` is untouched.
+- Re-fires on each user-fix iteration (per-draft loop): revise RAW → generating-html (background `.html`) → re-show RAW
 - Stops the moment the first change-history entry is logged
-- Dispatches a Sonnet subagent for a strict format-only pass (no rewording, no reordering, footer/frontmatter byte-preserved)
-- See `generating-html` skill for full pre-flight + sanity-check protocol
+- Dispatches a Sonnet subagent (`run_in_background: true`) that writes the sibling `.html` with semantic 1:1 preservation (no rewording, no reordering)
+- See `generating-html` skill for full pre-flight + fire-and-forget protocol
 
-**7. Single combined user-approval gate** (prettified review)
-- Present BOTH the full PRETTIFIED `<slug>-tech-design.md` AND the verifying-spec report in one message
+**7. Single combined user-approval gate** (RAW review)
+- Present BOTH the full RAW `<slug>-tech-design.md` (an `.html` companion is built in the background) AND the verifying-spec report in one message
 - DO NOT split into "approve doc" and "approve verify report" — that's two gates for one decision
 
-**Gate #11 — prettified doc + verify 결합 승인**
+**Gate #11 — RAW doc + verify 결합 승인**
 
 **Tool form (preferred)**
 
@@ -239,11 +239,12 @@ Call `AskUserQuestion`:
 
 ```json
 {
-  "question": "<slug>-tech-design.md (+ verify-spec 보고서) 승인하고 진행?",
-  "context": "prettified doc + 4축 보고서 한 메시지로 노출됨",
-  "choices": [
-    {"value": "yes", "label": "예 — 승인하고 change-history + 다음 단계 진행"},
-    {"value": "no", "label": "아니오 — 사용자 피드백 받아 수정 후 generating-html 재발화"}
+  "question": "<slug>-tech-design.md (+ verify-spec 보고서) 승인하고 진행? (RAW doc + 4축 보고서 한 메시지로 노출, `.html` 동봉본은 백그라운드 생성)",
+  "header": "설계 승인",
+  "multiSelect": false,
+  "options": [
+    {"label": "예 — 승인", "description": "승인하고 change-history + 다음 단계 진행"},
+    {"label": "아니오 — 수정", "description": "사용자 피드백 받아 수정 후 generating-html 재발화"}
   ]
 }
 ```
@@ -273,9 +274,11 @@ Call `AskUserQuestion`:
 ```json
 {
   "question": "<slug>-tech-design.md 가 확정됐습니다. 다음 단계 (구현계획서 작성) 로 진행할까요?",
-  "choices": [
-    {"value": "yes", "label": "예 — /write-plan 자동 invoke"},
-    {"value": "no", "label": "아니오 — 종료, 나중에 /write-plan 수동 실행"}
+  "header": "다음 단계",
+  "multiSelect": false,
+  "options": [
+    {"label": "예 — 진행", "description": "/write-plan 자동 invoke"},
+    {"label": "아니오 — 종료", "description": "나중에 /write-plan 수동 실행"}
   ]
 }
 ```
@@ -325,7 +328,7 @@ If not, the boundaries need work. Smaller, well-bounded units are also easier fo
 | Listing step-by-step tasks here | Tasks belong in <slug>-implementation-plan.md. 개발방향 stops at "how it is designed". |
 | Missing FR mapping | Every FR must appear in §2 or §4. |
 | One decision, no alternatives | Always present at least one alternative + comparison. |
-| "Be careful here" without a category | Force one of the four risk-annotation categories. |
+| "Be careful here" without a category | Force one of the three risk-annotation categories (`side-effect`, `breaking`, `race`). |
 
 ## Red Flags
 
@@ -345,16 +348,16 @@ This summarizes the corrected order (matches Process detail steps 5-9 above, v1.
    - **Tolerance**: if verifying-spec skill is not installed, skip the call and emit a one-line notice ("ℹ️ verify-gate 가 설치되지 않아 검증 없이 진행합니다.")
 
 2. **Invoke generating-html** (v1.1.15+ pre-review):
-   - Format-only pass on the RAW doc BEFORE user sees it.
+   - Builds a human-only `.html` companion of the RAW doc BEFORE user sees it (fire-and-forget; main does NOT wait). The RAW `.md` is untouched.
    - Re-fires on each user-fix iteration.
 
 3. **Single combined approval gate** — present in ONE message:
-   - The full PRETTIFIED `<slug>-tech-design.md` content (or summary if very long)
+   - The full RAW `<slug>-tech-design.md` content (or summary if very long)
    - The verify-spec 4-axis report
    - DO NOT split into "approve doc" → "approve verify report". One gate, one decision.
-   - User reviews prettified markdown. generating-html already fired before this gate.
+   - User reviews the RAW markdown; the `.html` companion was built in the background before this gate.
 
-   **Gate #11 — prettified doc + verify 결합 승인** — see Tool form + Prose fallback above.
+   **Gate #11 — RAW doc + verify 결합 승인** — see Tool form + Prose fallback above.
 
 4. On `yes` → invoke change-history (`[개발방향-수정]` entry) → continue to step 5.
    On `no` → 피드백 받아 수정 후 generating-html 재발화 → 재제시. anchor 질문 강제 X.
