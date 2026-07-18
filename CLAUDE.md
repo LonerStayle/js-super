@@ -495,6 +495,10 @@ v2.2.2+ 에서 `docs-pretty` → `generating-html` skill 명칭 + `/regen-html` 
 - 사용자 응답 직후 확인용 단순 ack (단 AskUserQuestion yes/no 권장)
 - 상태 보고 / 진행 알림 (질문 형식 아님)
 
+### 사용자 환경 전달 캐리어 (v2.8.0+)
+
+본 룰의 전역 (ad-hoc) 적용은 `skills/using-superpowers/SKILL.md` 의 "User Decisions — AskUserQuestion First (v2.3.5+)" 섹션이 사용자 환경 캐리어 — `hooks/session-start` 가 매 세션 주입하는 유일한 상시 파일. skill body boilerplate (8 skill) 는 게이트 레벨만 커버. executing-plans / js-super-sub-driven 의 cross-reference 는 using-superpowers 를 가리킨다 (사용자 프로젝트에 본 CLAUDE.md 는 로드되지 않음 — dangling reference 금지).
+
 ### 알람 fire 보장
 
 `AskUserQuestion` 호출 → `Notification.elicitation_dialog` 발화 → `~/.claude/settings.json` 매처 → `repeat-alert.sh` fire. 사용자 백그라운드 작업 시 OS 알람 catch → 응답 흐름 보존.
@@ -506,11 +510,21 @@ prose 질문은 알람 fire X — 사용자 attention 손실 위험.
 ```bash
 grep -c "AskUserQuestion 도구 우선 (v2.3.5+)" CLAUDE.md
 # expected: ≥ 1
+
+grep -c "User Decisions — AskUserQuestion First (v2.3.5+)" \
+  skills/using-superpowers/SKILL.md \
+  skills/executing-plans/SKILL.md \
+  skills/js-super-sub-driven/SKILL.md
+# expected: 각 1
+
+grep -Fn '글로벌 "AskUserQuestion 도구 우선' \
+  skills/executing-plans/SKILL.md skills/js-super-sub-driven/SKILL.md
+# expected: 0 (v2.8.0+ — cross-reference 는 using-superpowers 를 가리켜야 함, CLAUDE.md 참조는 dangling)
 ```
 
 ## execute-plan critical/non-critical + AskUserQuestion 강제 결합 (v2.3.5+)
 
-v2.3.5+ 에서 `skills/executing-plans/SKILL.md` + `skills/js-super-sub-driven/SKILL.md` + `CLAUDE.md` 3 파일 atomic patch. 한쪽만 변경 시 inline vs subagent 모드 동작 불일치 + 글로벌 vs skill body 룰 불일치.
+v2.3.5+ 에서 `skills/executing-plans/SKILL.md` + `skills/js-super-sub-driven/SKILL.md` + `CLAUDE.md` 3 파일 atomic patch. v2.8.0+ 부터 `skills/using-superpowers/SKILL.md` (전역 룰의 사용자 환경 캐리어) 포함 4 파일. 한쪽만 변경 시 inline vs subagent 모드 동작 불일치 + 글로벌 vs skill body 룰 불일치.
 
 ### 회귀 패턴 (한쪽만 변경 시)
 
@@ -522,10 +536,12 @@ v2.3.5+ 에서 `skills/executing-plans/SKILL.md` + `skills/js-super-sub-driven/S
 | 룰 1 critical 표 일부 누락 | catch 못 한 케이스에서 자동 진행 → blast radius 위험 |
 | 룰 2 non-critical 표 누락 | "안전성" 명목 게이트 회귀 |
 | 룰 4 자가 복구 누락 | BLOCKED 시 즉시 사용자 재질문 → 알람 burst |
+| using-superpowers 캐리어 누락 (v2.8.0+) | ad-hoc 전역 룰이 사용자 환경에 미전달 — skill 흐름 밖 prose 질문 회귀 |
+| skill body cross-reference 가 CLAUDE.md 를 가리킴 | 사용자 프로젝트엔 본 CLAUDE.md 없음 → dangling reference |
 
 ### 영향 범위
 
-- 3 파일 atomic patch (위 표). 다른 skill / commands / scripts 영향 0
+- 4 파일 atomic patch (위 표, v2.8.0+ using-superpowers 포함). 다른 skill / commands / scripts 영향 0
 - v1.1.12+ 자동승인 X / v2.0.0+ byte-copy reorder / v2.0.1+ same-file 묶음 / v2.0.3+ 8 skill boilerplate / v2.1.1+ Other 룰 — 모두 그대로
 - 알람 시스템 (`repeat-alert.sh` 4-layer) — fire 빈도만 정상화 (변경 X)
 - og-* / auto-* — Socratic only 룰 보존 (auto-* 는 본 룰 명시 예외 — Socratic prose default 유지)
@@ -552,7 +568,7 @@ grep -nE "이렇게.*할까요\?|어느.*쪽.*인가요\?" \
 # expected: 0 (Anti-Pattern catch 라인만 허용)
 ```
 
-요약: 3 파일 (executing-plans/SKILL.md + js-super-sub-driven/SKILL.md + CLAUDE.md) atomic patch. 5+ 파일 동시 push (3 + 6 manifest + 백로그 mv).
+요약: 4 파일 (executing-plans/SKILL.md + js-super-sub-driven/SKILL.md + using-superpowers/SKILL.md + CLAUDE.md) atomic patch. 6+ 파일 동시 push (4 + 6 manifest + 백로그 mv).
 
 ## 한국어 친화 안내 톤 (v2.4+)
 
