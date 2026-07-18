@@ -748,7 +748,7 @@ flowchart LR
 </details>
 
 <details>
-<summary><b>전체 Skill 32 개</b></summary>
+<summary><b>전체 Skill 29 개</b></summary>
 
 <br/>
 
@@ -756,7 +756,7 @@ flowchart LR
 
 **자동 흐름 (4)** *(v1.1.17+)* — auto-brainstorming / auto-tech-design / auto-writing-plans / auto-executing-plans
 
-**upstream 원본 (3)** — og-brainstorming / og-writing-plans / og-executing-plans
+**upstream 원본 (커맨드 전용, v2.8.1+)** — `/og-brainstorm` / `/og-write-plan` / `/og-execute-plan` (스킬 → 커맨드 본문 인라인, 컨텍스트 미상주)
 
 **문서·시각화 (3)** — generating-html / code-pretty / change-history
 

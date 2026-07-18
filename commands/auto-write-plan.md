@@ -1,5 +1,6 @@
 ---
-description: 자동 흐름의 3단계 진입 — tech-design.md 가 있는 상태에서 write-plan + execute-plan 까지 자동으로 이어갑니다.
+description: 자동 흐름의 3단계 진입 — tech-design.md 가 있는 상태에서 write-plan + execute-plan 까지 자동으로 이어갑니다. /auto-write-plan 명시 호출 전용.
+disable-model-invocation: true
 ---
 
 # /auto-write-plan

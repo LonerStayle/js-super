@@ -1,5 +1,6 @@
 ---
-description: 자동 흐름의 4단계 진입 (마지막) — implementation-plan.md 가 있는 상태에서 보조 에이전트 강제로 여러 작업 동시 진행 (승인 게이트 자동 통과) + 실패 격리 + 마무리 자동.
+description: 자동 흐름의 4단계 진입 (마지막) — implementation-plan.md 가 있는 상태에서 보조 에이전트 강제로 여러 작업 동시 진행 (승인 게이트 자동 통과) + 실패 격리 + 마무리 자동. /auto-execute-plan 명시 호출 전용.
+disable-model-invocation: true
 ---
 
 # /auto-execute-plan

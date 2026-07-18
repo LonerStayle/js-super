@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matt Pocock 체크리스트 × js-super — 진단 계기판 (개정판)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0d10;
+    --surface:#13181d;
+    --surface2:#171d23;
+    --border:#242c34;
+    --text:#e8eef4;
+    --muted:#8a97a4;
+    --dim:#5c6873;
+    --signal:#f5a623;   /* 강한 신호 · 잘함 */
+    --signal-soft:rgba(245,166,35,.14);
+    --opp:#3fd0c0;       /* 기회 */
+    --opp-soft:rgba(63,208,192,.13);
+    --tension:#ff6b6b;   /* 긴장 · 위험 · no-op */
+    --tension-soft:rgba(255,107,107,.13);
+    --done:#7bd88f;      /* 이미 실행됨 */
+    --done-soft:rgba(123,216,143,.13);
+    --mono:'IBM Plex Mono',monospace;
+    --body:'IBM Plex Sans KR',sans-serif;
+    --display:'Black Han Sans',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);color:var(--text);font-family:var(--body);font-weight:300;line-height:1.6;overflow-x:hidden;
+    background-image:
+      radial-gradient(900px 500px at 82% -8%, rgba(245,166,35,.10), transparent 60%),
+      radial-gradient(800px 600px at 8% 108%, rgba(63,208,192,.08), transparent 60%),
+      linear-gradient(rgba(255,255,255,.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.015) 1px, transparent 1px);
+    background-size:auto,auto,44px 44px,44px 44px;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  section{padding:74px 0;border-bottom:1px solid rgba(36,44,52,.6)}
+  section:last-child{border-bottom:none}
+
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--signal);display:flex;align-items:center;gap:12px;margin-bottom:20px}
+  .eyebrow::before{content:"";width:34px;height:1px;background:var(--signal);display:inline-block}
+  .eyebrow.done{color:var(--done)}
+  .eyebrow.done::before{background:var(--done)}
+  h2{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.4vw,44px);line-height:1.08;letter-spacing:-.01em}
+  .lead{color:var(--muted);max-width:62ch;margin-top:14px;font-size:16px}
+  .lead b{color:var(--text);font-weight:600}
+  .mono{font-family:var(--mono)}
+
+  /* HERO */
+  .hero{padding:96px 0 80px;border-bottom:1px solid var(--border)}
+  .hero .kicker{font-family:var(--mono);font-size:12.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--opp);margin-bottom:26px}
+  .hero h1{font-family:var(--display);font-weight:400;font-size:clamp(38px,7.6vw,82px);line-height:.99;letter-spacing:-.02em}
+  .hero h1 .amber{color:var(--signal)}
+  .hero h1 .teal{color:var(--opp)}
+  .hero .sub{margin-top:26px;font-size:clamp(16px,2vw,19px);color:var(--muted);max-width:68ch}
+  .hero .sub b{color:var(--text);font-weight:600}
+  .revtag{display:inline-flex;align-items:center;gap:9px;margin-top:30px;font-family:var(--mono);font-size:12px;color:var(--done);border:1px solid rgba(123,216,143,.4);background:var(--done-soft);padding:8px 14px;border-radius:999px}
+  .revtag .d{width:7px;height:7px;border-radius:50%;background:var(--done);box-shadow:0 0 10px var(--done)}
+  .checklist-strip{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+  .chip{font-family:var(--mono);font-size:12.5px;padding:9px 15px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--muted);display:flex;align-items:center;gap:8px}
+  .chip .n{color:var(--signal);font-weight:600}
+  .chip.tension{border-color:rgba(255,107,107,.4);color:#ffb3b3}.chip.tension .n{color:var(--tension)}
+
+  /* 이미 움직이고 있다 — 큰 지표 */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:44px}
+  .kpi{background:linear-gradient(180deg,var(--done-soft),transparent);border:1px solid rgba(123,216,143,.32);border-radius:16px;padding:24px 22px;text-align:center}
+  .kpi .big{font-family:var(--display);font-size:clamp(38px,5vw,54px);line-height:.95;color:var(--done)}
+  .kpi .big small{font-size:.44em;color:var(--muted)}
+  .kpi .lab{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.4}
+  .kpi .lab b{color:var(--text);font-weight:600}
+
+  /* 머지 → Matt 항목 매핑 트랙 */
+  .mtrack{display:flex;flex-direction:column;gap:12px;margin-top:34px}
+  .mrow{display:grid;grid-template-columns:150px 1fr auto;gap:18px;align-items:center;background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--done);border-radius:12px;padding:16px 20px}
+  .mrow .mname{font-family:var(--mono);font-size:13px;color:var(--done);font-weight:500}
+  .mrow .mwhat{font-size:13.5px;color:var(--muted)}
+  .mrow .mwhat b{color:var(--text);font-weight:600}
+  .mrow .mtag{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;padding:5px 10px;border-radius:6px;white-space:nowrap}
+  .mtag.c4{background:var(--tension-soft);color:var(--tension)}
+  .mtag.c1{background:var(--signal-soft);color:var(--signal)}
+
+  /* 실측 bars */
+  .bars{display:flex;flex-direction:column;gap:22px;margin-top:40px}
+  .barrow{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px 24px}
+  .barrow .label{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px}
+  .barrow .label .name{font-weight:600;font-size:15px}
+  .barrow .mult{font-family:var(--display);font-size:28px;color:var(--tension);line-height:1}
+  .track{display:flex;flex-direction:column;gap:9px}
+  .bar{display:flex;align-items:center;gap:12px}
+  .bar .tag{font-family:var(--mono);font-size:11.5px;color:var(--dim);width:118px;flex-shrink:0;text-align:right}
+  .bar .fill{height:24px;border-radius:6px;position:relative;min-width:34px;transition:width 1.1s cubic-bezier(.2,.7,.2,1)}
+  .bar.og .fill{background:linear-gradient(90deg,#2a333b,#39444e)}
+  .bar.ext .fill{background:linear-gradient(90deg,var(--signal),#ff8a4d)}
+  .bar .val{font-family:var(--mono);font-size:12px;color:var(--text);position:absolute;right:10px;top:50%;transform:translateY(-50%);font-weight:500}
+  .bar.og .val{color:#9aa7b3}
+
+  /* generating-html 축소 하이라이트 */
+  .shrink{margin-top:26px;background:linear-gradient(90deg,var(--done-soft),transparent);border:1px solid rgba(123,216,143,.3);border-radius:14px;padding:22px 24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+  .shrink .icon{font-family:var(--display);font-size:40px;color:var(--done)}
+  .shrink .txt{flex:1;min-width:220px}
+  .shrink .txt h4{font-size:15px;font-weight:600;margin-bottom:4px}
+  .shrink .txt p{font-size:13px;color:var(--muted)}
+  .shrink .nums{display:flex;align-items:center;gap:12px;font-family:var(--mono)}
+  .shrink .from{color:var(--dim);text-decoration:line-through;font-size:16px}
+  .shrink .to{color:var(--done);font-size:22px;font-weight:600}
+  .shrink .delta{background:var(--done);color:var(--bg);font-size:12px;font-weight:600;padding:3px 9px;border-radius:6px}
+
+  .statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-top:26px}
+  .stat{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:20px}
+  .stat .big{font-family:var(--display);font-size:38px;line-height:1;color:var(--signal)}
+  .stat .big.teal{color:var(--opp)}
+  .stat .cap{color:var(--muted);font-size:13px;margin-top:10px}.stat .cap b{color:var(--text);font-weight:600}
+
+  /* 4 게이지 */
+  .cards4{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:44px}
+  .gcard{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px;position:relative;overflow:hidden}
+  .gcard::before{content:"";position:absolute;top:0;left:0;width:100%;height:3px;background:var(--edge,var(--opp))}
+  .gcard .idx{font-family:var(--display);font-size:15px;color:var(--dim)}
+  .gcard .idx .started{color:var(--done);font-family:var(--mono);font-size:11px;letter-spacing:.05em;margin-left:8px;text-transform:uppercase}
+  .gcard h3{font-family:var(--display);font-weight:400;font-size:26px;margin:6px 0 4px}
+  .gcard .subttl{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-bottom:20px}
+  .meter{height:9px;border-radius:6px;background:var(--surface2);display:flex;overflow:hidden;margin-bottom:20px;border:1px solid var(--border)}
+  .meter .good{background:var(--signal)}.meter .oppf{background:var(--opp)}.meter .tenf{background:var(--tension)}.meter .donef{background:var(--done)}
+  .line{display:flex;gap:11px;align-items:flex-start;font-size:13.5px;margin-bottom:11px;line-height:1.5}
+  .line .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;margin-top:6px}
+  .dot.g{background:var(--signal);box-shadow:0 0 10px var(--signal)}
+  .dot.o{background:var(--opp);box-shadow:0 0 10px var(--opp)}
+  .dot.t{background:var(--tension);box-shadow:0 0 10px var(--tension)}
+  .dot.d{background:var(--done);box-shadow:0 0 10px var(--done)}
+  .line .txt{color:var(--muted)}.line .txt b{color:var(--text);font-weight:600}
+  .badge{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:5px;margin-right:6px;vertical-align:1px}
+  .badge.g{background:var(--signal-soft);color:var(--signal)}
+  .badge.o{background:var(--opp-soft);color:var(--opp)}
+  .badge.t{background:var(--tension-soft);color:var(--tension)}
+  .badge.d{background:var(--done-soft);color:var(--done)}
+
+  /* vs 패널 */
+  .vs{display:grid;grid-template-columns:1fr auto 1fr;margin-top:44px;align-items:stretch}
+  .vspanel{background:var(--surface);border:1px solid var(--border);padding:28px}
+  .vspanel:first-child{border-radius:16px 0 0 16px;border-right:none}
+  .vspanel:last-child{border-radius:0 16px 16px 0;border-left:none}
+  .vspanel.win{border-color:rgba(245,166,35,.45);background:linear-gradient(180deg,var(--signal-soft),transparent)}
+  .vspanel.warn{border-color:rgba(255,107,107,.4);background:linear-gradient(180deg,var(--tension-soft),transparent)}
+  .vspanel .h{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
+  .vspanel.win .h{color:var(--signal)}.vspanel.warn .h{color:var(--tension)}
+  .vspanel h4{font-family:var(--display);font-weight:400;font-size:21px;margin-bottom:12px;line-height:1.15}
+  .vspanel p{font-size:13.5px;color:var(--muted)}.vspanel p b{color:var(--text)}
+  .flowmini{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:16px 0 4px}
+  .node{font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);color:var(--muted)}
+  .node.hid{border-style:dashed;color:var(--dim)}.node.open{border-color:var(--signal);color:var(--signal)}
+  .arr{color:var(--dim);font-family:var(--mono);font-size:12px}
+  .vsmid{display:flex;align-items:center;justify-content:center;padding:0 4px;z-index:2}
+  .vsbadge{font-family:var(--display);font-size:15px;color:var(--bg);background:var(--text);width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+
+  /* 가지치기 긴장 */
+  .tensionbox{margin-top:40px;background:var(--surface);border:1px solid rgba(255,107,107,.3);border-radius:16px;overflow:hidden}
+  .tensionbox .top{display:grid;grid-template-columns:1fr 1fr}
+  .tcell{padding:26px 28px}
+  .tcell:first-child{border-right:1px solid var(--border)}
+  .tcell .who{font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+  .tcell.matt .who{color:var(--tension)}.tcell.js .who{color:var(--done)}
+  .tcell h4{font-family:var(--display);font-weight:400;font-size:22px;margin-bottom:10px;line-height:1.15}
+  .tcell p{font-size:13.5px;color:var(--muted)}.tcell p b{color:var(--text)}
+  .tcell .dup{display:flex;gap:5px;margin-top:16px;flex-wrap:wrap}
+  .tcell .dup span{font-family:var(--mono);font-size:10px;padding:4px 7px;border-radius:5px;background:var(--surface2);border:1px solid var(--border);color:var(--dim)}
+  .verdict{padding:22px 28px;background:linear-gradient(90deg,var(--signal-soft),transparent);border-top:1px solid var(--border);font-size:14.5px}
+  .verdict b{color:var(--text);font-weight:600}.verdict .key{color:var(--signal);font-weight:600}
+
+  /* context.md */
+  .gap{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:44px}
+  .gapcard{border-radius:16px;padding:28px;border:1px solid var(--border)}
+  .gapcard.has{background:var(--surface);border-color:rgba(63,208,192,.4)}
+  .gapcard.missing{background:repeating-linear-gradient(45deg,var(--surface),var(--surface) 12px,var(--surface2) 12px,var(--surface2) 24px);border-style:dashed}
+  .gapcard .who{font-family:var(--mono);font-size:12px;letter-spacing:.06em;margin-bottom:16px}
+  .gapcard.has .who{color:var(--opp)}.gapcard.missing .who{color:var(--dim)}
+  .filepill{font-family:var(--mono);font-size:14px;padding:10px 14px;border-radius:9px;display:inline-flex;align-items:center;gap:9px;margin-bottom:16px}
+  .gapcard.has .filepill{background:var(--opp-soft);color:var(--opp)}
+  .gapcard.missing .filepill{background:rgba(255,255,255,.03);color:var(--dim);text-decoration:line-through}
+  .gapcard p{font-size:13.5px;color:var(--muted)}.gapcard p b{color:var(--signal)}
+  .scatter{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+  .scatter span{font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:4px;background:rgba(255,255,255,.03);color:var(--dim);border:1px solid var(--border)}
+  .adjacent{margin-top:16px;font-size:12.5px;color:var(--done);display:flex;gap:8px;align-items:flex-start}
+  .adjacent .mono{color:var(--done)}
+
+  /* 우선순위 사다리 */
+  .ladder{margin-top:44px;display:flex;flex-direction:column;gap:12px}
+  .rung{display:grid;grid-template-columns:52px 1fr auto;gap:20px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:18px 22px;transition:transform .5s cubic-bezier(.2,.7,.2,1),border-color .3s}
+  .rung:hover{transform:translateX(6px);border-color:var(--signal)}
+  .rung .rank{font-family:var(--display);font-size:34px;color:var(--dim);text-align:center;line-height:1}
+  .rung.top .rank{color:var(--signal)}
+  .rung .body h4{font-size:15px;font-weight:600;margin-bottom:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .rung .body h4 .code{font-family:var(--mono);font-size:12px;color:var(--opp)}
+  .rung .body h4 .st{font-family:var(--mono);font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:5px}
+  .st.prog{background:var(--done-soft);color:var(--done)}
+  .st.once{background:var(--signal-soft);color:var(--signal)}
+  .st.todo{background:rgba(255,255,255,.04);color:var(--dim)}
+  .rung .body p{font-size:12.5px;color:var(--muted)}
+  .risk{display:flex;flex-direction:column;gap:6px;align-items:flex-end;min-width:120px}
+  .risk .r{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+  .pips{display:flex;gap:3px}.pip{width:8px;height:8px;border-radius:2px;background:var(--border)}
+  .pip.on-lo{background:var(--opp)}.pip.on-mid{background:var(--signal)}.pip.on-hi{background:var(--tension)}
+
+  /* 결론 */
+  .conclusion{text-align:center;padding:90px 0 40px}
+  .conclusion .big{font-family:var(--display);font-weight:400;font-size:clamp(24px,4vw,40px);line-height:1.22;max-width:24ch;margin:0 auto;letter-spacing:-.01em}
+  .conclusion .big .amber{color:var(--signal)}.conclusion .big .teal{color:var(--opp)}.conclusion .big .done{color:var(--done)}
+  .source{font-family:var(--mono);font-size:11px;color:var(--dim);margin-top:14px;display:flex;align-items:center;gap:8px;justify-content:center}
+  .source::before{content:"›";color:var(--signal)}
+  .foot{text-align:center;padding:36px 0 60px;color:var(--dim);font-family:var(--mono);font-size:11.5px;letter-spacing:.04em}
+
+  .reveal{opacity:0;transform:translateY(28px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.7,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+
+  @media(max-width:760px){
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .mrow{grid-template-columns:1fr;gap:8px}
+    .cards4{grid-template-columns:1fr}
+    .vs{grid-template-columns:1fr}
+    .vspanel:first-child{border-radius:16px 16px 0 0;border-right:1px solid var(--border);border-bottom:none}
+    .vspanel:last-child{border-radius:0 0 16px 16px;border-left:1px solid var(--border);border-top:none}
+    .vsmid{padding:12px 0}
+    .tensionbox .top{grid-template-columns:1fr}
+    .tcell:first-child{border-right:none;border-bottom:1px solid var(--border)}
+    .gap{grid-template-columns:1fr}
+    .rung{grid-template-columns:40px 1fr;gap:14px}
+    .risk{grid-column:2;align-items:flex-start;flex-direction:row;gap:16px;margin-top:4px}
+    .bar .tag{width:82px}
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<header class="hero">
+  <div class="wrap">
+    <div class="kicker">진단 계기판 · Matt Pocock 체크리스트 × js-super</div>
+    <h1><span class="teal">몰라서</span> 안 한 게 아니라<br>이미 <span class="amber">한 바퀴</span> 돌고 있었다</h1>
+    <p class="sub">Matt의 4계기(트리거·구조·유도·가지치기)로 js-super를 다시 재보니 —
+    최근 머지에 <b>프롬프트 65개 정합화</b>, <b>죽은 프롬프트 삭제</b>, <b>커맨드 user-invoke 전환</b>이 이미 들어 있었습니다.
+    질문이 바뀝니다: "무엇을 시작할까"가 아니라 <b>"얼마나 왔고, 무엇이 남았나."</b></p>
+    <div class="revtag"><span class="d"></span>개정판 · 머지 반영: 프롬프트가공 · 미라클모닝 · update-claude-md (2026-07-18)</div>
+    <div class="checklist-strip">
+      <span class="chip"><span class="n">①</span> 트리거 — 착수 3/27</span>
+      <span class="chip"><span class="n">②</span> 구조 — 부분 실행</span>
+      <span class="chip"><span class="n">③</span> 유도 — 4분할 유지</span>
+      <span class="chip tension"><span class="n">④</span> 가지치기 — 실행 중, 성장에 뒤짐</span>
+    </div>
+  </div>
+</header>
+
+<!-- 이미 움직이고 있다 -->
+<section class="reveal">
+  <div class="wrap">
+    <div class="eyebrow done">개정 핵심 — 이미 움직이고 있다</div>
+    <h2>최근 머지가 Matt 회로를 <span style="color:var(--done)">한 바퀴</span> 돌았다</h2>
+    <p class="lead">Matt의 "관찰 → 처방 → 압축 → 삭제" 회로. 프롬프트가공 머지가 이걸 그대로 실행했습니다.</p>
+
+    <div class="kpis">
+      <div class="kpi"><div class="big">65</div><div class="lab"><b>프롬프트</b> 서브에이전트 검토</div></div>
+      <div class="kpi"><div class="big">188</div><div class="lab"><b>혼동성 발견</b> → 정답 명확한 것만 수정</div></div>
+      <div class="kpi"><div class="big">−64<small>줄</small></div><div class="lab">generating-html <b>죽은 프롬프트 삭제</b></div></div>
+      <div class="kpi"><div class="big">3<small>/27</small></div><div class="lab">커맨드 <b>user-invoke 전환</b> 착수</div></div>
+    </div>
+
+    <div class="mtrack">
+      <div class="mrow">
+        <span class="mname">프롬프트가공</span>
+        <span class="mwhat">프롬프트 65개 검토·188건 발견 후 <b>정답 명확한 것만 정합화</b></span>
+        <span class="mtag c4">④ 가지치기</span>
+      </div>
+      <div class="mrow">
+        <span class="mname">프롬프트가공</span>
+        <span class="mwhat">generating-html <b>죽은 A 프롬프트 삭제</b> (287→223줄)</span>
+        <span class="mtag c4">④ 삭제 테스트</span>
+      </div>
+      <div class="mrow">
+        <span class="mname">미라클모닝</span>
+        <span class="mwhat">/goodnight·/goodmorning <b>disable-model-invocation: true</b></span>
+        <span class="mtag c1">① 트리거</span>
+      </div>
+      <div class="mrow">
+        <span class="mname">update-claude-md</span>
+        <span class="mwhat">CLAUDE.md 구체값 <b>자동 검증·갱신</b> + user-invoke 전용</span>
+        <span class="mtag c1">① + 자동 유지보수</span>
+      </div>
+    </div>
+    <div class="source">근거: <span class="mono">git log 889c1dc</span> · <span class="mono">docs/reviews/2026-07-18-*</span> · <span class="mono">grep disable-model-invocation commands/*</span></div>
+  </div>
+</section>
+
+<!-- 실측 -->
+<section class="reveal">
+  <div class="wrap">
+    <div class="eyebrow">계측값 — 축소와 순증이 공존</div>
+    <h2>삭제도 하고, 순증도 한다</h2>
+    <p class="lead">문제는 "가지치기를 안 한다"가 아니라 <b>"성장 속도를 가지치기가 못 따라간다"</b> — 정확히 Matt가 말한 증상입니다.</p>
+
+    <div class="bars">
+      <div class="barrow">
+        <div class="label"><span class="name">brainstorming</span><span class="mult">3.8×</span></div>
+        <div class="track">
+          <div class="bar og"><span class="tag">og-원본</span><div class="fill" style="width:27%"><span class="val">170줄</span></div></div>
+          <div class="bar ext"><span class="tag">js-super 확장</span><div class="fill" data-w="100%" style="width:0"><span class="val">641줄</span></div></div>
+        </div>
+      </div>
+      <div class="barrow">
+        <div class="label"><span class="name">writing-plans</span><span class="mult">3.0×</span></div>
+        <div class="track">
+          <div class="bar og"><span class="tag">og-원본</span><div class="fill" style="width:27%"><span class="val">174줄</span></div></div>
+          <div class="bar ext"><span class="tag">js-super 확장</span><div class="fill" data-w="83%" style="width:0"><span class="val">530줄</span></div></div>
+        </div>
+      </div>
+      <div class="barrow">
+        <div class="label"><span class="name">executing-plans</span><span class="mult">4.7×</span></div>
+        <div class="track">
+          <div class="bar og"><span class="tag">og-원본</span><div class="fill" style="width:13%"><span class="val">81줄</span></div></div>
+          <div class="bar ext"><span class="tag">js-super 확장</span><div class="fill" data-w="60%" style="width:0"><span class="val">383줄</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="shrink">
+      <div class="icon">✂</div>
+      <div class="txt">
+        <h4>단, generating-html은 실제로 잘라냈다</h4>
+        <p>"죽은 A 프롬프트 삭제" — Matt의 삭제 테스트를 그대로 실행한 사례</p>
+      </div>
+      <div class="nums"><span class="from">287줄</span><span>→</span><span class="to">223줄</span><span class="delta">−64</span></div>
+    </div>
+
+    <div class="statgrid">
+      <div class="stat"><div class="big">30</div><div class="cap">본문 속 <b>버전 마커</b> 최다 (sub-driven) — changelog가 여전히 상주</div></div>
+      <div class="stat"><div class="big teal">36</div><div class="cap">이미 <b>분리한 참고파일</b> — 구조 원칙은 잘 지킴</div></div>
+      <div class="stat"><div class="big teal">3<span style="font-size:20px">/27</span></div><div class="cap">커맨드 <b>user-invoke 전환</b> — 신규 3종만, 24개 백로그</div></div>
+    </div>
+    <div class="source">근거: <span class="mono">wc -l skills/*/SKILL.md</span> (2026-07-18 실측)</div>
+  </div>
+</section>
+
+<!-- 4 게이지 -->
+<section class="reveal">
+  <div class="wrap">
+    <div class="eyebrow">항목별 채점 (개정)</div>
+    <h2>4개 계기의 눈금 — 착수분 반영</h2>
+    <p class="lead">막대: <b style="color:var(--signal)">잘함</b> · <b style="color:var(--opp)">기회</b> · <b style="color:var(--done)">이미 착수</b> · <b style="color:var(--tension)">긴장</b>.</p>
+
+    <div class="cards4">
+      <div class="gcard" style="--edge:var(--done)">
+        <div class="idx">계기 ① <span class="started">착수함</span></div><h3>트리거</h3>
+        <div class="subttl">USER-INVOKE 전환 3/27</div>
+        <div class="meter"><div class="good" style="width:44%"></div><div class="donef" style="width:20%"></div><div class="oppf" style="width:36%"></div></div>
+        <div class="line"><span class="dot g"></span><span class="txt"><span class="badge g">잘함</span>commands ↔ skills 두 층 구조 = grill-me/grilling 패턴</span></div>
+        <div class="line"><span class="dot d"></span><span class="txt"><span class="badge d">착수</span>신규 3종 <b>disable-model-invocation: true</b> — 24개 남음(T1 완주)</span></div>
+      </div>
+
+      <div class="gcard" style="--edge:var(--done)">
+        <div class="idx">계기 ② <span class="started">부분 실행</span></div><h3>구조</h3>
+        <div class="subttl">본문 최소화 · 참고자료 분리</div>
+        <div class="meter"><div class="good" style="width:46%"></div><div class="donef" style="width:16%"></div><div class="oppf" style="width:38%"></div></div>
+        <div class="line"><span class="dot d"></span><span class="txt"><span class="badge d">착수</span>참고파일 36개 + generating-html <b>−64줄 삭제</b></span></div>
+        <div class="line"><span class="dot o"></span><span class="txt"><span class="badge o">기회</span>큰 skill 본문은 버전 마커로 순증 — 삭제를 다른 skill로 확대</span></div>
+      </div>
+
+      <div class="gcard" style="--edge:var(--opp)">
+        <div class="idx">계기 ③</div><h3>유도</h3>
+        <div class="subttl">강한 단어 · 미래 숨기기</div>
+        <div class="meter"><div class="good" style="width:50%"></div><div class="oppf" style="width:34%"></div><div class="tenf" style="width:16%"></div></div>
+        <div class="line"><span class="dot g"></span><span class="txt"><span class="badge g">잘함</span>4분할이 "미래를 숨긴다"를 정확히 구현</span></div>
+        <div class="line"><span class="dot t"></span><span class="txt"><span class="badge t">긴장</span><b>auto-flow</b>는 반대로 4단계를 광고 — "서두름" 재도입 위험</span></div>
+      </div>
+
+      <div class="gcard" style="--edge:var(--done)">
+        <div class="idx">계기 ④ <span class="started">실행 중</span></div><h3>가지치기</h3>
+        <div class="subttl">삭제하지만 성장에 뒤짐</div>
+        <div class="meter"><div class="donef" style="width:40%"></div><div class="tenf" style="width:34%"></div><div class="oppf" style="width:26%"></div></div>
+        <div class="line"><span class="dot d"></span><span class="txt"><span class="badge d">정정</span>"중복만 쌓는다"는 틀림 — <b>프롬프트가공(65개)</b>이 증거</span></div>
+        <div class="line"><span class="dot t"></span><span class="txt"><span class="badge t">긴장</span>삭제(−64)보다 순증이 빠름 — <b>정기화</b>로 속도 맞추기(P1)</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 유도 vs -->
+<section class="reveal">
+  <div class="wrap">
+    <div class="eyebrow">계기 ③ 심층 — 미래를 숨긴다 vs 광고한다</div>
+    <h2>목표가 보이면 서두르고, 가리면 파고든다</h2>
+    <p class="lead">js-super의 4분할은 이걸 지키지만, auto-flow 체인은 되돌립니다. (개정에도 유효)</p>
+
+    <div class="vs">
+      <div class="vspanel win">
+        <div class="h">✓ 4분할 — 미래를 가림</div>
+        <h4>지금 단계에 발품을 다 쓴다</h4>
+        <div class="flowmini">
+          <span class="node open">brainstorm</span><span class="arr">→</span>
+          <span class="node hid">?</span><span class="arr">→</span>
+          <span class="node hid">?</span><span class="arr">→</span><span class="node hid">?</span>
+        </div>
+        <p>질문 단계에선 다음이 계획인 줄 <b>모른다</b>. 그래서 이 단계를 끝까지 판다.</p>
+      </div>
+      <div class="vsmid"><div class="vsbadge">VS</div></div>
+      <div class="vspanel warn">
+        <div class="h">⚠ auto-flow — 미래를 광고</div>
+        <h4>4단계 체인이 description에 노출</h4>
+        <div class="flowmini">
+          <span class="node open">brainstorm</span><span class="arr">→</span>
+          <span class="node open">design</span><span class="arr">→</span>
+          <span class="node open">plan</span><span class="arr">→</span><span class="node open">execute</span>
+        </div>
+        <p>최종 목표가 보여 <b>각 단계를 대충</b> 넘길 유인. E3: auto에서도 "지금에 집중" 신호 강화.</p>
+      </div>
+    </div>
+    <div class="source">근거: <span class="mono">skills/auto-*/SKILL.md</span> description</div>
+  </div>
+</section>
+
+<!-- 가지치기 정정 -->
+<section class="reveal">
+  <div class="wrap">
+    <div class="eyebrow done">계기 ④ 정정 — 첫 분석의 오해를 바로잡음</div>
+    <h2>"중복만 쌓는다"는 틀렸다</h2>
+    <p class="lead">js-super는 가지치기를 <b>합니다.</b> 프롬프트가공(65개 검토)과 generating-html 삭제가 증거. 진짜 문제는 <b>속도 불균형</b>입니다.</p>
+
+    <div class="tensionbox">
+      <div class="top">
+        <div class="tcell matt">
+          <div class="who">MATT의 규칙</div>
+          <h4>중복 = 퇴적물. 지워라.</h4>
+          <p>같은 내용은 한 곳에만. 삭제 테스트로 no-op을 걷어낸다.</p>
+        </div>
+        <div class="tcell js">
+          <div class="who">js-super의 실제</div>
+          <h4>가지치기 + 의도적 중복 공존</h4>
+          <p>프롬프트가공으로 65개를 훑고 죽은 것은 지웠다. 동시에 boilerplate 복제는 <b>필요해서</b> 유지 — 사용자 환경엔 CLAUDE.md가 안 전달되니까.</p>
+          <div class="dup">
+            <span>Checklist ×14</span><span>--no-ask ×8</span><span>Other 모호응답 ×6</span>
+          </div>
+        </div>
+      </div>
+      <div class="verdict">
+        <b>재판정:</b> 문제는 중복이 아니라 <span class="key">속도.</span>
+        삭제(−64)보다 순증이 빠르다. 처방은 "지우기"가 아니라
+        <b>프롬프트가공 같은 정합화 패스의 정기화</b>(P1) + 안전한 no-op(버전 마커) 타깃.
+      </div>
+    </div>
+    <div class="source">근거: 커밋 <span class="mono">889c1dc</span> "65개 검토·188건 발견·정답 명확한 것만 수정"</div>
+  </div>
+</section>
+
+<!-- context.md -->
+<section class="reveal">
+  <div class="wrap">
+    <div class="eyebrow">놓친 한 가지 — 도그푸딩 (여전히 결핍)</div>
+    <h2>Matt에겐 있고, 우리에겐 없는 파일</h2>
+    <p class="lead">단, 인접 유지보수 도구(<span class="mono">/update-claude-md</span>)는 이번에 생겼습니다 — 도그푸딩의 절반은 시작됐습니다.</p>
+
+    <div class="gap">
+      <div class="gapcard has">
+        <div class="who">MATT의 레포</div>
+        <div class="filepill">📄 context.md</div>
+        <p>용어 정의 + 금지 동의어 + "왜 이 단어를 골랐나" 기록. 이게 곧 <b style="color:var(--opp)">강한 단어 후보 리스트</b>가 된다.</p>
+      </div>
+      <div class="gapcard missing">
+        <div class="who">js-super의 레포</div>
+        <div class="filepill">📄 context.md</div>
+        <p><b>여전히 없음</b> (실측 확인). 내부 용어가 CLAUDE.md 결합 메모에 흩어져 있다.</p>
+        <div class="scatter">
+          <span>wave-parallel</span><span>byte-copy</span><span>fire-and-forget</span><span>critical/non-critical</span><span>reorder dispatch</span>
+        </div>
+        <div class="adjacent">↳ 단, <span class="mono">/update-claude-md</span>·<span class="mono">/goodnight</span>·<span class="mono">/goodmorning</span> — 자기 문서 자동 관리는 시작됨</div>
+      </div>
+    </div>
+    <div class="source" style="color:var(--opp)">G1 — 루트 context.md 신설 + /update-claude-md 검증 대상에 포함 = 도그푸딩 완성</div>
+  </div>
+</section>
+
+<!-- 우선순위 -->
+<section class="reveal">
+  <div class="wrap">
+    <div class="eyebrow">처방 — 착수분 반영</div>
+    <h2>완주할 것 · 시작할 것</h2>
+    <p class="lead">상태 배지: <span style="color:var(--done)">진행 중</span> · <span style="color:var(--signal)">1회 실행됨</span> · <span style="color:var(--dim)">미착수</span>.</p>
+
+    <div class="ladder">
+      <div class="rung top">
+        <div class="rank">1</div>
+        <div class="body"><h4><span class="code">T1</span>disable-model-invocation 24개 완주<span class="st prog">진행 중 3/27</span></h4><p>신규 3종이 레퍼런스. "명시 호출 전용 + description 발동조건 문구 X"를 커맨드 표준으로</p></div>
+        <div class="risk"><div class="r">위험 낮음</div><div class="pips"><span class="pip on-lo"></span><span class="pip"></span><span class="pip"></span></div></div>
+      </div>
+      <div class="rung top">
+        <div class="rank">2</div>
+        <div class="body"><h4><span class="code">G1</span>context.md 용어집 신설<span class="st todo">미착수</span></h4><p>update-claude-md 검증 대상에 묶으면 도그푸딩 완성 + 강한 단어 후보 확보</p></div>
+        <div class="risk"><div class="r">노력 낮음</div><div class="pips"><span class="pip on-lo"></span><span class="pip"></span><span class="pip"></span></div></div>
+      </div>
+      <div class="rung">
+        <div class="rank">3</div>
+        <div class="body"><h4><span class="code">P1</span>정합화 패스 정기화<span class="st once">1회 실행됨</span></h4><p>프롬프트가공 "188건 발견" 중 미수정분을 백로그로. 성장 속도를 삭제가 따라잡게</p></div>
+        <div class="risk"><div class="r">위험 중간</div><div class="pips"><span class="pip on-mid"></span><span class="pip on-mid"></span><span class="pip"></span></div></div>
+      </div>
+      <div class="rung">
+        <div class="rank">4</div>
+        <div class="body"><h4><span class="code">E1·E2</span>강한 단어 + trace 검증<span class="st todo">미착수</span></h4><p>프롬프트가공의 서브에이전트 검토에 "심은 단어가 사고 과정에 되돌아오는지"를 얹기</p></div>
+        <div class="risk"><div class="r">위험 중간</div><div class="pips"><span class="pip on-mid"></span><span class="pip on-mid"></span><span class="pip"></span></div></div>
+      </div>
+      <div class="rung">
+        <div class="rank">5</div>
+        <div class="body"><h4><span class="code">S1</span>버전 마커 → RELEASE-NOTES<span class="st once">html만</span></h4><p>generating-html 사례를 큰 skill로 확대. grep catch 결합 — atomic patch 필수</p></div>
+        <div class="risk"><div class="r">위험 높음</div><div class="pips"><span class="pip on-hi"></span><span class="pip on-hi"></span><span class="pip on-hi"></span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 결론 -->
+<section class="conclusion reveal">
+  <div class="wrap">
+    <div class="big">몰라서 안 한 게 아니라<br><span class="done">이미 한 바퀴</span> 돌고 있었다.<br>남은 건 <span class="amber">전환 완주</span>, 놓친 <span class="teal">context.md</span>,<br>그리고 가지치기의 <span class="done">정기화</span>.</div>
+    <div class="source">전체 아이디어: <span class="mono">docs/matt-pocock-skill-적용-아이디어.md</span></div>
+  </div>
+</section>
+
+<div class="foot">MATT POCOCK 「좋은 스킬 체크리스트」 × js-super · 진단 계기판 개정판 · 머지 반영 2026-07-18</div>
+
+<script>
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+  },{threshold:.12});
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+  const barIO = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        e.target.querySelectorAll('.bar.ext .fill[data-w]').forEach(f=>{
+          requestAnimationFrame(()=>{ f.style.width = f.getAttribute('data-w'); });
+        });
+        barIO.unobserve(e.target);
+      }
+    });
+  },{threshold:.3});
+  document.querySelectorAll('.bars').forEach(el=>barIO.observe(el));
+</script>
+</body>
+</html>

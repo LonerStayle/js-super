@@ -1,5 +1,6 @@
 ---
-description: 자동 흐름 진입 — Socratic 질문 (1~5개 적응) + AI 자동 진행 + 4 단계 자동 체인 (brainstorm → tech-design → write-plan → execute-plan). 사용자 입력은 첫 질문 답변에만 받습니다.
+description: 자동 흐름 진입 — Socratic 질문 (1~5개 적응) + AI 자동 진행 + 4 단계 자동 체인 (brainstorm → tech-design → write-plan → execute-plan). 사용자 입력은 첫 질문 답변에만 받습니다. /auto-brainstorm 명시 호출 전용.
+disable-model-invocation: true
 ---
 
 # /auto-brainstorm
