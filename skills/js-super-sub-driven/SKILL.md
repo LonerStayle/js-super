@@ -508,7 +508,7 @@ prose 질문 좁은 예외:
 - 사용자 응답 직후 확인용 단순 ack (그래도 AskUserQuestion yes/no 권장)
 - 질문 아닌 상태 보고 / 진행 알림
 
-본 룰은 프로젝트 `CLAUDE.md` 의 글로벌 "AskUserQuestion 도구 우선 (v2.3.5+)" 룰의 skill body 측 cross-reference.
+본 룰은 `using-superpowers` (매 세션 주입) 의 "User Decisions — AskUserQuestion First (v2.3.5+)" 전역 룰의 skill body 측 cross-reference.
 
 ## Anti-Patterns (v2.3.5)
 
@@ -528,5 +528,5 @@ prose 질문 좁은 예외:
 | critical 재질문을 prose 로 ("force-push 해도 될까요?") | critical 일수록 AskUserQuestion + 알람 fire 필수. |
 | AskUserQuestion 호출 직후 prose 추가 질문 (이중 질문) | 한 turn 한 도구 호출 / 답변 흐름 보존. |
 | "Y/N?" 한 글자 응답 유도 prose | AskUserQuestion (yes/no) 사용. |
-| skill body boilerplate 만 따르고 ad-hoc 결정엔 prose | CLAUDE.md 글로벌 룰 위반. 전역 적용. |
+| skill body boilerplate 만 따르고 ad-hoc 결정엔 prose | using-superpowers 전역 룰 위반. 전역 적용. |
 | AskUserQuestion 호출이 overhead 라며 prose fallback | 일관성 ≫ 호출 비용. |
