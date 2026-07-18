@@ -1,6 +1,7 @@
 ---
-description: "사용자가 /remove-skill 슬래시를 명시 호출했을 때만 발동. js-super 가 만든 skill 만 정리 (프로젝트/전체 양쪽 탐색, 출처 표식 없으면 무조건 차단). default = .removed-<timestamp> rename, --force = rm -rf hard-delete."
+description: "js-super 가 만든 skill 만 정리 (프로젝트/전체 양쪽 탐색, 출처 표식 없으면 무조건 차단). default = .removed-<timestamp> rename, --force = rm -rf hard-delete."
 argument-hint: "<slug> [--project|--global] [--force] [--dry-run]"
+disable-model-invocation: true
 ---
 
 # Remove Skill 빌더 (js-super skill 정리)

@@ -1,3 +1,9 @@
+---
+description: "feature 디렉토리의 .md 내용을 .html 시각화 사본으로 동기화. 기존 디자인은 보존하고 내용만 갱신. --rebuild 시 디자인 재생성."
+argument-hint: "[<slug>] [--rebuild] [--check [N]]"
+disable-model-invocation: true
+---
+
 # /sync-html
 
 `<slug>` 인자는 선택입니다. 누락 시 `scripts/auto_flow.find_latest_slug(Path("docs/features"))` 를 호출해서 가장 최근 폴더를 자동으로 선택합니다. `--rebuild` 플래그도 선택입니다.

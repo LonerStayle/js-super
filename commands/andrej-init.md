@@ -1,6 +1,7 @@
 ---
-description: "사용자가 /andrej-init 슬래시를 명시 호출했을 때만 발동. 현재 프로젝트 루트에 Andrej Karpathy 스타일 행동 지침 CLAUDE.md 를 원본 그대로 생성."
+description: "현재 프로젝트 루트에 Andrej Karpathy 스타일 행동 지침 CLAUDE.md 를 원본 그대로 생성."
 argument-hint: ""
+disable-model-invocation: true
 ---
 
 # Andrej Init (행동 지침 CLAUDE.md 생성)
