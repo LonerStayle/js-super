@@ -40,9 +40,13 @@ NEVER skip this. The history is the only audit trail outside git.
 
 ## Code-Change Entry (only in <slug>-implementation-plan.md)
 
-`executing-plans` writes ONE consolidated [코드-수정] entry per task (NOT per individual code edit). This batches all code changes within a task into a single 변경이력 entry, drastically reducing 구현계획서.md Read/Edit cost.
+[코드-수정] entry 는 개별 code edit 마다 쓰지 않는다 (edit 단위는 RISK 주석만). 실행 **모드**에 따라 batching 단위가 갈린다:
 
-### Batched per-task entry (default form)
+- **git-fast mode** (`commit_policy: per-task`, 기본): task 마다 commit 은 따로 하되, 변경이력은 **전체 task 완료 후 end-of-run 으로 단 1개** consolidated entry (`batch: tasks N..M`) 만 append 한다 (코드 블록 생략, commit SHA 참조). 아래 "End-of-Run Consolidated Batch Entry" 섹션이 이 모드의 형식이다.
+  - ⚠️ 네이밍 주의: `commit_policy: per-task` 는 "**commit** 을 task 마다" 라는 뜻이지 "변경이력 **entry** 를 task 마다" 라는 뜻이 아니다 — 이 모드의 변경이력은 end-of-run 단일 entry.
+- **memory-fallback mode** (`commit_policy: single` / `none`): git 으로 감사 불가 → **task 마다** consolidated entry 를 쓴다 (아래 "per-task entry" 형식, 변경 전/후 코드 블록 보존).
+
+### Per-task entry form (memory-fallback mode)
 
 When a task contains multiple code edits, use this consolidated form:
 

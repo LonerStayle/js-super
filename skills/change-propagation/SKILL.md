@@ -78,7 +78,7 @@ digraph propagation {
 
 ## User Approval Format
 
-When presenting the impact list, use this structure:
+먼저 영향 목록을 prose 로 노출 (사용자가 읽는 display):
 
 ```
 변경 요청 감지: <change level> 변경 ("<short summary of the change>")
@@ -88,11 +88,28 @@ When presenting the impact list, use this structure:
 2. <slug>-tech-design.md §6 위험 (한도 증가에 따른 잔액 검증 강도 재평가)
 3. <slug>-implementation-plan.md Task 4 (한도 검증 로직)
 4. 코드 src/wallet/service.py:withdraw() (한도 상수)
-
-진행 / 부분 진행(번호 선택) / 취소 중 선택해주세요.
 ```
 
-The Korean closing line is intentional — that's what the user reads.
+그다음 **`AskUserQuestion` 도구로 진행 여부를 묻습니다** (응답 전 편집 X — HARD-GATE):
+
+```json
+{
+  "questions": [
+    {
+      "question": "위 영향 항목들을 어떻게 갱신할까요?",
+      "header": "전파 승인",
+      "multiSelect": false,
+      "options": [
+        {"label": "전체 진행", "description": "모든 영향 항목을 갱신"},
+        {"label": "부분 진행", "description": "일부만 선택 — 다음 질문에서 번호로 고름"},
+        {"label": "취소", "description": "아무것도 갱신하지 않음"}
+      ]
+    }
+  ]
+}
+```
+
+"부분 진행" 선택 시 → **두 번째 `AskUserQuestion` (`multiSelect: true`)** 로 위 번호 항목들을 옵션으로 제시하고 갱신할 것만 고르게 합니다. `AskUserQuestion` 이 없는 하네스면 위 목록 + "진행 / 부분 진행(번호 선택) / 취소" 를 prose 로 대체 (마지막 줄은 한국어 그대로 — 사용자가 읽는 문구).
 
 ## After Approval
 

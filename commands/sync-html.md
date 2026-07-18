@@ -7,7 +7,7 @@
 ## 동작
 
 1. 인자 `<slug>` 확인 (또는 latest slug 추론) + `--rebuild` 플래그 검출
-2. `docs/features/<slug>/<slug>-{requirements,tech-design,implementation-plan}.md` 중 존재하는 모든 `.md` 검출
+2. `docs/features/<date>-<slug>/<slug>-{requirements,tech-design,implementation-plan}.md` 중 존재하는 모든 `.md` 검출 (feature 폴더에는 날짜 접두어가 붙으므로, slug 만 알 때는 `docs/features/*-<slug>/` 로 glob 해서 실제 폴더를 찾을 것)
 3. 각 `.md` 에 대해 같은 위치의 `.html` 존재 여부 확인 후 3-way 분기:
 
 | 케이스 | 동작 |
@@ -20,7 +20,9 @@
    - `subagent_type`: `general-purpose`
    - `model`: `sonnet`
    - `run_in_background`: `true` (fire-and-forget)
-   - `prompt`: 분기에 따라 동등 + 내용 sync 룰 / 처음부터 디자인 룰
+   - `prompt`: `skills/generating-html/html-companion-prompt.md` 템플릿을 기반으로 dispatch (별도 skill 호출이 아니라 같은 프롬프트 자산을 직접 사용). 분기별 추가 지시:
+     - **`.html` 존재 분기**: 기존 `.html` 전문을 subagent 입력에 함께 넣고, 템플릿 위에 "레이아웃/색/여백은 보존하고 내용만 sync — 새 디자인 생성 금지" 지시를 덧붙인다 (템플릿 기본값은 자유 디자인이므로 이 보존 지시가 override).
+     - **부재 / `--rebuild` 분기**: 템플릿 그대로 자유 디자인.
 5. 메인 즉시 다음 turn — 결과 대기 X
 
 ## `--rebuild` 경고
@@ -37,7 +39,7 @@
 
 - AskUserQuestion 게이트 — fire-and-forget 의도상 사용자 입력 wait X
 - `.md` 가공 (`.md` 는 source-of-truth, 손대지 않음)
-- 결과 dispatch 노출 — silent
+- **상세** 로그는 silent (`.js-super/html-regen.log`, `--check` 로 조회). 단 메인은 **dispatch 여부**를 1줄로 노출한다 (예: "`.html` 백그라운드 호출됨 — 완료 여부는 `/sync-html --check` 로 조회"). sync-html 은 fire-and-forget 라 dispatch 직후엔 완료/크기를 알 수 없다 (race delay 를 두고 완료를 확인·보고하는 auto-* Step 4.5/4.6 흐름과 다름).
 
 ## `--check` 옵션 (v2.4+)
 

@@ -29,3 +29,14 @@ def detect_auth_pattern(project_root: Path) -> AuthDetection:
             evidence.append(f"{py_file}: env-var token")
             return AuthDetection("static-env-token", evidence)
     return AuthDetection("unknown", evidence)
+
+
+if __name__ == "__main__":
+    import sys
+
+    root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(".")
+    result = detect_auth_pattern(root)
+    # 첫 줄에 pattern 을 찍어 호출부(api-auto-testing Step 4)가 분기 판단에 사용
+    print(f"pattern: {result.pattern}")
+    for line in result.evidence:
+        print(f"evidence: {line}")

@@ -1,11 +1,11 @@
 ---
 name: setting-up-worktrees
-description: Use when the user asks to create one or more git worktrees ("워크트리 만들어줘", "<티켓명> 워크트리"). Default location is <project-root>/.worktrees/<branch-name>; creates the branch from current HEAD if it doesn't exist, then auto-copies ALL existing .env* files (.env, .env.local, .env.production, etc.) AND symlinks the main repo's Claude Code memory folder so the worktree shares user/feedback/project memory from the start. NEVER asks the user which env files to copy — always auto-glob.
+description: Use when the user asks to create one or more git worktrees ("워크트리 만들어줘", "<티켓명> 워크트리"). Default location is <project-root>/.worktrees/<branch-name>; creates the branch from current HEAD if it doesn't exist, then auto-copies the project's 로컬 빌드 환경 파일 (LLM-judged per platform — Node `.env*`, Android `local.properties`/keystore, iOS `*.xcconfig`, etc.) AND symlinks the main repo's Claude Code memory folder so the worktree shares user/feedback/project memory from the start. NEVER asks the user which files to copy — detects candidates, notifies, and copies (honoring explicit excludes).
 ---
 
 # Setting Up Worktrees (Quick Batch Creation)
 
-User-personal workflow shortcut for spinning up multiple parallel work streams. Each worktree gets its own branch, an automatic copy of every `.env*` file in the project root (so the user can build/run servers concurrently without env-loading fights), AND a symlink to the main repo's Claude Code memory folder (so user/feedback/project memory is immediately available in the worktree's first session).
+User-personal workflow shortcut for spinning up multiple parallel work streams. Each worktree gets its own branch, an automatic copy of the project's 로컬 빌드 환경 파일 (LLM-judged per platform — Node `.env*`, Android `local.properties`, iOS `*.xcconfig`, etc.; so the user can build/run servers concurrently without env-loading fights), AND a symlink to the main repo's Claude Code memory folder (so user/feedback/project memory is immediately available in the worktree's first session).
 
 <HARD-GATE>
 This skill MUST be invoked from a git repository. If the current working directory is not inside a git repo (`git rev-parse --is-inside-work-tree` returns false), abort and tell the user to run `git init` first or switch to the target project.
@@ -98,8 +98,8 @@ Extract `BRANCHES=(...)` from the user's message. Korean ticket-style names like
 
 1. 메인이 프로젝트 종류 추론 (위 레시피 기준)
 2. 루트에서 후보 파일 존재 확인 (`ls` + `git ls-files --error-unmatch <path>` 로 gitignored 인지 판정 — committed 면 git checkout 자동 복원 가능하므로 복사 skip)
-3. 후보 list 사용자에게 한 줄 노출: `ℹ️ 감지된 로컬 빌드 환경 파일: <list>. 추가/제외 알려주세요.`
-4. 사용자 응답 catch (기존 HARD-GATE 의 EXCLUDE 옵션 유지)
+3. 후보 list 를 **통지** (응답 대기 아님): `ℹ️ 감지된 로컬 빌드 환경 파일: <list> — 그대로 복사합니다. 특정 파일 제외를 원하면 알려주세요.`
+4. 기본 = 후보 전체 복사. blocking-wait 없이 바로 진행. 단 사용자가 명시적으로 "X 파일은 복사하지 마" (EXCLUDE) 라고 하면 그 파일만 제외 (기존 HARD-GATE 의 EXCLUDE 옵션 유지)
 5. ENV_FILES (또는 LOCAL_BUILD_FILES) 배열에 최종 후보 저장 → 다음 Step 으로 전달
 
 후보가 없으면 한 줄 안내 (`ℹ️ 프로젝트 루트에 로컬 빌드 환경 파일 후보 없음 — 복사 skip`) 후 다음 Step 진행. Don't abort.
@@ -220,7 +220,7 @@ This skill does NOT auto-remove. Removal is destructive and must be explicit.
 
 After running this skill:
 1. Each requested branch has a worktree at `<root>/.worktrees/<branch>/`
-2. Every `.env*` file from the project root (except `.env.example`/`.env.sample`/`.env.template`) is copied into each worktree
+2. Every detected 로컬 빌드 환경 파일 (Step 2 의 LLM-judged 후보 — 플랫폼별 `.env*` / `local.properties` / `*.xcconfig` 등, committed templates `.env.example`/`.env.sample`/`.env.template` 제외) is copied into each worktree
 3. `.worktrees/` is in `.gitignore`
 4. `git worktree list` shows all created worktrees
 5. The `worktree-memory-symlink` PostToolUse hook fired for every `git worktree add` invocation issued by this skill. (The skill itself did NOT mkdir / ln any memory paths.)

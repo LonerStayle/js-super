@@ -39,7 +39,7 @@ digraph verify_flow {
     "A. Consistency check" -> "Compose 4-axis report";
     "C. Code impact analysis" -> "Compose 4-axis report";
     "Compose 4-axis report" -> "Present to user";
-    "Present to user" -> "User decision:\nproceed / fix";
+    "Present to user" -> "User decision:\nproceed / no";
     "User decision:\nproceed / no" -> "Re-enter prior skill\n(tech-design or writing-plans)" [label="no"];
     "User decision:\nproceed / no" -> "Proceed" [label="proceed"];
 }

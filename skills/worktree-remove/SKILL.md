@@ -62,7 +62,9 @@ if [ "$WT_COUNT" -lt 2 ]; then
 fi
 ```
 
-추론 실패 (multi-parent / nested) → 명시 차단 + 종료.
+MAIN_PATH 는 `git worktree list` 의 첫 항목(main)으로 추론한다. nested / multi-parent 등 비표준 구성이면 이 추론이 부정확할 수 있으니, Step 4 종료 메시지의 경로를 반드시 확인할 것.
+
+> ⚠️ **Step 2–3 의 bash 는 하나의 Bash 호출로 이어서 실행할 것.** 셸 변수(`MAIN_PATH` / `CURRENT_PATH` / `CURRENT_BRANCH`)는 Bash 도구 호출 간 유지되지 않는다 — 별도 호출로 나누면 Step 3 이 빈 값으로 깨진 명령을 실행한다.
 
 ### Step 3 — 워크트리 제거 + 브랜치 안전 삭제 (자동)
 
@@ -93,7 +95,7 @@ git -C "$MAIN_PATH" branch -D "$CURRENT_BRANCH"
 ```
 
 - safe (-d) default — 머지 안 된 브랜치는 차단 (head 변경 보호)
-- `--force` 옵트인 — 머지 안 된 브랜치도 강제 삭제 + 워크트리도 dirty 시 강제 제거 (데이터 손실 위험, 사용자 명시 의사만)
+- `--force` 옵트인 — 머지 안 된 브랜치도 강제 삭제(`-D`) + gitignored 빌드 산출물/lock 때문에 `git worktree remove` 가 막히면 `--force` 로 진행. **단 미커밋 변경사항(tracked/untracked 불문 — `git status --porcelain` 이 non-empty)은 `--force` 여도 Step 1 에서 종료** (데이터 손실 방지 — 사용자 명시 의사만)
 
 ### Step 4 — 종료 메시지 (자동, 게이트 X)
 

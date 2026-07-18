@@ -18,9 +18,9 @@ Notification 훅 (`elicitation_dialog` 매처) 이 알람을 발화하려면 도
 ### How to apply
 
 - clarifying / Socratic / 모호점 확인 / 게이트 / 모드 선택 — 모두 포함
-- 단답 yes/no 도 prose X → `AskUserQuestion` choices `[yes, no]` 사용
-- 다중 선택은 enum choices 또는 multi-question batching (의미 결합 시 max 4 questions[])
-- **Socratic 자유 응답**: AskUserQuestion 의 question 본문에 "자유롭게 답해주세요. 별도 옵션 선택 불필요" + dummy choice `[알겠음]` 1개 → 트리거만 발화, 응답은 다음 turn prose
+- 단답 yes/no 도 prose X → `AskUserQuestion` options `[yes, no]` 사용
+- 다중 선택은 enum options 또는 multi-question batching (의미 결합 시 max 4 questions[])
+- **Socratic 자유 응답**: AskUserQuestion 의 question 본문에 "자유롭게 답해주세요. 별도 옵션 선택 불필요" + dummy option `[알겠음]` 1개 → 트리거만 발화, 응답은 다음 turn prose
 - **예외**: 본문 자체의 알람-friendly 안내문 (`ℹ️ Auto-proceeding ...`) 는 질문 아니라 안내 — 도구 호출 불필요
 
 ### Other / 모호 응답 처리 (v2.1.1+)
@@ -67,8 +67,8 @@ You MUST create a TaskCreate task for each of these items and complete them in o
 5. **자체 점검** — spec coverage / placeholder scan / type consistency / 위험 coverage
 6. **사양 정합성 검증** — main agent runs A+C verification on the plan via `verifying-spec` (Tolerance for missing skill)
 7. **코드 블록 포맷 정리** — pre-review code-block prettify on the draft via `code-pretty` skill (Sonnet subagent). Runs AFTER verifying-spec passes and BEFORE generating-html. Targets only `**수정 후**`-labeled code blocks. Stops once first change-history entry is logged.
-8. **문서 포맷 정리 (사용자 리뷰 전)** — pre-review format pass on the draft via `generating-html` skill (Sonnet subagent). Runs immediately after code-pretty and BEFORE showing the plan to the user. Re-fires together with code-pretty after each revision iteration (per-draft-state).
-9. **사용자 검토 (구현계획서)** — show the prettified plan + verifying-spec report + code-pretty diff summary; get approval (loop until OK; on changes → revise → back to step 6 verifying-spec)
+8. **`.html` 동봉본 생성 (사용자 리뷰 전)** — fire `generating-html` (fire-and-forget Sonnet subagent) to build a human-only `.html` companion of the plan. Runs immediately after code-pretty and BEFORE showing the plan to the user. Main does NOT wait; the `.md` is untouched by this step. Re-fires together with code-pretty after each revision iteration (per-draft-state).
+9. **사용자 검토 (구현계획서)** — show the plan (code-pretty applied to code blocks; an `.html` companion is built in the background) + verifying-spec report + code-pretty diff summary; get approval (loop until OK; on changes → revise → back to step 6 verifying-spec)
 10. **변경이력 기록** — append first `[구현계획서-수정]` entry via `change-history` skill
 11. **구현 단계 핸드오프** — count tasks first, then offer the choice using the Execution Handoff message below (`executing-plans` or `js-super-sub-driven`). Upstream `subagent-driven-development` is NOT offered here; only invoke it if the user explicitly asks for the upstream original.
 
@@ -114,7 +114,7 @@ This field tells `/execute-plan` how to commit work between tasks. It is the **s
 
 | Value | Meaning | executing-plans mode |
 |---|---|---|
-| `per-task` (**default**) | One atomic commit per task (code + plan log together) | git-fast (if git repo present) |
+| `per-task` (**default**) | code-only commit per task; plan log 는 end-of-run `[log] all tasks` 커밋 1회 | git-fast (if git repo present) |
 | `single` | All tasks accumulated into ONE commit at the very end of `/execute-plan` | memory-fallback |
 | `none` | No commits during `/execute-plan` (user commits manually after) | memory-fallback |
 
@@ -162,7 +162,7 @@ Every implementation plan MUST start with:
 ```markdown
 # <Feature Name> 구현계획서
 
-> **다음 단계 안내**: 이 계획을 task-by-task 로 실행하려면 `subagent-driven-development` (보조 에이전트 강제 모드, 권장) 또는 `executing-plans` (인라인 모드) 를 사용하세요. 각 step 은 체크박스 (`- [ ]`) 형식이라 진행 상황 추적이 가능합니다.
+> **다음 단계 안내**: 이 계획을 task-by-task 로 실행하려면 `js-super-sub-driven` (보조 에이전트 강제 모드, 권장) 또는 `executing-plans` (인라인 모드) 를 사용하세요. 각 step 은 체크박스 (`- [ ]`) 형식이라 진행 상황 추적이 가능합니다.
 
 **Goal:** <one sentence>
 
@@ -222,23 +222,23 @@ git commit -m "feat: add specific feature"
 ```
 ````
 
-## Task Model Hint (v1.1.14+)
+## Task Model Hint (v1.1.14+, 정보용)
 
-Each task block MAY include `**Model**: haiku | sonnet | opus` to tell `js-super-sub-driven` which model to dispatch the implementer with. Spec-reviewer is always sonnet (NOT controlled by this field).
+Each task block MAY include `**Model**: haiku | sonnet | opus` as an **informational complexity hint**. Under v2.0.0 byte-copy, `js-super-sub-driven` dispatches the implementer with **haiku FIXED** (기계적 byte-copy 라 추론 모델 불필요) — the `**Model**:` field does NOT change the implementer dispatch model. Spec-reviewer is always sonnet. task 가 byte-copy 로 감당 안 되면 implementer 가 `BLOCKED` 보고 → 메인이 reorder(sonnet) dispatch.
 
-Evaluation rule:
+값은 task 복잡도를 나타내는 힌트일 뿐이다 (사람이 plan 을 읽거나 DAG 요약을 볼 때 참고):
 
-| 신호 | 모델 |
+| 신호 | 복잡도 힌트 |
 |---|---|
 | 1-2 파일 + mechanical implementation + 명확 spec | haiku |
 | 다중 파일 통합 / 디버깅 / 패턴 매칭 | sonnet |
-| Korean prose 조작 (skill 본문 / MD 편집) | sonnet (Haiku rephrasing 위험) |
+| Korean prose 조작 (skill 본문 / MD 편집) | sonnet |
 | 설계 / 광범위 코드베이스 이해 | opus |
-| 누락 / 모호 | sonnet (보수 디폴트) |
+| 누락 / 모호 | sonnet |
 
-Backward compat: If the field is omitted, `js-super-sub-driven` defaults to `sonnet`. Existing plans (v1.1.13 and earlier) work as-is.
+Backward compat: 필드는 선택이라 생략해도 된다. Existing plans (v1.1.13 and earlier) work as-is.
 
-Anti-pattern: setting `Model: haiku` for a task that touches Korean prose in skill bodies. Haiku has a known rephrasing risk on Korean text — see `skills/generating-html/SKILL.md:50` for the same constraint.
+Note: implementer 는 항상 haiku 라 한국어 prose 를 만지는 task 는 전반적으로 haiku 의 rephrasing 위험을 가진다 (`**Model**:` 값으로 회피되지 않음). 그런 task 는 byte-copy 정확성(`**원본**`/`**수정 후**` 페어)에 특히 의존하며, byte-copy 로 감당 안 되면 BLOCKED → reorder(sonnet) 로 처리된다.
 
 ## Code Block Convention (Before/After labels) — required for tasks that modify existing code
 
@@ -277,10 +277,9 @@ digraph plan_flow {
     "Read <slug>-requirements.md + <slug>-tech-design.md" [shape=box];
     "File structure outline" [shape=box];
     "Decompose into bite-sized tasks" [shape=box];
-    "Self-review (spec coverage,\n placeholders, type consistency)" [shape=box];
-    "User reviews <slug>-implementation-plan.md" [shape=diamond];
-    "Invoke verifying-spec" [shape=box];
-    "Verifier report → user decision" [shape=diamond];
+    "Self-review (internal)" [shape=box];
+    "Run verifying-spec FIRST" [shape=box];
+    "Single combined approval gate\n(plan + verify + code-pretty diff; .html in bg)" [shape=diamond];
     "Invoke code-pretty\n(pre-review, Sonnet subagent)" [shape=box];
     "Invoke generating-html\n(pre-review, Sonnet subagent)" [shape=box];
     "Invoke change-history" [shape=box];
@@ -292,9 +291,9 @@ digraph plan_flow {
     "Self-review (internal)" -> "Run verifying-spec FIRST";
     "Run verifying-spec FIRST" -> "Invoke code-pretty\n(pre-review, Sonnet subagent)";
     "Invoke code-pretty\n(pre-review, Sonnet subagent)" -> "Invoke generating-html\n(pre-review, Sonnet subagent)";
-    "Invoke generating-html\n(pre-review, Sonnet subagent)" -> "Single combined approval gate\n(plan + verify report + code-pretty diff)";
-    "Single combined approval gate\n(plan + verify report + code-pretty diff)" -> "Self-review (internal)" [label="no — re-verify + re-prettify"];
-    "Single combined approval gate\n(plan + verify report + code-pretty diff)" -> "Invoke change-history" [label="approve"];
+    "Invoke generating-html\n(pre-review, Sonnet subagent)" -> "Single combined approval gate\n(plan + verify + code-pretty diff; .html in bg)";
+    "Single combined approval gate\n(plan + verify + code-pretty diff; .html in bg)" -> "Self-review (internal)" [label="no — re-verify + re-prettify"];
+    "Single combined approval gate\n(plan + verify + code-pretty diff; .html in bg)" -> "Invoke change-history" [label="approve"];
     "Invoke change-history" -> "Hand off to /execute-plan";
 }
 ```
@@ -424,10 +423,10 @@ This summarizes the corrected order (matches Checklist + Process Flow above):
    - **Tolerance**: if code-pretty skill is not installed, skip and emit "ℹ️ code-pretty 가 설치되지 않았습니다. 코드 블록은 그대로 표시됩니다."
 
 3. **Run generating-html** (immediately after code-pretty):
-   - Standard format-only pass (Sonnet subagent)
+   - Fire-and-forget Sonnet subagent that builds a human-only `.html` companion; main does NOT wait and the `.md` is untouched by this step.
 
 4. **Single combined approval gate** — present in ONE message:
-   - The full PRETTIFIED `<slug>-implementation-plan.md` (or summary if very long, with link)
+   - The full `<slug>-implementation-plan.md` (code-pretty applied to code blocks; `.html` companion built in background) (or summary if very long, with link)
    - The verify-spec 4-axis report
    - The code-pretty diff summary
    - **Gate #13 — plan + verify 결합 승인**
@@ -438,11 +437,12 @@ This summarizes the corrected order (matches Checklist + Process Flow above):
 
      ```json
      {
-       "question": "<slug>-implementation-plan.md (+ verify-spec 보고서) 승인하고 진행?",
-       "context": "plan + 4축 보고서 한 메시지로 노출됨",
-       "choices": [
-         {"value": "yes", "label": "예 — 승인하고 change-history + 실행 모드 선택"},
-         {"value": "no", "label": "아니오 — 사용자 피드백 받아 수정 후 재제시"}
+       "question": "<slug>-implementation-plan.md (+ verify-spec 보고서) 승인하고 진행? (plan + 4축 보고서 한 메시지로 노출)",
+       "header": "구현계획서 승인",
+       "multiSelect": false,
+       "options": [
+         {"label": "예 — 승인", "description": "승인하고 change-history + 실행 모드 선택"},
+         {"label": "아니오 — 수정", "description": "사용자 피드백 받아 수정 후 재제시"}
        ]
      }
      ```
@@ -469,10 +469,11 @@ Call `AskUserQuestion`:
 ```json
 {
   "question": "Plan에 <N>개 task. 어느 실행 방식?",
-  "context": "Inline = ≤12 tasks recommended; Subagent = 13+ tasks recommended",
-  "choices": [
-    {"value": "Inline", "label": "인라인 — 메인 에이전트가 executing-plans 로 직접 실행 (≤12 task 권장)"},
-    {"value": "Subagent", "label": "서브에이전트 — implementer + spec reviewer 디스패치 (13+ task 권장)"}
+  "header": "실행 방식",
+  "multiSelect": false,
+  "options": [
+    {"label": "인라인", "description": "메인 에이전트가 executing-plans 로 직접 실행 (≤12 task 권장)"},
+    {"label": "서브에이전트", "description": "implementer + spec reviewer 디스패치 (13+ task 권장)"}
   ]
 }
 ```
@@ -497,7 +498,7 @@ The upstream `subagent-driven-development` is NOT offered in this handoff. Invok
 - `tech-design` — upstream input (<slug>-tech-design.md)
 - `verifying-spec` — verification gate (active from Phase 2)
 - `change-history` — entry recording on save
-- `executing-plans` / `subagent-driven-development` — downstream execution
+- `executing-plans` / `js-super-sub-driven` — downstream execution (js-super-sub-driven 이 권장 subagent 모드; upstream `subagent-driven-development` 는 사용자가 명시 요청할 때만)
 - `risk-annotation` — taxonomy used in §2 위험 코드 지점
 
 ## 승인 게이트 / multi-choice 결정 = AskUserQuestion 도구 (v2.3.6+)
