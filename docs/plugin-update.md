@@ -63,10 +63,10 @@ skill 본문 / command 본문 변경은 **세션 시작 시점**에 다시 읽�
 /help
 ```
 
-또는 `/` 입력 후 자동완성에 6개 보이는지:
+또는 `/` 입력 후 자동완성에 5개 보이는지:
 
 ```
-/brainstorm   /design   /write-plan   /execute-plan   /api-test   /worktree
+/brainstorm   /design   /write-plan   /execute-plan   /worktree
 ```
 
 skill 본문 변경 검증 (예: 위험 주석 6-checklist 항목 추가됐는지):

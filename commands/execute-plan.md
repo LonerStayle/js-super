@@ -38,8 +38,6 @@ upstream 원본 `subagent-driven-development` 는 이 양자택일에서 제시�
 - **인라인** — 메인이 직접 편집합니다. git-fast / memory-fallback 모드가 자동 선택됩니다.
 - **보조 에이전트 (js-super)** — implementer + spec reviewer 보조 에이전트가 작업하고, 메인이 RISK / 변경이력 / atomic commit 후처리를 합니다. 호출하는 skill 은 `js-super-sub-driven` 입니다.
 
-다음 단계 (선택사항) 는 `/api-test` 입니다.
-
 ## `--no-ask` 플래그 (v2.5+)
 
 `AskUserQuestion` 도구가 느리거나 불안정할 때, 도구 호출을 완전히 우회하고 싶을 때 사용:

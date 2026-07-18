@@ -811,7 +811,7 @@ v2.5.2+ 에서 9 skill body 에 `## Checklist` 섹션 신규 추가 — `using-s
 
 - `og-brainstorming` — 이미 Checklist 보유 (upstream 그대로 답습)
 - 워크트리 2 (`worktree-merge-back`, `worktree-remove`) — Step 수 적음, 사용자 catch 우선순위 낮음
-- `api-auto-testing`, `finishing-a-development-branch`, `subagent-driven-development` — 사용자 의사 미선택
+- `finishing-a-development-branch`, `subagent-driven-development` — 사용자 의사 미선택
 - 1회성 / 메타 skill — `change-history`, `risk-annotation`, `generating-html`, `verifying-spec`, `using-superpowers`, `writing-skills` 등 (task 분해 의미 없음)
 
 ### og-* mirror 룰 예외 (D-4)

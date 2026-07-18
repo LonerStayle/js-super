@@ -5,13 +5,12 @@ description: Use when ANY MD or code is added/modified/deleted in a feature fold
 
 # Change History (Append Structured Entries)
 
-This skill defines the schema and procedure for appending entries to the `## 변경이력` footer of feature MDs. All other workflow skills (`brainstorming`, `tech-design`, `writing-plans`, `executing-plans`, `change-propagation`, `api-auto-testing`) MUST invoke this skill on every modification.
+This skill defines the schema and procedure for appending entries to the `## 변경이력` footer of feature MDs. All other workflow skills (`brainstorming`, `tech-design`, `writing-plans`, `executing-plans`, `change-propagation`) MUST invoke this skill on every modification.
 
 <HARD-GATE>
 You MUST append a 변경이력 entry to the affected MD whenever you:
 - Edit/Create/Delete any of <slug>-requirements.md, <slug>-tech-design.md, <slug>-implementation-plan.md
 - Modify code as part of /execute-plan
-- Run an API test pipeline via /api-test (record results)
 NEVER skip this. The history is the only audit trail outside git.
 </HARD-GATE>
 
@@ -25,12 +24,11 @@ NEVER skip this. The history is the only audit trail outside git.
 | Code edited via /execute-plan | <slug>-implementation-plan.md `## 변경이력` (with [코드-수정] tag) |
 | Verification-only task (no code change) | <slug>-implementation-plan.md `## 변경이력` (with `[검증]` tag) |
 | Release / version bump / git tag | <slug>-implementation-plan.md `## 변경이력` (with `[릴리즈]` tag) |
-| API test executed via /api-test | <slug>-implementation-plan.md `## 변경이력` (with [API테스트] tag) |
 
 ## Common Entry Schema (all 3 MDs)
 
 ```markdown
-### [YYYY-MM-DD HH:MM] [요구사항-수정 | 개발방향-수정 | 구현계획서-수정 | 코드-수정 | 검증 | 릴리즈 | API테스트]
+### [YYYY-MM-DD HH:MM] [요구사항-수정 | 개발방향-수정 | 구현계획서-수정 | 코드-수정 | 검증 | 릴리즈]
 - **id**: CH-YYYYMMDD-NNN
 - **이유**: <why the change>
 - **무엇이**: <which section/field/file>
@@ -155,16 +153,6 @@ When `executing-plans` or `js-super-sub-driven` finishes ALL tasks under `commit
 
 `commit_policy: single` / `none` (memory-fallback) modes keep the legacy fat schema (변경 전/후 코드 blocks preserved) — git can't audit those modes, so the entry must.
 
-## API-Test Entry (only in <slug>-implementation-plan.md)
-
-```markdown
-- **시나리오 파일**: api-tests/scenario-NNN-<name>.py (N tests)
-- **결과**: PASS x / FAIL y / ERROR z
-- **실패 상세**: <summary>
-- **결과 파일**: api-tests/results/<timestamp>.json
-- **다음 액션**: <next step if remediation needed>
-```
-
 ## CH-id Generation
 
 NEVER hand-author the CH-id. Use the helper script:
@@ -226,8 +214,7 @@ A new entry is correct when ALL hold:
 3. [코드-수정] entries: in `commit_policy: per-task` mode use slim batch form (코드 블록 생략 + commit SHA 참조 + 위험 카테고리); in `single` / `none` mode keep before/after code blocks AND a 위험 카테고리 value. `(trivial)` and `(batch: tasks N..M)` are recognised tag suffixes.
 4. `[검증]` entries include 결과 (PASS/FAIL/PARTIAL); they have NO 위험 카테고리 / 코드 블록 by design.
 5. `[릴리즈]` entries reference at minimum a 연관 commit (the bump commit) and the tag SHA when applicable.
-6. [API테스트] entries include scenario file, pass/fail counts, failure details
-7. `(trivial)` is used ONLY when executing-plans Trivial-Edit Exception criteria are all met (≤3 lines + no logic change + 0/3 risk triggers); otherwise full entry is required
+6. `(trivial)` is used ONLY when executing-plans Trivial-Edit Exception criteria are all met (≤3 lines + no logic change + 0/3 risk triggers); otherwise full entry is required
 
 ## Related Skills
 
