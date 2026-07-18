@@ -1154,3 +1154,88 @@ grep -cF "## /goodnight + /goodmorning 결합 (v2.8.0+)" CLAUDE.md
 - 사용자 환경 출력 — `.js-super/session-handoff/` (gitignored, 저장소 외 산출물)
 - `using-superpowers` 본문 변경 X
 - 자동 발동 경로 없음 — 명시 슬래시 호출만 (`disable-model-invocation: true`)
+
+## og-* upstream 완전 분리 — 커맨드 인라인 (v2.8.1+)
+
+v2.8.1+ 에서 og-* 흐름을 upstream superpowers 미러에서 **완전 분리**. 스킬 3종을 삭제하고 각 절차를 커맨드 본문에 인라인. 목적: (1) **컨텍스트 절감** — 스킬 description 이 매 세션 상주하던 비용 제거, (2) **커맨드 전용** — 모델 자동 발동 차단 (Matt Pocock ① 트리거 + 사용자 관례). "이제 upstream 과 갈라선다" (사용자 결정).
+
+### 왜 스킬 삭제인가 (핵심)
+
+스킬은 description 이 **매 세션 컨텍스트 상주** → 컨텍스트 부하. 커맨드 본문은 **호출 때만 로드** → 평소 상주 0. "컨텍스트에서 빼기 + 커맨드 전용" 을 진짜 하려면 스킬을 없애고 커맨드 본문에 넣어야 한다. description reword 만으로는 상주 비용이 안 사라진다 (그건 자동 발동만 막을 뿐). ← auto-* 는 체인 때문에 스킬 유지 (아래 참조), og-* 는 체인이 없어 완전 분리 가능.
+
+### 실제 변경
+
+1. **커맨드 3종** (`og-brainstorm`/`og-write-plan`/`og-execute-plan`) — 스킬 절차 전체를 본문에 인라인 + `disable-model-invocation: true` 유지. 스킬 참조 → 커맨드 참조 치환 (`invoke og-writing-plans skill` → `run /og-write-plan`).
+2. **스킬 3종 삭제** — `skills/og-brainstorming`/`og-writing-plans`/`og-executing-plans` 디렉토리 제거.
+3. **`brainstorming` Entry Router (FR-3) 전환** — "small 신호 → og-brainstorming skill auto-invoke" → "small 신호 → `/og-brainstorm` 실행 **안내**" (자동 invoke 제거, 스킬이 없어졌으니). 게이트의 og 선택지도 안내로.
+4. **README / CLAUDE.md** — Skill 목록에서 og 3종 제거, 커맨드 전용 표기.
+
+### mirror 룰 폐기 (D-og1 무효)
+
+og-* 는 더 이상 upstream mirror 가 아니다. 기존 "og-* 본문 변경 절대 X" mirror 룰(v2.5.2 등 다른 섹션)은 **og 에 한해 폐기**. 커맨드 본문이 이제 정본이고 upstream sync 는 하지 않는다 (완전 분리).
+
+### 회귀 패턴
+
+| 안티 패턴 | 증상 |
+|---|---|
+| 커맨드가 삭제된 og 스킬을 invoke | 없는 스킬 호출 → 런타임 실패 |
+| `brainstorming` router 가 og skill auto-invoke 로 회귀 | 없는 스킬 호출 → 실패 |
+| 커맨드에서 `disable-model-invocation` 제거 | 모델 자동 발동 부활 |
+
+### 회귀 catch grep
+
+```bash
+# 커맨드 3종 플래그 유지
+grep -lF "disable-model-invocation: true" commands/og-brainstorm.md commands/og-write-plan.md commands/og-execute-plan.md
+# expected: 3 lines
+
+# og 스킬 삭제 확인
+ls -d skills/og-* 2>/dev/null
+# expected: (없음)
+
+# 현행 스킬 본문에 삭제된 og 스킬 Skill-invoke 잔존 X (tests 제외)
+grep -rn "og-brainstorming\|og-writing-plans\|og-executing-plans" skills/ | grep -v "/tests/"
+# expected: empty
+
+# brainstorming router 는 안내만 (auto-invoke X)
+grep -F "Advise: run /og-brainstorm" skills/brainstorming/SKILL.md
+# expected: >= 1
+```
+
+### 영향 범위
+
+- 커맨드 3 인라인 + 스킬 3 삭제 + `brainstorming` router 전환 + README + CLAUDE.md.
+- js-super 정식 흐름(`brainstorming` 진입/게이트)은 그대로 — small 신호 시 auto-invoke 대신 안내로만 바뀜.
+- `subagent-driven-development`/`finishing-a-development-branch`/`using-git-worktrees` (upstream untouched) 는 og 커맨드가 그대로 참조 — 영향 0.
+- tests fixture (`skills/js-super-sub-driven/tests/H1/H2/H13`) 는 옛 라우팅 명칭 참조 — 실행 무관 문서, 후속 정리 대상.
+- 실행 기록: `docs/og-커맨드전용화-실행기록.md`
+
+### auto-* 확장 (같은 배치) — 체인 안전 문구 필수
+
+같은 원리를 auto-* 4종에도 적용. 단 og-* 와 **결정적 차이 하나**: auto-* 는 서로를 자동 호출하는 **체인**이다 (auto-brainstorming → auto-tech-design → auto-writing-plans → auto-executing-plans).
+
+- **체인은 스킬 이름으로 호출** (`js-super:auto-tech-design` invoke 등, `auto-brainstorming:93` / `auto-tech-design:69` / `auto-writing-plans:95`). SlashCommand 아님. → **커맨드에 `disable-model-invocation: true` 걸어도 체인 안 끊김.** (안전)
+- **커맨드 4종** → `disable-model-invocation: true`. auto-flow 는 승인 게이트 자동 통과 + subagent 강제 실행이라, 모델 자동 발동 차단이 og-* 보다 더 중요.
+- **스킬 4종 description** → 진입 제약 문구. **체인 스킬(2~4단계)은 반드시 "커맨드 또는 앞 단계의 명시 invoke 로만 진입, 자유 요청에서 자동 선택 금지"** 로 써야 한다. 그냥 "do NOT auto-select" 만 쓰면 체인 invoke 시 모델이 주저할 수 있음.
+- **auto-* 는 upstream mirror 아님** (js-super 자작 self-contained mirror, v1.1.17+). og-* 의 mirror 룰 예외 논리 불필요 — description 자유 수정 OK.
+- **본문 룰 보존**: auto-* 의 "AskUserQuestion 호출 X / Socratic prose-default / Step 4.5·4.6 fire-and-forget" 등 기존 결합 룰은 description 만 바꿨으니 영향 0.
+
+#### auto-* 회귀 catch grep
+
+```bash
+# 커맨드 4종 플래그
+grep -lF "disable-model-invocation: true" commands/auto-brainstorm.md commands/auto-tech-design.md commands/auto-write-plan.md commands/auto-execute-plan.md
+# expected: 4 lines
+
+# 스킬 4종 진입 제약 문구
+grep -cF "자동 선택 금지" skills/auto-brainstorming/SKILL.md skills/auto-tech-design/SKILL.md skills/auto-writing-plans/SKILL.md skills/auto-executing-plans/SKILL.md
+# expected: 각 1
+
+# 체인 invoke 라인 보존 (본문 안 건드림)
+grep -cF "js-super:auto-tech-design" skills/auto-brainstorming/SKILL.md
+grep -cF "js-super:auto-writing-plans" skills/auto-tech-design/SKILL.md
+grep -cF "js-super:auto-executing-plans" skills/auto-writing-plans/SKILL.md
+# expected: 각 >= 1
+```
+
+파일럿 누적: og-* 3 + auto-* 4 = **7 커맨드** 전환. 나머지 17개는 후속.

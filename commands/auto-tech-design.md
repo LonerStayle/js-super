@@ -1,5 +1,6 @@
 ---
-description: 자동 흐름의 2단계 진입 — requirements.md 가 있는 상태에서 design 부터 끝까지 자동으로 이어갑니다. 인자 누락 시 가장 최근 <slug> 자동 선택.
+description: 자동 흐름의 2단계 진입 — requirements.md 가 있는 상태에서 design 부터 끝까지 자동으로 이어갑니다. 인자 누락 시 가장 최근 <slug> 자동 선택. /auto-tech-design 명시 호출 전용.
+disable-model-invocation: true
 ---
 
 # /auto-tech-design
