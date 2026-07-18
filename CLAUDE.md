@@ -1067,3 +1067,64 @@ grep -cF "## new-skill-enhanced — 스코프 분기 + 출처 표식 결합 (v2.
 - 범위 밖: 비-js-super 강제 삭제 우회 / 옛 마커 없는 skill 마이그레이션 / 다른 프로젝트 조회·삭제
 
 요약: 3 command 본문 + CLAUDE.md 결합 메모 + 6 manifest = 10 파일 atomic patch (Wave 0~5 + spec + [log] 묶음 commit).
+
+## /goodnight + /goodmorning 결합 (v2.8.0+)
+
+v2.8.0+ 에서 세션 핸드오프 커맨드 2종 추가 — `/goodnight` (저녁 저장) + `/goodmorning` (아침 브리핑). instruction-only 커맨드이며 여러 워크트리를 한 번에 파악한다. spec: `docs/features/2026-07-18-미라클모닝/`.
+
+### 적용 범위 (2 본문 + 6 manifest = 8 파일)
+
+- `commands/goodnight.md` (신규) — 최상위 워크트리 전용 저장. 워크트리별 병렬 보조 에이전트 수집 + 위험 자동 판정 + `.js-super/session-handoff/YYYY-MM-DD.md` 저장
+- `commands/goodmorning.md` (신규) — 최신 노트 브리핑. 경고 배너 우선 출력
+- `CLAUDE.md` (본 섹션)
+- 6 manifest — 2.7.0 → 2.8.0
+
+### 핵심 룰
+
+- **D-1 저장은 최상위 워크트리 전용** — `git worktree list` 첫 줄이 최상위. 하위 워크트리에서 `/goodnight` 실행 시 저장하지 않고 최상위 경로 안내. 읽기(`/goodmorning`)는 어느 워크트리에서도 최상위 노트를 대상으로 허용
+- **D-2 데이터 소스 = git + 진행 문서 + 세션 기록 종합** — 세션 기록은 깊게 분석하되 워크트리별 병렬 보조 에이전트로 분산해 메인 컨텍스트를 보호. 메인은 원문을 직접 읽지 않고 요약만 취합
+- **D-3 경고는 자동 판정** — 위험 신호 체크리스트(미커밋 대량 변경 / 실패한 테스트 / 미완료 배포 / 미해결 충돌 / 사용자 명시 경고 요청)로 판정. 위험 있을 때만 배너, 없으면 담백
+- **D-4 저장 = 날짜별 누적** — `.js-super/session-handoff/YYYY-MM-DD.md`. 같은 날 재실행 시 덮어쓰기. `.js-super/` glob 에 흡수돼 gitignore 수정 불필요
+- **D-5 출력 스타일** — 비유법 금지 + 불필요한 용어 병기 금지 + 사람이 읽기 위한 명확한 한국어. 두 커맨드 본문에 동일하게 박힘
+- **D-6 자동 발동 차단 = `disable-model-invocation: true`** — 두 커맨드 frontmatter 에 명시. 모델이 대화 중 임의로 호출하지 못하고 사용자 슬래시 명시 호출만 발동. description 에는 발동 조건 문구를 넣지 않음 (frontmatter 필드가 보장하므로 불필요)
+
+### 회귀 패턴 (한쪽만 변경 시)
+
+| 누락 | 증상 |
+|---|---|
+| goodnight 최상위 가드 약화 | 하위 워크트리에서 저장 → 노트가 여러 위치에 흩어짐 |
+| 세션 수집 병렬 분산 제거 | 메인 컨텍스트 폭발 (세션 기록 깊은 분석 요구와 충돌) |
+| 경고 배너 억지 생성 | 위험 없는데 오버 배너 → 사용자 피로 (FR-8 위반) |
+| 출력 스타일 룰 한쪽 누락 | 비유법·용어 병기 재발 (FR-11 위반) |
+| `disable-model-invocation: true` 누락 | 모델이 대화 중 커맨드를 자동 호출 → 사용자 의도 없이 실행 |
+
+### 회귀 catch grep
+
+```bash
+# 두 커맨드 존재
+test -f commands/goodnight.md && test -f commands/goodmorning.md && echo OK
+# expected: OK
+
+# 최상위 전용 가드
+grep -F "최상위 워크트리에서 실행" commands/goodnight.md
+# expected: >= 1
+
+# 출력 스타일 룰 (비유법 금지) 두 커맨드 모두
+grep -lF "비유" commands/goodnight.md commands/goodmorning.md
+# expected: 2 lines
+
+# 모델 자동 호출 차단 두 커맨드 모두
+grep -lF "disable-model-invocation: true" commands/goodnight.md commands/goodmorning.md
+# expected: 2 lines
+
+# 결합 메모 본문 존재
+grep -cF "## /goodnight + /goodmorning 결합 (v2.8.0+)" CLAUDE.md
+# expected: >= 1
+```
+
+### 영향 범위
+
+- 2 command 본문 + CLAUDE.md + 6 manifest. 다른 skill / scripts / hooks / settings 영향 0
+- 사용자 환경 출력 — `.js-super/session-handoff/` (gitignored, 저장소 외 산출물)
+- `using-superpowers` 본문 변경 X
+- 자동 발동 경로 없음 — 명시 슬래시 호출만 (`disable-model-invocation: true`)
