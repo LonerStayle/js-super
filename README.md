@@ -10,7 +10,7 @@
 <br/>
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.7.0-7c3aed?style=for-the-badge&labelColor=0d1117">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.8.2-7c3aed?style=for-the-badge&labelColor=0d1117">
   <img alt="Upstream" src="https://img.shields.io/badge/upstream-superpowers%205.0.7-f97316?style=for-the-badge&labelColor=0d1117">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge&labelColor=0d1117">
   <img alt="Language" src="https://img.shields.io/badge/lang-한국어-3b82f6?style=for-the-badge&labelColor=0d1117">
@@ -43,9 +43,9 @@
 
 **js-super 는** 단계마다 문서를 자동으로 정리해요:
 - `.md` — AI 가 읽기 좋은 형식 (요구사항 / 기술설계 / 구현계획)
-- `.html` — 사람이 보기 좋은 다크 모드 시각화
+- `.html` — 사람이 보기 좋은 다크 모드 시각화 (`/sync-html` 한 줄로 생성)
 
-사람은 `.html` 만 훑으면서 검토하고, AI 는 `.md` 만 읽어요. **검토 부담이 확 줄어요.**
+사람은 `.html` 을 훑으면서 검토하고, AI 는 `.md` 만 읽어요. **검토 부담이 확 줄어요.**
 
 </td>
 <td width="33%" valign="top">
@@ -122,7 +122,7 @@ flowchart LR
 
 각 단계가 끝날 때마다 AI 가 한 번씩 물어봐요. 답변에 따라 다음 단계로.
 
-<sub>산출물은 <code>docs/features/2026-05-23-사용자-잔액-출금/</code> 폴더에 3 개 <code>.md</code> + 보기 좋은 <code>.html</code> 사본까지 알아서 만들어 둡니다.</sub>
+<sub>산출물은 <code>docs/features/2026-05-23-사용자-잔액-출금/</code> 폴더에 3 개 <code>.md</code> 로 쌓입니다. 보기 좋은 <code>.html</code> 사본이 필요하면 <code>/sync-html</code> 한 줄로 만들 수 있어요.</sub>
 
 <br/>
 
@@ -544,7 +544,7 @@ AI 는 항상 이 `.md` 만 봐요.
 
 #### `.html` — 사람용 사본
 
-같은 내용을 다크 모드로 보기 좋게.
+같은 내용을 다크 모드로 보기 좋게. `/sync-html` 로 생성해요.
 
 차트 / 다이어그램 / 카드를 알아서 골라 넣어요.
 
@@ -649,14 +649,14 @@ def withdraw(user_id, amount):
 
 <br/>
 
-`.md` 가 사용자 리뷰 시점에 들어가면, **백그라운드에서 자동으로** `.html` 이 만들어집니다. 메인 작업은 멈추지 않아요.
+`/sync-html` 을 실행하면 **백그라운드에서** `.html` 이 만들어집니다. 메인 작업은 멈추지 않아요. *(v2.8.2+ — 기본 플로우의 자동 생성은 제거됐고, 원할 때 명시 호출로 만듭니다. 간헐적으로 생성이 누락되던 문제 해결.)*
 
 - **다크 모드 기본** *(v2.3.4+)* — 깊은 어두운 배경 + 보라/시안 악센트
 - **상황에 맞게**: 차트 / 인터랙티브 / 다이어그램 / 카드 (필요하면 사용)
 - **구현계획의 코드 변경**: 초록(+) / 빨강(−) 한눈에 비교
 - **중요 내용은 펼친 채로** *(v2.3.3+)* — FR / AC 본문은 접지 않음
 - `.gitignore` 처리되어 있어요. AI 는 항상 `.md` 만 읽습니다
-- `/sync-html` 한 줄로 수동 재생성도 가능
+- 내용이 바뀌면 `/sync-html` 로 다시 맞추면 됩니다 (기존 디자인 보존)
 
 </details>
 
@@ -758,7 +758,7 @@ flowchart LR
 
 **upstream 원본 (커맨드 전용, v2.8.1+)** — `/og-brainstorm` / `/og-write-plan` / `/og-execute-plan` (스킬 → 커맨드 본문 인라인, 컨텍스트 미상주)
 
-**문서·시각화 (3)** — generating-html / code-pretty / change-history
+**문서·시각화 (3)** — generating-html *(명시 호출 전용, v2.8.2+)* / code-pretty / change-history
 
 **검증·거버넌스 (4)** — verifying-spec / verification-before-completion / change-propagation / risk-annotation
 
@@ -820,6 +820,8 @@ og-* 흐름은 변경이력 / 위험 주석 / `.html` 사본 / 검증 게이트�
 
 | 버전 | 무엇이 바뀌었나요 |
 |---|---|
+| **v2.8.2** | `.html` 자동 생성 제거 — 원할 때 `/sync-html` 등 명시 호출로만 (간헐적 누락 문제 해결) |
+| **v2.8** | `/goodnight` · `/goodmorning` 세션 핸드오프 + og 흐름 커맨드 전용화 |
 | **v2.7** | skill 빌더 3종 고도화 — 생성 스코프(프로젝트 / 전체) + 출처 표식 + `/list-skills` 조회 |
 | **v2.6** | `/new-skill` · `/remove-skill` — skill 만들고 정리하기 |
 | **v2.5** | `--no-ask` 모드 + `/worktree-remove` 워크트리 정리 |

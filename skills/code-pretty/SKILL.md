@@ -1,16 +1,16 @@
 ---
 name: code-pretty
-description: Use AFTER verifying-spec passes and BEFORE generating-html during the initial-creation iteration loop of <slug>-implementation-plan.md ONLY. Dispatches a Sonnet subagent that performs a strict format + 자명한 정리 + 중복 통합 pass on every "수정 후" code block in the plan. NEVER touches "원본" blocks, prose, or tables. Stops firing once the first change-history entry is logged. Idempotent on already-clean blocks (no-op rule).
+description: Use AFTER verifying-spec passes, before user review, during the initial-creation iteration loop of <slug>-implementation-plan.md ONLY. Dispatches a Sonnet subagent that performs a strict format + 자명한 정리 + 중복 통합 pass on every "수정 후" code block in the plan. NEVER touches "원본" blocks, prose, or tables. Stops firing once the first change-history entry is logged. Idempotent on already-clean blocks (no-op rule).
 ---
 
 # Code Pretty (Pre-Review Code Block Formatting)
 
-This skill prettifies the "수정 후" code blocks inside a freshly written or rewritten implementation plan, just before generating-html + user review. It is the code-only sibling of `generating-html`.
+This skill prettifies the "수정 후" code blocks inside a freshly written or rewritten implementation plan, just before user review.
 
-**Announce at start:** "I'm using the code-pretty skill to format `수정 후` code blocks in `<file>` before generating-html + user review."
+**Announce at start:** "I'm using the code-pretty skill to format `수정 후` code blocks in `<file>` before user review."
 
 <HARD-GATE>
-This skill MUST run AFTER verifying-spec passes and BEFORE generating-html in the writing-plans flow. It runs as many times as the writing-plans review loop iterates (initial draft + each user-fix revision).
+This skill MUST run AFTER verifying-spec passes and BEFORE the user review gate in the writing-plans flow. It runs as many times as the writing-plans review loop iterates (initial draft + each user-fix revision).
 
 It STOPS firing the moment the first `change-history` entry has been logged. That boundary marks the doc as "live" — from then on, no code-pretty.
 
@@ -27,13 +27,13 @@ If you are unsure whether this is still in the "initial creation phase" — STOP
 
 | Trigger (yes) | Anti-trigger (no) |
 |---|---|
-| `writing-plans` just wrote/rewrote `<slug>-implementation-plan.md` AND verifying-spec passed AND generating-html has not yet run for this draft, no `## 변경이력` entries yet | User asked to update Task 3 wording in an already-live implementation-plan.md |
+| `writing-plans` just wrote/rewrote `<slug>-implementation-plan.md` AND verifying-spec passed, no `## 변경이력` entries yet | User asked to update Task 3 wording in an already-live implementation-plan.md |
 | User requested revision in the writing-plans review loop, agent rewrote, verifying-spec re-ran — fire again | First change-history entry has been logged — doc is now "live", do NOT fire |
 | Plan contains at least one `**수정 후**`-labeled code block | Plan only has prose updates, no code blocks |
 
 ## Why a Subagent (and which model)
 
-Same reasoning as generating-html: pure transformation, no domain reasoning, negative-constraint heavy.
+Pure transformation, no domain reasoning, negative-constraint heavy.
 
 **Always dispatch a subagent with `model: "sonnet"`.** Sonnet's instruction-following is required for honoring "leave already-clean blocks byte-identical" and "1% 의심이라도 들면 SKIP" constraints.
 
@@ -83,8 +83,8 @@ After the subagent returns:
 
 1. Read the file back (1 Read)
 2. Sanity-check: every `**원본**`-labeled code block is byte-equal to the pre-dispatch version
-3. Surface the diff summary text returned by the subagent to the main agent's chat output (caller will combine with generating-html output for the user review gate)
-4. Return control to caller (writing-plans). Do NOT invoke generating-html or change-history yourself.
+3. Surface the diff summary text returned by the subagent to the main agent's chat output (caller surfaces it at the user review gate)
+4. Return control to caller (writing-plans). Do NOT invoke change-history yourself.
 
 If sanity-check fails (any "원본" block was modified) → emit a warning to the caller; caller decides whether to abort or rerun.
 
@@ -243,7 +243,6 @@ A code-pretty run is correct when ALL hold:
 
 ## Related Skills
 
-- `writing-plans` — invokes this between verifying-spec and generating-html
-- `generating-html` — sibling skill, runs immediately after code-pretty on the same draft
+- `writing-plans` — invokes this between verifying-spec and the user review gate
 - `verifying-spec` — must pass before code-pretty can run
-- `change-history` — invoked by caller AFTER code-pretty + generating-html + user review approval
+- `change-history` — invoked by caller AFTER code-pretty + user review approval
