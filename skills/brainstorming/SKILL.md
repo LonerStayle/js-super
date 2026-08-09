@@ -75,10 +75,9 @@ You MUST create a TaskCreate task for each of these items and complete them in o
    - **[PRD mode]** Feature category mini-question → **Visual Companion offer** (if UI/layout/visual feature based on category — own message, mode-aware trigger) → Question plan agreement → Adaptive PRD questions (only the agreed subset). See "PRD Adaptive Planning" below.
    - **[Socratic mode]** **Visual Companion offer** (if visual questions ahead — own message) → Free-form upstream-style dialogue: one question at a time, propose 2-3 approaches with tradeoffs, section-by-section approval. See "Socratic Mode" below.
 5. **자체 점검** — mode-specific (PRD: 6-item PRD scan + 4-item abstract scan; Socratic: 4-item abstract scan only)
-6. **`.html` 동봉본 생성 (사용자 리뷰 전)** — fire the `generating-html` skill (fire-and-forget Sonnet subagent) to build a human-only `.html` companion of the RAW draft BEFORE user review. Main does NOT wait. Re-fires on each user-fix iteration (per-draft).
-7. **사용자 검토 (PRD 초안)** — show the RAW `<slug>-requirements.md` (an `.html` companion is built in the background), get approval (loop until OK; on changes → revise → back to step 6). Stops once first change-history entry is logged.
-8. **변경이력 기록** — append first `[요구사항-수정]` entry via `change-history` skill
-9. **개발방향 단계 자동 진행** — Right after the change-history entry is logged, auto-invoke `tech-design` via the Skill tool with a one-line interrupt-notice. On user "stop"/"멈춰"/"잠깐" → exit cleanly with notice telling the user to run /tech-design later.
+6. **사용자 검토 (PRD 초안)** — show the RAW `<slug>-requirements.md`, get approval (loop until OK; on changes → revise → re-show)
+7. **변경이력 기록** — append first `[요구사항-수정]` entry via `change-history` skill
+8. **개발방향 단계 자동 진행** — Right after the change-history entry is logged, auto-invoke `tech-design` via the Skill tool with a one-line interrupt-notice. On user "stop"/"멈춰"/"잠깐" → exit cleanly with notice telling the user to run /tech-design later.
 
 If you find yourself skipping ahead, stop and create the missing task.
 
@@ -141,8 +140,7 @@ digraph brainstorm_flow {
     "[Socratic] Present design sections\n(section-by-section approval)" [shape=box];
 
     "Self-review (mode-specific)" [shape=box];
-    "User reviews RAW <slug>-requirements.md\n(.html sidecar built in bg)" [shape=diamond];
-    "Invoke generating-html\n(pre-review, Sonnet subagent, per-draft)" [shape=box];
+    "User reviews RAW <slug>-requirements.md" [shape=diamond];
     "Invoke change-history\n(first entry: 요구사항-수정/생성)" [shape=box];
     "Auto-invoke /tech-design (no gate, v1.1.9+)" [shape=box];
     "Auto-invoke tech-design skill" [shape=doublecircle];
@@ -173,10 +171,9 @@ digraph brainstorm_flow {
     "[Socratic] Propose 2-3 approaches\n(tradeoffs + recommendation)" -> "[Socratic] Present design sections\n(section-by-section approval)";
     "[Socratic] Present design sections\n(section-by-section approval)" -> "Self-review (mode-specific)";
 
-    "Self-review (mode-specific)" -> "Invoke generating-html\n(pre-review, Sonnet subagent, per-draft)";
-    "Invoke generating-html\n(pre-review, Sonnet subagent, per-draft)" -> "User reviews RAW <slug>-requirements.md\n(.html sidecar built in bg)";
-    "User reviews RAW <slug>-requirements.md\n(.html sidecar built in bg)" -> "Invoke generating-html\n(pre-review, Sonnet subagent, per-draft)" [label="changes — revise → re-fire generating-html"];
-    "User reviews RAW <slug>-requirements.md\n(.html sidecar built in bg)" -> "Invoke change-history\n(first entry: 요구사항-수정/생성)" [label="approve"];
+    "Self-review (mode-specific)" -> "User reviews RAW <slug>-requirements.md";
+    "User reviews RAW <slug>-requirements.md" -> "User reviews RAW <slug>-requirements.md" [label="changes — revise → re-show"];
+    "User reviews RAW <slug>-requirements.md" -> "Invoke change-history\n(first entry: 요구사항-수정/생성)" [label="approve"];
     "Invoke change-history\n(first entry: 요구사항-수정/생성)" -> "Auto-invoke /tech-design (no gate, v1.1.9+)";
     "Auto-invoke /tech-design (no gate, v1.1.9+)" -> "Auto-invoke tech-design skill" [label="continue"];
     "Auto-invoke /tech-design (no gate, v1.1.9+)" -> "Exit: tell user to run /tech-design later" [label="user: stop/멈춰"];
@@ -225,17 +222,10 @@ If the user says "없음" or equivalent, §5 = the consolidated list as-is. If t
 
 **5. Self-review** (mode-specific, see checklist below)
 
-**6. Invoke generating-html skill** (v1.1.15+ pre-review, per-draft)
-- Runs BEFORE user reviews the draft — builds a human-only `.html` companion of the RAW content (fire-and-forget; main does NOT wait). The RAW `.md` is left untouched.
-- Re-fires on each user-fix iteration (per-draft loop): revise RAW → generating-html (background `.html`) → show RAW to user
-- Stops the moment the first change-history entry is logged
-- Dispatches a Sonnet subagent (`run_in_background: true`) that writes the sibling `.html` with semantic 1:1 preservation (no rewording, no reordering)
-- See `generating-html` skill for full pre-flight + fire-and-forget protocol
-
-**7. Show the RAW doc + user review gate**
-- Show the full RAW `<slug>-requirements.md` (an `.html` companion is built in the background); await approval or change requests
-- If changes requested, revise per feedback → loop back to step 6 (generating-html re-fires → re-show RAW)
-- On approval → continue to step 8
+**6. Show the RAW doc + user review gate**
+- Show the full RAW `<slug>-requirements.md`; await approval or change requests
+- If changes requested, revise per feedback → re-show RAW
+- On approval → continue to step 7
 
 **Gate #8 — 산출물(RAW) 승인**
 
@@ -245,12 +235,12 @@ Call `AskUserQuestion`:
 
 ```json
 {
-  "question": "<slug>-requirements.md 승인? (RAW 산출물 검토 — `.html` 동봉본은 백그라운드 생성)",
+  "question": "<slug>-requirements.md 승인? (RAW 산출물 검토)",
   "header": "요구사항 승인",
   "multiSelect": false,
   "options": [
     {"label": "예 — 승인", "description": "승인하고 change-history 진행"},
-    {"label": "아니오 — 수정", "description": "사용자 피드백 받아 수정 후 generating-html 재발화"}
+    {"label": "아니오 — 수정", "description": "사용자 피드백 받아 수정 후 재제시"}
   ]
 }
 ```
@@ -261,13 +251,13 @@ When `AskUserQuestion` is unavailable, ask in prose:
 
 > Approve `<slug>-requirements.md`? — `yes` / `no`
 
-**8. Invoke change-history skill** (first entry: initial creation)
+**7. Invoke change-history skill** (first entry: initial creation)
 - Tag: `[요구사항-수정]` (use the entry type even on first creation)
 - 이유: 신규 피처 brainstorming 결과
 - 무엇이: <slug>-requirements.md 전체 (PRD: FR-1..N / Socratic: free-form sections)
 - 영향범위: 없음 (최초 생성)
 
-**9. Auto-proceed to tech-design (v1.1.9+ — no gate)**
+**8. Auto-proceed to tech-design (v1.1.9+ — no gate)**
 
 After change-history entry is logged, **automatically invoke** the `tech-design` skill (or `js-super:tech-design` depending on harness namespace). NO user gate here.
 

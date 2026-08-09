@@ -1,6 +1,6 @@
 ---
 name: auto-tech-design
-description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계 auto-brainstorming 의 명시 invoke 로만 진입, 사용자 자유 요청에서 자동 선택 금지. requirements.md 읽기 + adaptive 7-topic 자동 판정 + design decision 자동 alternatives 비교 → recommendation 자동 선택 + verifying-spec 4축 보고서 transition 직전 노출 + auto-writing-plans 자동 invoke. AskUserQuestion 호출 X. generating-html 은 Step 4.5 에서 백그라운드(fire-and-forget) 호출.
+description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계 auto-brainstorming 의 명시 invoke 로만 진입, 사용자 자유 요청에서 자동 선택 금지. requirements.md 읽기 + adaptive 7-topic 자동 판정 + design decision 자동 alternatives 비교 → recommendation 자동 선택 + verifying-spec 4축 보고서 transition 직전 노출 + auto-writing-plans 자동 invoke. AskUserQuestion / generating-html 호출 X.
 ---
 
 # Auto Designing Direction → <slug>-tech-design.md (auto)
@@ -11,7 +11,6 @@ description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계
 - [ ] Step 2 — adaptive 7-topic 자동 판정
 - [ ] Step 3 — AI 자동 design decision (각 활성 토픽)
 - [ ] Step 4 — 산출물 자동 작성 (<slug>-tech-design.md)
-- [ ] Step 4.5 — generating-html fire-and-forget dispatch + 5초 race delay
 - [ ] Step 5 — verifying-spec 자동 실행 (4축 보고서)
 - [ ] Step 6 — change-history 자동 ([개발방향-수정] entry)
 - [ ] Step 7 — 깊이 판정 + Transition notice + (3개 판정 시) auto-writing-plans invoke
@@ -39,12 +38,6 @@ description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계
 ### Step 4 — 산출물 자동 작성
 
 `<slug>-tech-design.md` 7-section schema 따라 작성. RAW 본문.
-
-### Step 4.5 — generating-html fire-and-forget dispatch (v2.3.2+)
-
-`<slug>-tech-design.md` 작성 직후, **change-history entry 박히기 전** (footer 비어있음) 에 `generating-html` skill fire-and-forget dispatch (`run_in_background: true`). 메인 latency 거의 0. transition notice 시점에 사용자가 `.html` 검토 가능 (Type "stop" abort). v1.1.17 PRD D9 amend 반전 (v2.3.2+).
-
-**v2.4+ race delay**: dispatch 후 **5초 delay** 후에 Step 5 (verifying-spec) 진행. background subagent 가 .md 의 footer 0건 시점에 읽도록 보장 (race condition 해결).
 
 ### Step 5 — verifying-spec 자동 실행
 
@@ -82,7 +75,7 @@ description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계
 | Wrong | Right |
 |---|---|
 | AskUserQuestion 호출 | NEVER. |
-| generating-html 동기 호출 (sync wait) | NEVER. v2.3.2+ — Step 4.5 fire-and-forget 만. (v1.1.17 "호출 부재" 룰 v2.3.2 반전.) |
+| generating-html 호출 (모든 형태) | NEVER. v2.8.2+ 커맨드 강등 — 자동 발동 폐지 (v2.3.2 의 Step 4.5 dispatch 제거). `.html` 필요 시 사용자가 명시 호출. |
 | 일반 tech-design skill body 호출 | NEVER. self-contained mirror (D-T1). |
 | transition notice 후 wait sleep | NEVER. |
 

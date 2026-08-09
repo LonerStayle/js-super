@@ -65,10 +65,9 @@ You MUST create a TaskCreate task for each of these items and complete them in o
 3. **적응형 7-토픽 질의응답** — `<slug>-requirements.md` 읽고 활성/비활성 토픽 판정 후 한 줄 announce. 항상 활성 4개 (1 아키텍처 / 2 컴포넌트 / 5 결정+대안 / 6 위험), 조건부 3개 (3 데이터 모델 / 4 외부 인터페이스 / 7 테스트 전략). 자세한 룰은 "Adaptive Topics" 섹션 참조. (v1.1.15+, FR-1)
 4. **자체 점검** — FR mapping coverage, alternatives present, risk categorization (no user prompt yet)
 5. **사양 정합성 검증 (사전)** — main agent runs A+C verification via `verifying-spec`, produces 4-axis report internally (Tolerance for missing skill)
-6. **`.html` 동봉본 생성 (사용자 리뷰 전)** — fire `generating-html` (fire-and-forget Sonnet subagent) to build a human-only `.html` companion of the RAW draft BEFORE user review. Main does NOT wait; the RAW `.md` is untouched. Re-fires on each user-fix iteration (per-draft). (v1.1.15+)
-7. **초안 검토 및 승인** — show the full RAW `<slug>-tech-design.md` (an `.html` companion is built in the background) AND the verify-spec report in one message; ask once "Approve and proceed? — yes / no". On `no` → revise → loop back to step 4 (Self-review → re-verify → re-fire generating-html → re-show RAW). Stops once first change-history entry is logged.
-8. **변경이력 기록** — append first `[개발방향-수정]` entry via `change-history` skill
-9. **다음 단계 진입 확인 (산출물 깊이 선택)** — change-history 직후 사용자에게 3지선다 게이트 (Gate #12). "구현계획서까지 진행 (3개)" → invoke `writing-plans` via Skill tool. "여기서 종료 (2개 확정)" → tech-design frontmatter 에 `depth: 2` 기록 + [개발방향-수정] entry + 종료 안내. "나중에 결정" → 표식 없이 exit with notice telling the user to run /write-plan later. (v1.1.12+ restored · 깊이 선택 확장)
+6. **초안 검토 및 승인** — show the full RAW `<slug>-tech-design.md` AND the verify-spec report in one message; ask once "Approve and proceed? — yes / no". On `no` → revise → loop back to step 4 (Self-review → re-verify → re-show RAW).
+7. **변경이력 기록** — append first `[개발방향-수정]` entry via `change-history` skill
+8. **다음 단계 진입 확인 (산출물 깊이 선택)** — change-history 직후 사용자에게 3지선다 게이트 (Gate #12). "구현계획서까지 진행 (3개)" → invoke `writing-plans` via Skill tool. "여기서 종료 (2개 확정)" → tech-design frontmatter 에 `depth: 2` 기록 + [개발방향-수정] entry + 종료 안내. "나중에 결정" → 표식 없이 exit with notice telling the user to run /write-plan later. (v1.1.12+ restored · 깊이 선택 확장)
 
 If you find yourself skipping ahead, stop and create the missing task.
 
@@ -117,8 +116,7 @@ digraph design_flow {
     "Q: test strategy?" [shape=box];
     "Self-review (internal)" [shape=box];
     "Run verifying-spec FIRST\n(요구사항 ↔ 개발방향)" [shape=box];
-    "Invoke generating-html\n(pre-review, Sonnet subagent, per-draft)" [shape=box];
-    "Single combined approval gate\n(RAW doc + verify report; .html in bg)" [shape=diamond];
+    "Single combined approval gate\n(RAW doc + verify report)" [shape=diamond];
     "Invoke change-history" [shape=box];
     "Ask: 산출물 깊이? (Gate #12, 3지선다)" [shape=diamond];
     "Auto-invoke writing-plans skill" [shape=doublecircle];
@@ -139,10 +137,9 @@ digraph design_flow {
     "Q: risk candidates?" -> "Q: test strategy?";
     "Q: test strategy?" -> "Self-review (internal)";
     "Self-review (internal)" -> "Run verifying-spec FIRST\n(요구사항 ↔ 개발방향)";
-    "Run verifying-spec FIRST\n(요구사항 ↔ 개발방향)" -> "Invoke generating-html\n(pre-review, Sonnet subagent, per-draft)";
-    "Invoke generating-html\n(pre-review, Sonnet subagent, per-draft)" -> "Single combined approval gate\n(RAW doc + verify report; .html in bg)";
-    "Single combined approval gate\n(RAW doc + verify report; .html in bg)" -> "Self-review (internal)" [label="no — revise → re-fire generating-html → re-show RAW"];
-    "Single combined approval gate\n(RAW doc + verify report; .html in bg)" -> "Invoke change-history" [label="approve"];
+    "Run verifying-spec FIRST\n(요구사항 ↔ 개발방향)" -> "Single combined approval gate\n(RAW doc + verify report)";
+    "Single combined approval gate\n(RAW doc + verify report)" -> "Self-review (internal)" [label="no — revise → re-show RAW"];
+    "Single combined approval gate\n(RAW doc + verify report)" -> "Invoke change-history" [label="approve"];
     "Invoke change-history" -> "Ask: 산출물 깊이? (Gate #12, 3지선다)";
     "Ask: 산출물 깊이? (Gate #12, 3지선다)" -> "Auto-invoke writing-plans skill" [label="구현계획서까지 진행 (3개)"];
     "Ask: 산출물 깊이? (Gate #12, 3지선다)" -> "Record depth: 2 + exit (2개 확정)" [label="여기서 종료 (2개 확정)"];
@@ -222,15 +219,8 @@ Step 3 의 7-topic dialogue 를 사용자 마찰 줄이기 위해 adaptive 진�
 - The main agent runs consistency check + code impact analysis and produces the 4-axis report
 - Tolerance: if verifying-spec is not installed, skip and emit the notice (existing tolerance rule)
 
-**6. Invoke generating-html skill** (v1.1.15+ pre-review, per-draft)
-- Runs BEFORE user reviews the draft — builds a human-only `.html` companion of the RAW content (fire-and-forget; main does NOT wait). The RAW `.md` is untouched.
-- Re-fires on each user-fix iteration (per-draft loop): revise RAW → generating-html (background `.html`) → re-show RAW
-- Stops the moment the first change-history entry is logged
-- Dispatches a Sonnet subagent (`run_in_background: true`) that writes the sibling `.html` with semantic 1:1 preservation (no rewording, no reordering)
-- See `generating-html` skill for full pre-flight + fire-and-forget protocol
-
-**7. Single combined user-approval gate** (RAW review)
-- Present BOTH the full RAW `<slug>-tech-design.md` (an `.html` companion is built in the background) AND the verifying-spec report in one message
+**6. Single combined user-approval gate** (RAW review)
+- Present BOTH the full RAW `<slug>-tech-design.md` AND the verifying-spec report in one message
 - DO NOT split into "approve doc" and "approve verify report" — that's two gates for one decision
 
 **Gate #11 — RAW doc + verify 결합 승인**
@@ -241,12 +231,12 @@ Call `AskUserQuestion`:
 
 ```json
 {
-  "question": "<slug>-tech-design.md (+ verify-spec 보고서) 승인하고 진행? (RAW doc + 4축 보고서 한 메시지로 노출, `.html` 동봉본은 백그라운드 생성)",
+  "question": "<slug>-tech-design.md (+ verify-spec 보고서) 승인하고 진행? (RAW doc + 4축 보고서 한 메시지로 노출)",
   "header": "설계 승인",
   "multiSelect": false,
   "options": [
     {"label": "예 — 승인", "description": "승인하고 change-history + 다음 단계 진행"},
-    {"label": "아니오 — 수정", "description": "사용자 피드백 받아 수정 후 generating-html 재발화"}
+    {"label": "아니오 — 수정", "description": "사용자 피드백 받아 수정 후 재제시"}
   ]
 }
 ```
@@ -257,13 +247,13 @@ When `AskUserQuestion` is unavailable, ask once:
 
 > Approve `<slug>-tech-design.md` and proceed? — `yes` / `no`
 
-- On `yes` → continue to step 8 (change-history)
+- On `yes` → continue to step 7 (change-history)
 - On `no` → 피드백 받아 수정 후 재제시. anchor 질문 강제 X.
 
-**8. Invoke change-history**
+**7. Invoke change-history**
 - Entry: `[개발방향-수정] CH-YYYYMMDD-NNN / 이유: 신규 기술 설계 / 무엇이: <slug>-tech-design.md 전체 / 영향범위: 없음 (최초 생성)`
 
-**9. Ask the proceed-to-writing-plans gate (v1.1.12+ restored · 산출물 깊이 선택 확장)**
+**8. Ask the proceed-to-writing-plans gate (v1.1.12+ restored · 산출물 깊이 선택 확장)**
 
 After change-history is logged, ask the user explicitly. Tech-design → implementation-plan 전환은 의사결정 깊이가 다른 단계 (구현 계획에 commit 하는 시점) 라서 자동승인보다 명시적 게이트가 안전하다는 사용자 신고 반영. 이 게이트가 산출물 깊이 (2개/3개) 의 결정 지점이기도 하다 — 실제 분기 지점 (tech-design → writing-plans 전환) 과 일치하고, 문서를 다 본 상태라 가장 정보가 많은 시점이다.
 
@@ -341,9 +331,9 @@ If not, the boundaries need work. Smaller, well-bounded units are also easier fo
 | "The decision is self-evident, leave §5 blank" | Self-evident means write a one-liner — six months later you'll forget why. |
 | "No risks here" | If NFRs or external interfaces change, there are always risk candidates. Reconsider. |
 
-## After Save — generating-html → approval gate → proceed-to-next gate
+## After Save — approval gate → proceed-to-next gate
 
-This summarizes the corrected order (matches Process detail steps 5-9 above, v1.1.15+ pre-review):
+This summarizes the corrected order (matches Process detail steps 5-8 above):
 
 1. **Run verifying-spec FIRST** (before any user prompt):
    - Target: `<slug>-tech-design.md`
@@ -351,24 +341,19 @@ This summarizes the corrected order (matches Process detail steps 5-9 above, v1.
    - Procedure: consistency (FR mapping coverage) + code impact (Grep for impacted files/callers, side-effect candidates)
    - **Tolerance**: if verifying-spec skill is not installed, skip the call and emit a one-line notice ("ℹ️ verify-gate 가 설치되지 않아 검증 없이 진행합니다.")
 
-2. **Invoke generating-html** (v1.1.15+ pre-review):
-   - Builds a human-only `.html` companion of the RAW doc BEFORE user sees it (fire-and-forget; main does NOT wait). The RAW `.md` is untouched.
-   - Re-fires on each user-fix iteration.
-
-3. **Single combined approval gate** — present in ONE message:
+2. **Single combined approval gate** — present in ONE message:
    - The full RAW `<slug>-tech-design.md` content (or summary if very long)
    - The verify-spec 4-axis report
    - DO NOT split into "approve doc" → "approve verify report". One gate, one decision.
-   - User reviews the RAW markdown; the `.html` companion was built in the background before this gate.
 
    **Gate #11 — RAW doc + verify 결합 승인** — see Tool form + Prose fallback above.
 
-4. On `yes` → invoke change-history (`[개발방향-수정]` entry) → continue to step 5.
-   On `no` → 피드백 받아 수정 후 generating-html 재발화 → 재제시. anchor 질문 강제 X.
+3. On `yes` → invoke change-history (`[개발방향-수정]` entry) → continue to step 4.
+   On `no` → 피드백 받아 수정 후 재제시. anchor 질문 강제 X.
 
-5. **Proceed-to-writing-plans gate** (v1.1.12+ restored · 산출물 깊이 선택 3지선다):
+4. **Proceed-to-writing-plans gate** (v1.1.12+ restored · 산출물 깊이 선택 3지선다):
 
-   **Gate #12 — 산출물 깊이** — see Tool form + Prose fallback above (step 9 in the main Process detail).
+   **Gate #12 — 산출물 깊이** — see Tool form + Prose fallback above (step 8 in the main Process detail).
 
    On "구현계획서까지 진행 (3개)" → invoke writing-plans via Skill tool. On "여기서 종료 (2개 확정)" → frontmatter `depth: 2` 기록 + [개발방향-수정] entry + 승격 안내 후 stop. On "나중에 결정" → emit `ℹ️ 알겠습니다. /write-plan 은 나중에 직접 실행해주세요.` and stop.
 
