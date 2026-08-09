@@ -1,6 +1,6 @@
 {
   "name": "js-super",
-  "version": "2.9.0",
+  "version": "2.8.1",
   "type": "module",
   "main": ".opencode/plugins/superpowers.js"
 }
