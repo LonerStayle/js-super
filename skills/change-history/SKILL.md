@@ -25,6 +25,10 @@ NEVER skip this. The history is the only audit trail outside git.
 | Verification-only task (no code change) | <slug>-implementation-plan.md `## 변경이력` (with `[검증]` tag) |
 | Release / version bump / git tag | <slug>-implementation-plan.md `## 변경이력` (with `[릴리즈]` tag) |
 
+### 2-doc 트랙 라우팅 (산출물 깊이 선택)
+
+피처의 tech-design frontmatter 가 `depth: 2` (2-doc 확정 트랙) 이고 `<slug>-implementation-plan.md` 가 없으면, 위 표에서 목적지가 구현계획서인 행 ([코드-수정] / [검증] / [릴리즈]) 은 **`<slug>-tech-design.md` `## 변경이력`** 으로 라우팅한다. footer append 는 본문 (설계 내용) 수정이 아니므로 change-propagation 의 reverse-cascade 금지 룰과 충돌하지 않는다. 판독 규칙 엄격 — `depth: 2` 명시일 때만 적용, 필드 부재·`depth: 3` 은 기존 라우팅 그대로.
+
 ## Common Entry Schema (all 3 MDs)
 
 ```markdown
