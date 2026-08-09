@@ -27,8 +27,8 @@ description: auto-flow 3단계 — /auto-write-plan 커맨드 또는 앞 단계 
 
 tech-design §1~§7 + R1~R10 분석. TDD bite-sized task 자동 생성:
 - 각 task 의 Files / Model hint / TDD steps / RISK 자동 결정
-- Model 힌트 자동: 1-2 파일 mechanical → haiku / 다중 파일 + 통합 → sonnet / 설계 + 광범위 → opus / Korean prose 조작 → sonnet (Haiku rephrasing 위험)
-- Before/After 코드블록 (`**원본**` / `**수정 후**`) 컨벤션
+- Model 힌트 자동: 1-2 파일 mechanical → haiku / 다중 파일 + 통합 → sonnet / 설계 + 광범위 → opus / Korean prose 조작 → sonnet (Haiku rephrasing 위험) / 신규 테스트 작성 포함 task → 최소 sonnet (v2.9+ floor)
+- Before/After 코드블록 (`**원본**` / `**수정 후**`) 컨벤션 — 구현 코드 전용. 테스트 코드 블록은 싣지 않고 task 헤더 `**검증**:` 필드 (자연어 1~2줄, 무엇을 + 성공 기준) 로 대체 (v2.9+)
 
 **Same-file mechanical 묶음 룰 (v2.0.1+)**: 둘 이상의 logical change 가 다음 **세 조건 모두** 만족하면 1 task 의 multi-step 으로 묶는다.
 
@@ -36,7 +36,7 @@ tech-design §1~§7 + R1~R10 분석. TDD bite-sized task 자동 생성:
 2. **테스트 경계 없음** — 한 통합 test 또는 UI preview 로 같이 검증 가능
 3. **mechanical** — modifier / handler / container 옵션 / placeholder / import 등 (= 알고리즘 변경 X)
 
-세 조건 중 하나라도 어기면 분리. multi-step task 안 step 구조: test (1회) → byte-copy Edit (N회) → test pass → self-review. 애매하면 분리 (보수적 default).
+세 조건 중 하나라도 어기면 분리. multi-step task 안 step 구조: `**검증**` 설명 기반 통합 테스트 작성 + FAIL 확인 (실행 단계 수행, 1회) → byte-copy Edit (N회) → test pass → self-review. 애매하면 분리 (보수적 default).
 
 **Step 2 끝 자체 검토 (same-file 묶음 자체 검토)**: 자동 분해 결과 같은 파일만 만지는 task chain ≥ 2건 있으면 메인이 직접 D1 의 3 조건 재검토 → 묶을지 결정. 사용자 응답 wait X (auto 모드).
 
