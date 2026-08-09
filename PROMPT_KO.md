@@ -299,29 +299,24 @@ spec이 여러 독립 서브시스템을 다루면, brainstorming 단계에서 �
 - Modify: `exact/path/to/existing.py:123-145`
 - Test: `tests/exact/path/to/test.py`
 
-- [ ] **Step 1: 실패 테스트 작성**
+**검증**: [이 task 의 테스트가 무엇을 검증하는지 + 성공 기준 — 자연어 1~2줄. 테스트 코드는 싣지 않음 (v2.9+)]
 
-```python
-def test_specific_behavior():
-    result = function(input)
-    assert result == expected
-```
+- [ ] **Step 1: 실패 테스트 작성 + FAIL 확인 (실행 단계가 검증 설명 기반으로 코드 작성)**
 
-- [ ] **Step 2: 테스트 실행해 실패 검증**
+Run: `pytest tests/path/test.py -v`
+Expected: FAIL (구현 전)
 
-Run: `pytest tests/path/test.py::test_name -v`
-Expected: FAIL with "function not defined"
-
-- [ ] **Step 3: 최소 구현**
-- [ ] **Step 4: 통과 검증**
-- [ ] **Step 5: 커밋**
+- [ ] **Step 2: 최소 구현**
+- [ ] **Step 3: 통과 검증**
+- [ ] **Step 4: 커밋**
 ````
 
 #### Placeholder 금지 (모든 step은 엔지니어가 필요한 실제 내용 포함)
 **계획 실패** — 절대 쓰지 말 것:
 - "TBD", "TODO", "나중에 구현", "디테일 채우기"
 - "적절한 에러 처리 추가" / "검증 추가" / "엣지 케이스 처리"
-- "위 항목에 테스트 작성" (실제 테스트 코드 없이)
+- 동어반복 "검증" 필드 ("테스트를 작성한다" 처럼 무엇을/기준 없는 설명 — v2.9+)
+- 테스트 코드 블록을 계획서에 싣는 것 (v2.9+ — `**검증**:` 자연어 설명으로 대체)
 - "Task N과 비슷" (코드 반복할 것 — 엔지니어가 순서대로 안 읽을 수 있음)
 - 무엇을 할지만 설명하고 어떻게는 안 보여주는 step (코드 step엔 코드 블록 필수)
 - 어디에도 정의 안 된 타입/함수/메서드 참조
