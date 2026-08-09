@@ -45,7 +45,7 @@ digraph wt_flow {
     "For each branch" [shape=box];
     "Branch exists?" [shape=diamond];
     "git worktree add <path> <branch>" [shape=box];
-    "git worktree add -b <branch> <path>" [shape=box];
+    "git worktree add -b <branch> <path> HEAD" [shape=box];
     "Copy ALL detected env files" [shape=box];
     "Symlink Claude memory folder\n(automatic via PostToolUse hook)" [shape=box];
     "Report summary" [shape=doublecircle];
@@ -56,9 +56,9 @@ digraph wt_flow {
     "Ensure .worktrees/ exists\n+ in .gitignore" -> "For each branch";
     "For each branch" -> "Branch exists?";
     "Branch exists?" -> "git worktree add <path> <branch>" [label="local or remote"];
-    "Branch exists?" -> "git worktree add -b <branch> <path>" [label="new"];
+    "Branch exists?" -> "git worktree add -b <branch> <path> HEAD" [label="new"];
     "git worktree add <path> <branch>" -> "Copy ALL detected env files";
-    "git worktree add -b <branch> <path>" -> "Copy ALL detected env files";
+    "git worktree add -b <branch> <path> HEAD" -> "Copy ALL detected env files";
     "Copy ALL detected env files" -> "Symlink Claude memory folder\n(automatic via PostToolUse hook)";
     "Symlink Claude memory folder\n(automatic via PostToolUse hook)" -> "For each branch" [label="next"];
     "Symlink Claude memory folder\n(automatic via PostToolUse hook)" -> "Report summary" [label="done"];
@@ -142,30 +142,24 @@ dirty 면 `AskUserQuestion` 으로 선택받는다 (stash 로 변경을 넘기�
 
 clean 이면 질문 없이 다음 Step 으로 진행.
 
-**Step 4 — For each branch, create or attach the worktree**
+**Step 4 — For each branch, create or attach the worktree (개별 Bash 호출, v2.9.0+)**
+
+`worktree-memory-symlink` 훅은 Bash 명령 문자열이 `git worktree add ` 로 **시작**할 때만 발화한다. 브랜치·디렉토리 존재 판정과 변수 계산은 별도 선행 Bash 호출로 끝내고, 워크트리 생성은 브랜치마다 **`git worktree add` 로 시작하는 개별 Bash 호출** 로 실행한다 (for-loop 한 방에 묶으면 훅이 발화하지 않는다):
 
 ```bash
-for BR in "${BRANCHES[@]}"; do
-    WT_PATH="$ROOT/.worktrees/$BR"
+# 선행 판정 (별도 Bash 호출):
+#   [ -d "$MAIN_ROOT/.worktrees/<BR>" ]                    # 이미 존재 → skip + notice (덮어쓰기 X)
+#   git show-ref --verify --quiet refs/heads/<BR>          # 로컬 브랜치 존재?
+#   git show-ref --verify --quiet refs/remotes/origin/<BR> # remote 브랜치 존재?
 
-    # Already a worktree? Skip with notice
-    if [ -d "$WT_PATH" ]; then
-        echo "⏭️  $BR — 이미 존재 ($WT_PATH), 건너뜀"
-        continue
-    fi
-
-    # Branch exists locally?
-    if git show-ref --verify --quiet "refs/heads/$BR"; then
-        git worktree add "$WT_PATH" "$BR"
-    # Exists on remote?
-    elif git show-ref --verify --quiet "refs/remotes/origin/$BR"; then
-        git worktree add -B "$BR" "$WT_PATH" "origin/$BR"
-    # Brand new
-    else
-        git worktree add -b "$BR" "$WT_PATH"
-    fi
-done
+# 생성 — 경로·브랜치명을 실제 값으로 치환한 개별 호출 (아래 중 케이스에 맞는 1줄):
+git worktree add <MAIN_ROOT>/.worktrees/<BR> <BR>                  # 로컬 브랜치 존재 → attach
+git worktree add -B <BR> <MAIN_ROOT>/.worktrees/<BR> origin/<BR>   # remote-only
+git worktree add -b <BR> <MAIN_ROOT>/.worktrees/<BR> HEAD          # 신규 (분기 기준 = 호출 위치 HEAD)
+git worktree add -b <BR> <MAIN_ROOT>/.worktrees/<BR> <BASE>        # 사용자가 베이스 명시 시 (예: "dev 기준으로")
 ```
+
+신규 브랜치 생성 직전 `BASE_SHA` / `BASE_BRANCH` (Step 0 캡처값) 를 그대로 두고, 생성 후 Step 6 보고에 사용한다.
 
 **Step 5 — Copy ALL detected env files into each worktree (no prompts)**
 
