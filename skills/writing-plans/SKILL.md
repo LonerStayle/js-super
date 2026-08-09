@@ -62,7 +62,7 @@ You MUST create a TaskCreate task for each of these items and complete them in o
 
 1. **입력 확인** — confirm both <slug>-requirements.md and <slug>-tech-design.md exist (HARD-GATE if either missing)
 2. **파일 구조 윤곽 잡기** — which files are created/modified, with single-responsibility boundaries
-3. **구현계획서 task 목록 작성** — each task = one TDD cycle (test → fail → impl → pass → commit), 2-5 minutes per step
+3. **구현계획서 task 목록 작성** — each task = one TDD cycle (계획서에는 `**검증**:` 자연어 설명만, 실행 단계에서 test → fail → impl → pass → commit), 2-5 minutes per step
 4. **위험 코드 지점 (§2) 채우기** — every risk category from <slug>-tech-design.md §6 mapped to a concrete location + mitigation
 5. **자체 점검** — spec coverage / placeholder scan / type consistency / 위험 coverage
 6. **사양 정합성 검증** — main agent runs A+C verification on the plan via `verifying-spec` (Tolerance for missing skill)
@@ -97,6 +97,7 @@ commit_policy: per-task
 ## 1. 단계별 작업
    ### Task 1: <Component>
    **Files:** Create/Modify/Test
+   **검증**: <무엇을 검증하는지 + 성공 기준 (자연어 1~2줄)>
    - [ ] Step 1: <action>
    - [ ] Step 2: <action>
    ...
@@ -125,11 +126,12 @@ If the user explicitly requests `single` or `none` during planning, set the fiel
 ## Bite-Sized Task Granularity (inherited from upstream)
 
 Each step is one action (2-5 minutes):
-- "Write the failing test" — step
-- "Run it to make sure it fails" — step
+- "`**검증**:` 설명 기반 실패 테스트 작성 + 실행 → FAIL 확인 (테스트 코드는 실행 단계가 작성)" — step
 - "Implement the minimal code to make the test pass" — step
 - "Run the tests and make sure they pass" — step
 - "Commit" — step (skip if git is not initialized)
+
+**계획서에는 테스트 코드를 싣지 않는다 (v2.9+)** — task 헤더의 `**검증**:` 필드 (자연어 1~2줄) 가 "무엇을 검증하는지 + 어떤 기준으로 성공인지" 를 정의하고, 실제 테스트 코드 작성·실행은 실행 단계 (executing-plans / js-super-sub-driven) 가 담당한다. TDD 순서 (테스트 먼저 → 구현) 는 실행 단계에서 그대로 유지된다.
 
 ## Same-file mechanical 묶음 룰 (v2.0.1+)
 
@@ -146,7 +148,7 @@ Each step is one action (2-5 minutes):
 
 세 조건 중 하나라도 어기면 분리. 묶을 때 task 안 step 구조:
 
-- step 1: 통합 test 작성 (한 번)
+- step 1: `**검증**` 설명 기반 통합 테스트 작성 + FAIL 확인 (실행 단계 수행, 한 번)
 - step 2~N: 각 변경의 byte-copy Edit (`**원본**` / `**수정 후**` 페어)
 - step N+1: test 실행 → pass 확인
 - step N+2: self-review
@@ -189,32 +191,28 @@ Every implementation plan MUST start with:
 
 **Model**: haiku
 
-- [ ] **Step 1: Write the failing test**
+**검증**: <이 task 의 테스트가 무엇을 검증하는지 + 성공 기준 — 자연어 1~2줄. 테스트 코드는 싣지 않는다 (v2.9+)>
 
-```python
-def test_specific_behavior():
-    result = function(input)
-    assert result == expected
-```
+- [ ] **Step 1: 실패 테스트 작성 + FAIL 확인 (실행 단계 수행)**
 
-- [ ] **Step 2: Run test to verify it fails**
+`**검증**:` 설명 기반으로 실행 단계 (executing-plans / js-super-sub-driven) 가 테스트 코드를 직접 작성한다. 계획서에는 코드를 싣지 않는다.
 
-Run: `pytest tests/path/test.py::test_name -v`
-Expected: FAIL with "function not defined"
+Run: `pytest tests/path/test.py -v`
+Expected: FAIL (구현 전)
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 2: Write minimal implementation**
 
 ```python
 def function(input):
     return expected
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 3: Run test to verify it passes**
 
-Run: `pytest tests/path/test.py::test_name -v`
+Run: `pytest tests/path/test.py -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit (skip if no git)**
+- [ ] **Step 4: Commit (skip if no git)**
 
 ```bash
 git add tests/path/test.py src/path/file.py
@@ -222,23 +220,24 @@ git commit -m "feat: add specific feature"
 ```
 ````
 
-## Task Model Hint (v1.1.14+, 정보용)
+## Task Model Hint (v1.1.14+ · v2.9+ dispatch 결합 복원)
 
-Each task block MAY include `**Model**: haiku | sonnet | opus` as an **informational complexity hint**. Under v2.0.0 byte-copy, `js-super-sub-driven` dispatches the implementer with **haiku FIXED** (기계적 byte-copy 라 추론 모델 불필요) — the `**Model**:` field does NOT change the implementer dispatch model. Spec-reviewer is always sonnet. task 가 byte-copy 로 감당 안 되면 implementer 가 `BLOCKED` 보고 → 메인이 reorder(sonnet) dispatch.
+Each task block MAY include `**Model**: haiku | sonnet | opus`. v2.9+ 부터 이 필드는 신규 테스트 작성이 포함된 task 에 한해 dispatch 에 직접 쓰인다: `js-super-sub-driven` 은 **신규 테스트 작성 포함 task** (`**검증**:` 필드 + `Test:` 경로 존재 + 테스트 코드 블록 없음) 의 implementer 를 이 필드 값 (**최소 sonnet floor**) 으로 dispatch 하고, 순수 byte-copy task 는 haiku 고정을 유지한다. Spec-reviewer is always sonnet. task 가 byte-copy 로 감당 안 되면 implementer 가 `BLOCKED` 보고 → 메인이 reorder(sonnet) dispatch.
 
-값은 task 복잡도를 나타내는 힌트일 뿐이다 (사람이 plan 을 읽거나 DAG 요약을 볼 때 참고):
+값 산정 기준:
 
-| 신호 | 복잡도 힌트 |
+| 신호 | Model 값 |
 |---|---|
-| 1-2 파일 + mechanical implementation + 명확 spec | haiku |
+| 1-2 파일 + mechanical implementation + 명확 spec (신규 테스트 없음) | haiku |
 | 다중 파일 통합 / 디버깅 / 패턴 매칭 | sonnet |
 | Korean prose 조작 (skill 본문 / MD 편집) | sonnet |
+| 신규 테스트 작성 포함 (`**검증**:` + `Test:` 경로) | 최소 sonnet (floor) |
 | 설계 / 광범위 코드베이스 이해 | opus |
 | 누락 / 모호 | sonnet |
 
-Backward compat: 필드는 선택이라 생략해도 된다. Existing plans (v1.1.13 and earlier) work as-is.
+Backward compat: 필드 생략 시 — 신규 테스트 포함 task 는 sonnet floor, 그 외 haiku. 테스트 코드 블록이 있는 기존 계획서 (v2.8 이전) 는 기존 룰 (테스트 포함 전체 byte-copy + haiku) 그대로.
 
-Note: implementer 는 항상 haiku 라 한국어 prose 를 만지는 task 는 전반적으로 haiku 의 rephrasing 위험을 가진다 (`**Model**:` 값으로 회피되지 않음). 그런 task 는 byte-copy 정확성(`**원본**`/`**수정 후**` 페어)에 특히 의존하며, byte-copy 로 감당 안 되면 BLOCKED → reorder(sonnet) 로 처리된다.
+Note: 구현 코드 블록의 STRICT BYTE-COPY 룰은 dispatch 모델과 무관하게 적용된다 (sonnet implementer 도 구현 코드는 byte-copy). 한국어 prose 를 만지는 task 는 byte-copy 정확성 (`**원본**`/`**수정 후**` 페어) 에 특히 의존하며, byte-copy 로 감당 안 되면 BLOCKED → reorder(sonnet) 로 처리된다.
 
 ## Code Block Convention (Before/After labels) — required for tasks that modify existing code
 
@@ -263,6 +262,7 @@ Rules:
 3. For tasks that CREATE a new file, the "원본" block is OMITTED — only "수정 후" block is shown (with `(new file: <path>)` annotation).
 4. Both blocks MUST use the same fenced-code language identifier.
 5. The `code-pretty` skill targets ONLY "수정 후" blocks. "원본" blocks are byte-immutable.
+6. **테스트 파일 내용은 코드 블록으로 싣지 않는다 (v2.9+)** — 신규 테스트든 기존 테스트 수정이든 계획서에는 task 헤더의 `**검증**:` 자연어 설명으로만 적는다. Before/After 페어는 구현 코드 전용이다.
 
 This convention is required so that:
 - Reviewers can compare before/after at a glance.
@@ -335,7 +335,8 @@ Categories MUST come from risk-annotation taxonomy: `side-effect | breaking | ra
 Every step must contain the actual content an engineer needs. These are **plan failures** — never write them:
 - "TBD", "TODO", "implement later", "fill in details"
 - "Add appropriate error handling" / "add validation" / "handle edge cases"
-- "Write tests for the above" (without actual test code)
+- 동어반복 `**검증**:` 필드 — "테스트를 작성한다" 처럼 무엇을/어떤 기준인지 없는 설명 (v2.9+ 테스트 코드 블록 대신 쓰는 필드라 구체성이 생명)
+- 테스트 코드 블록을 계획서에 싣는 것 (v2.9+ — `**검증**:` 자연어 설명으로 대체. 기존 계획서의 테스트 코드 블록은 하위 호환으로 실행만 지원)
 - "Similar to Task N" (repeat the code — the engineer may be reading tasks out of order)
 - Steps that describe what to do without showing how
 - References to types, functions, or methods not defined in any task
@@ -356,6 +357,7 @@ After writing the complete plan, look at it with fresh eyes:
 3. **Type consistency**: Function names, signatures, and property names must match across tasks (e.g., `clearLayers()` in Task 3 vs `clearFullLayers()` in Task 7 is a bug).
 4. **위험 코드 지점 coverage**: Every category in <slug>-tech-design.md §6 has at least one corresponding entry in §2.
 5. **same-file 묶음 룰 위반 검사**: task 들 중 같은 파일만 만지는 chain 이 2건 이상 있는지 확인. 있으면 D1 의 3 조건 (같은 파일 / test 경계 X / mechanical) 재검토 → 묶을지 결정. (v2.0.1+)
+6. **검증 필드 구체성 (v2.9+)**: 코드 변경 task 마다 `**검증**:` 필드가 있고 "무엇을 + 어떤 기준" 을 담았는지 확인. 동어반복 ("테스트 작성" 한 줄) 이나 테스트 코드 블록이 남아 있으면 수정.
 
 If you find issues, fix them inline. If you find a spec requirement with no task, add the task.
 
