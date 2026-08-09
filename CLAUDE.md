@@ -1307,3 +1307,52 @@ grep -c "5초 delay" skills/auto-brainstorming/SKILL.md skills/auto-tech-design/
 - 기본 플로우의 사용자 리뷰는 이제 RAW `.md` 만 (`.html` 은 사용자가 원할 때 명시 생성).
 - `/sync-html` / `/audit-risk` 명시 호출 경로 영향 0. og-* / worktree 계열 영향 0.
 - tests fixture 의 옛 발화 시나리오 (H5 등) 는 실행 무관 문서 — 후속 정리 대상.
+
+## 워크트리-재분기 결합 (v2.9.0+)
+
+v2.9.0+ 에서 `setting-up-worktrees` 가 워크트리 안 호출 (재분기) 을 지원. 루트 해석 이원화 — 배치 기준 = 메인 저장소 루트 (`git worktree list --porcelain` 첫 entry), 분기 기준 = 호출 위치의 현재 HEAD. spec: `docs/features/2026-08-09-워크트리-재분기/`.
+
+### 적용 범위 (3 본문 + 6 manifest)
+
+- `skills/setting-up-worktrees/SKILL.md` — Step 0 이원화 + Step 3.5 dirty 게이트 신설 + Step 4 브랜치별 개별 `git worktree add` 호출 + Step 5 복사 소스 호출 위치 우선 + Step 6 보고 확장 (분기 기준 커밋 + 스택 안내)
+- `commands/worktree.md` — 안내 동기화
+- `hooks/worktree-memory-symlink` — ROOT 해석을 `--show-toplevel` → 메인 워크트리 (worktree list 첫 entry) 로 교체 (워크트리 안 호출 시 심링크 silent 생략 버그 수정)
+- `skills/setting-up-worktrees/scripts/setup-memory-symlinks.sh` — **무변경** (인자 기반, 훅이 올바른 MAIN_ROOT 전달)
+
+### 핵심 룰
+
+- **배치 = MAIN_ROOT 고정** — 워크트리 안에서 호출해도 중첩 생성 금지
+- **분기 = 호출 위치 HEAD** — 사용자 베이스 명시 시 그 브랜치
+- **dirty 게이트 (Step 3.5)** — "WIP 커밋 후 분기" / "마지막 커밋 시점 기준 분기" AskUserQuestion 선택. stash 금지
+- **`git worktree add` 는 개별 Bash 호출의 시작** — 훅 프리픽스 매치 (`git worktree add `*) 보장. for-loop 한 방 금지
+- **스택 안내** — 베이스 ≠ 메인 브랜치면 "새브랜치 → 베이스 → 메인" 머지 경로 + 리베이스 주의 출력
+
+### 회귀 패턴 (한쪽만 변경 시)
+
+| 누락 | 증상 |
+|---|---|
+| skill 만 변경 (훅 미변경) | 워크트리 안 호출 시 심링크 silent 생략 (훅 ROOT ≠ 배치 루트) |
+| 훅만 변경 (skill 미변경) | 새 워크트리가 호출 위치 아래 중첩 생성 → git status 오염 |
+| Step 4 for-loop 부활 | 훅 프리픽스 미매치 → 심링크 미생성 |
+| commands 미동기 | 사용자 안내와 실제 동작 불일치 |
+
+### 회귀 catch grep
+
+```bash
+grep -cF "MAIN_ROOT" skills/setting-up-worktrees/SKILL.md
+# expected: >= 3
+grep -c "worktree list --porcelain" hooks/worktree-memory-symlink skills/setting-up-worktrees/SKILL.md
+# expected: 각 1 이상
+grep -cF "Step 3.5" skills/setting-up-worktrees/SKILL.md
+# expected: >= 2
+grep -c "show-toplevel" hooks/worktree-memory-symlink
+# expected: 0
+awk '/\*\*Step 4/,/\*\*Step 5/' skills/setting-up-worktrees/SKILL.md | grep -c "for BR in"
+# expected: 0 (Step 4 안 for-loop add 금지)
+```
+
+### 영향 범위
+
+- 3 본문 + 6 manifest. `setup-memory-symlinks.sh` / `worktree-merge-back` / `worktree-remove` / `using-git-worktrees` (upstream) / og-* / auto-* 영향 0
+- 훅은 기존처럼 `.worktrees/` 아래 경로만 처리 — 다른 위치 워크트리는 무시 (동작 동일)
+- E2E: `docs/features/2026-08-09-워크트리-재분기/` 의 plan Task 9 시나리오 (a)~(e) — scratchpad 임시 저장소 검증 (저장소 커밋 X)

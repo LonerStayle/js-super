@@ -55,13 +55,17 @@ case "$COMMAND" in
     *) exit 0 ;;
 esac
 
-# We're committed; resolve repo root from cwd.
+# We're committed; resolve the MAIN worktree root (v2.9.0+). `git worktree
+# list` prints the main worktree first, so `git worktree add` issued from
+# inside a linked worktree still resolves to the main repo root — matching
+# the skill's placement rule (<main-root>/.worktrees/).
 CWD="$(extract '.cwd')"
 [ -n "$CWD" ] || CWD="$PWD"
 
-ROOT="$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null || true)"
+# ⚠️ RISK(side-effect): ROOT 해석 변경 — 모든 worktree add 훅 경로에 영향 (E2E e-1/e-2 로 검증)
+ROOT="$(git -C "$CWD" worktree list --porcelain 2>/dev/null | head -1 | sed 's/^worktree //' || true)"
 if [ -z "$ROOT" ]; then
-    echo "[worktree-memory-symlink] could not resolve repo root from cwd=$CWD" >&2
+    echo "[worktree-memory-symlink] could not resolve main worktree root from cwd=$CWD" >&2
     exit 0
 fi
 
