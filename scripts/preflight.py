@@ -140,6 +140,7 @@ def subagent_task_entry_check(plan_path: Path) -> PreflightResult:
 _DEPTH_LINE = re.compile(r"^depth:\s*([23])\s*$", re.MULTILINE)
 
 
+# ⚠️ RISK(side-effect): 공유 preflight helper — execute_plan/subagent 진입 안내가 이 판독에 의존, 판독 실패는 3-doc 안전 fallback — by 산출물-깊이-선택 task 1
 def feature_depth(feature_dir: Path) -> int:
     """피처 폴더의 산출물 깊이 (산출물 깊이 선택 기능).
 
