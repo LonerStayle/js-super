@@ -10,7 +10,7 @@
     {
       "name": "js-super",
       "description": "프로덕션 코드를 안전하게 만들고 실용적으로 만드는 에이전틱 플러그인",
-      "version": "2.8.1",
+      "version": "2.9.0",
       "source": "./",
       "homepage": "https://github.com/LonerStayle/js-super",
       "repository": "https://github.com/LonerStayle/js-super",
