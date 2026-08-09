@@ -66,11 +66,10 @@ You MUST create a TaskCreate task for each of these items and complete them in o
 4. **위험 코드 지점 (§2) 채우기** — every risk category from <slug>-tech-design.md §6 mapped to a concrete location + mitigation
 5. **자체 점검** — spec coverage / placeholder scan / type consistency / 위험 coverage
 6. **사양 정합성 검증** — main agent runs A+C verification on the plan via `verifying-spec` (Tolerance for missing skill)
-7. **코드 블록 포맷 정리** — pre-review code-block prettify on the draft via `code-pretty` skill (Sonnet subagent). Runs AFTER verifying-spec passes and BEFORE generating-html. Targets only `**수정 후**`-labeled code blocks. Stops once first change-history entry is logged.
-8. **`.html` 동봉본 생성 (사용자 리뷰 전)** — fire `generating-html` (fire-and-forget Sonnet subagent) to build a human-only `.html` companion of the plan. Runs immediately after code-pretty and BEFORE showing the plan to the user. Main does NOT wait; the `.md` is untouched by this step. Re-fires together with code-pretty after each revision iteration (per-draft-state).
-9. **사용자 검토 (구현계획서)** — show the plan (code-pretty applied to code blocks; an `.html` companion is built in the background) + verifying-spec report + code-pretty diff summary; get approval (loop until OK; on changes → revise → back to step 6 verifying-spec)
-10. **변경이력 기록** — append first `[구현계획서-수정]` entry via `change-history` skill
-11. **구현 단계 핸드오프** — count tasks first, then offer the choice using the Execution Handoff message below (`executing-plans` or `js-super-sub-driven`). Upstream `subagent-driven-development` is NOT offered here; only invoke it if the user explicitly asks for the upstream original.
+7. **코드 블록 포맷 정리** — pre-review code-block prettify on the draft via `code-pretty` skill (Sonnet subagent). Runs AFTER verifying-spec passes, before user review. Targets only `**수정 후**`-labeled code blocks. Stops once first change-history entry is logged.
+8. **사용자 검토 (구현계획서)** — show the plan (code-pretty applied to code blocks) + verifying-spec report + code-pretty diff summary; get approval (loop until OK; on changes → revise → back to step 6 verifying-spec)
+9. **변경이력 기록** — append first `[구현계획서-수정]` entry via `change-history` skill
+10. **구현 단계 핸드오프** — count tasks first, then offer the choice using the Execution Handoff message below (`executing-plans` or `js-super-sub-driven`). Upstream `subagent-driven-development` is NOT offered here; only invoke it if the user explicitly asks for the upstream original.
 
 If you find yourself skipping ahead, stop and create the missing task.
 
@@ -279,9 +278,8 @@ digraph plan_flow {
     "Decompose into bite-sized tasks" [shape=box];
     "Self-review (internal)" [shape=box];
     "Run verifying-spec FIRST" [shape=box];
-    "Single combined approval gate\n(plan + verify + code-pretty diff; .html in bg)" [shape=diamond];
+    "Single combined approval gate\n(plan + verify + code-pretty diff)" [shape=diamond];
     "Invoke code-pretty\n(pre-review, Sonnet subagent)" [shape=box];
-    "Invoke generating-html\n(pre-review, Sonnet subagent)" [shape=box];
     "Invoke change-history" [shape=box];
     "Hand off to /execute-plan" [shape=doublecircle];
 
@@ -290,10 +288,9 @@ digraph plan_flow {
     "Decompose into bite-sized tasks" -> "Self-review (internal)";
     "Self-review (internal)" -> "Run verifying-spec FIRST";
     "Run verifying-spec FIRST" -> "Invoke code-pretty\n(pre-review, Sonnet subagent)";
-    "Invoke code-pretty\n(pre-review, Sonnet subagent)" -> "Invoke generating-html\n(pre-review, Sonnet subagent)";
-    "Invoke generating-html\n(pre-review, Sonnet subagent)" -> "Single combined approval gate\n(plan + verify + code-pretty diff; .html in bg)";
-    "Single combined approval gate\n(plan + verify + code-pretty diff; .html in bg)" -> "Self-review (internal)" [label="no — re-verify + re-prettify"];
-    "Single combined approval gate\n(plan + verify + code-pretty diff; .html in bg)" -> "Invoke change-history" [label="approve"];
+    "Invoke code-pretty\n(pre-review, Sonnet subagent)" -> "Single combined approval gate\n(plan + verify + code-pretty diff)";
+    "Single combined approval gate\n(plan + verify + code-pretty diff)" -> "Self-review (internal)" [label="no — re-verify + re-prettify"];
+    "Single combined approval gate\n(plan + verify + code-pretty diff)" -> "Invoke change-history" [label="approve"];
     "Invoke change-history" -> "Hand off to /execute-plan";
 }
 ```
@@ -417,16 +414,13 @@ This summarizes the corrected order (matches Checklist + Process Flow above):
    - Procedure: consistency (FR + key decisions covered as tasks) + code impact (files/functions referenced exist or are explicitly created)
    - **Tolerance**: if verifying-spec skill is not installed, skip and emit the notice ("ℹ️ verify-gate 가 설치되지 않았습니다. Phase 2 이후 활성화되며, 지금은 검증 없이 진행합니다.")
 
-2. **Run code-pretty** (after verifying-spec passes, before generating-html):
+2. **Run code-pretty** (after verifying-spec passes):
    - Target: `<slug>-implementation-plan.md` (only `**수정 후**`-labeled blocks)
    - Output: diff summary text (preserved for the approval gate)
    - **Tolerance**: if code-pretty skill is not installed, skip and emit "ℹ️ code-pretty 가 설치되지 않았습니다. 코드 블록은 그대로 표시됩니다."
 
-3. **Run generating-html** (immediately after code-pretty):
-   - Fire-and-forget Sonnet subagent that builds a human-only `.html` companion; main does NOT wait and the `.md` is untouched by this step.
-
-4. **Single combined approval gate** — present in ONE message:
-   - The full `<slug>-implementation-plan.md` (code-pretty applied to code blocks; `.html` companion built in background) (or summary if very long, with link)
+3. **Single combined approval gate** — present in ONE message:
+   - The full `<slug>-implementation-plan.md` (code-pretty applied to code blocks) (or summary if very long, with link)
    - The verify-spec 4-axis report
    - The code-pretty diff summary
    - **Gate #13 — plan + verify 결합 승인**
@@ -453,7 +447,7 @@ This summarizes the corrected order (matches Checklist + Process Flow above):
    - DO NOT split into "approve plan" → "approve verify report". One gate, one decision.
    - On `no` → 피드백 받아 수정 후 재제시. anchor 질문 강제 X.
 
-5. On `yes` → invoke change-history (`[구현계획서-수정]` entry) → continue to Execution Handoff below.
+4. On `yes` → invoke change-history (`[구현계획서-수정]` entry) → continue to Execution Handoff below.
    On `no` → 피드백 받아 수정 후 재제시. anchor 질문 강제 X.
 
 ## Execution Handoff

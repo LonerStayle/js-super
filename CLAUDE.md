@@ -138,6 +138,10 @@ Before proposing changes to skill design, workflow philosophy, or architecture, 
 
 요약: 이 두 skill의 룰 변경은 atomic하게 묶어 처리할 것.
 
+### v2.8.2+ 분기 — 자동 발동 폐지로 결합 해소
+
+v2.8.2 에서 위 옵션 중 "자동 발동 자체 폐지" 를 채택. generating-html 은 커맨드 전용 (`disable-model-invocation: true`) 이 됐고 어떤 skill 흐름도 자동 invoke 하지 않는다. footer empty 신호는 이제 "발동 트리거" 가 아니라 명시 호출 시 preflight 의 draft/live 경계 검사 (draft → 본 skill / live → `/sync-html` 안내) 로만 쓰인다. change-history 의 boilerplate entry 룰은 그대로 — 향후 그 룰을 바꿔도 generating-html 재발동 회귀는 더 이상 발생하지 않는다 (자동 발동 경로 부재). 자세한 내용은 "generating-html 커맨드 강등 (v2.8.2+)" 섹션.
+
 ## writing-plans `**Model**:` 필드 ↔ js-super-sub-driven 결합
 
 `writing-plans` 의 task block 신규 `**Model**:` 필드 (v1.1.14+) 는 `js-super-sub-driven` 의 implementer dispatch model 결정에 직접 사용된다 (`skills/js-super-sub-driven/SKILL.md` Plan Analysis & Wave Build 단계). 즉:
@@ -182,7 +186,7 @@ js-super 자체 skill 의 Checklist 본문에 박힌 task 명칭은 **사용자 
 
 - **기존 4 skill body 변경 0** — auto-* 본문은 self-contained mirror. 본 4 skill 어떤 라인도 손대지 않음. 회귀 catch: `git diff HEAD~1 HEAD -- skills/{brainstorming,tech-design,writing-plans,executing-plans}/SKILL.md` empty 보장.
 - **Gate #14 (실행 모드 선택) override 명시** — v1.1.12+ "자동승인 절대 X" 룰을 auto-executing-plans 가 명시 override. 일반 `/execute-plan` 영향 0 (게이트 그대로). auto-* 명시적 invoke 시에만 작동.
-- **generating-html fire-and-forget dispatch** (v2.3.2+, v1.1.17 D9 amend 반전) — auto-brainstorming Step 4.5 / auto-tech-design Step 4.5 / auto-writing-plans Step 4.6 에서 `run_in_background: true` 로 dispatch. 메인 latency 거의 0 + 사용자가 transition notice 시점에 `.html` 검토 가능 (Type "stop" abort). **auto-executing-plans 는 제외** (코드 실행 단계 — 의미 없음). 동기 호출 (sync wait) 은 여전히 금지. 회귀 catch: 3 skill 본문에 `Step 4.5\|Step 4.6` + `run_in_background: true` 매치 필수.
+- **generating-html fire-and-forget dispatch — v2.8.2 에서 폐지** (v2.3.2+ 도입 → v2.8.2 반전) — auto-brainstorming Step 4.5 / auto-tech-design Step 4.5 / auto-writing-plans Step 4.6 의 `run_in_background: true` dispatch 는 v2.8.2 커맨드 강등에서 제거됨. 회귀 catch 반전: 3 skill 본문에 `generating-html` dispatch 매치 0 이어야 함 (`grep -n "generating-html.*dispatch" skills/auto-{brainstorming,tech-design,writing-plans}/SKILL.md` → 안티 패턴 표의 금지 라인 외 0). 자세한 내용은 "generating-html 커맨드 강등 (v2.8.2+)" 섹션.
 - **AskUserQuestion 호출 부재** — auto-* 본문 어디에도 AskUserQuestion 호출 X. clarifying Q 는 메인 turn 의 일반 prose 질의로 처리.
 - **Visual Companion / 카테고리 미니질문 / question plan 동의 등 PRD-mode 분기 부재** — Socratic only (D3).
 
@@ -673,14 +677,18 @@ grep -c "한국어 친화 안내 톤 (v2.4+)" CLAUDE.md
 회귀 catch grep:
 
 ```bash
-grep -c "5초 delay" skills/auto-brainstorming/SKILL.md skills/auto-tech-design/SKILL.md skills/auto-writing-plans/SKILL.md
-# expected: 각 ≥ 1
-
 grep -c "silent log monitor (v2.4+)" skills/generating-html/SKILL.md
 # expected: ≥ 1
 ```
 
 요약: v2.4 메이저 — A 광범위 (10+ skill + 10+ commands + README + CLAUDE.md) + B 4 룰 (generating-html + auto-* 3 race delay + `/sync-html --check`). atomic 처리.
+
+### v2.8.2+ 분기 — B-2 폐지 + B-1/B-4 적용 범위 축소
+
+v2.8.2 커맨드 강등으로 auto-* 3 skill 의 자동 dispatch 가 사라지면서:
+
+- **B-2 (5초 race delay) 폐지** — race 자체가 자동 발동 (dispatch 직후 change-history 가 footer 를 채우던 시점) 전용이었음. 옛 grep (`grep -c "5초 delay" skills/auto-*/SKILL.md` 각 ≥ 1) 은 반전 — 이제 0 이어야 함.
+- **B-1 / B-4 는 명시 호출 경로만** — `/sync-html` / `/audit-risk` 등. B-3 silent log 는 그대로.
 
 ## --no-ask 플래그 ↔ 8 skill body 결합 (v2.5+)
 
@@ -1238,3 +1246,64 @@ grep -cF "js-super:auto-executing-plans" skills/auto-writing-plans/SKILL.md
 ```
 
 파일럿 누적: og-* 3 + auto-* 4 = **7 커맨드** 전환. 나머지 17개는 후속.
+
+## generating-html 커맨드 강등 (v2.8.2+)
+
+v2.8.2 에서 `generating-html` 을 기본 플로우에서 완전히 제거하고 명시 호출 전용으로 강등. 배경: 백그라운드 자동 발동이 간헐적으로 누락되던 문제 (사용자 catch) + og/auto 커맨드 전용화 (v2.8.1) 와 같은 컨텍스트 절감 원리.
+
+### og-* (v2.8.1) 와 다른 점 — 스킬 삭제가 아니라 플래그 강등
+
+og-* 는 스킬을 삭제하고 커맨드에 인라인했지만, generating-html 은 **스킬 유지 + frontmatter `disable-model-invocation: true`**. 이유: (1) `html-companion-prompt.md` 자산을 `/sync-html` 이 그대로 공유 — 스킬 디렉토리가 자산의 집, (2) preflight user-gate / 디바운스 / silent log 등 절차가 커맨드 인라인엔 과함, (3) `disable-model-invocation: true` 만으로 description 컨텍스트 상주 제거 + 모델 자동 발동 차단이 동시에 해결됨.
+
+### 실제 변경 (10 본문 + 6 manifest)
+
+1. `skills/generating-html/SKILL.md` — frontmatter 플래그 + description 재작성 + HARD-GATE / When-to-Use / dot / Related Skills / B-2 를 명시 호출 전용으로 정리
+2. `skills/brainstorming/SKILL.md` — Checklist 항목 6 삭제 + dot 노드 + Process detail step 6 + Gate #8 문구
+3. `skills/tech-design/SKILL.md` — Checklist 항목 6 삭제 + dot + Process detail step 6 + Gate #11 문구 + After Save 재구성
+4. `skills/writing-plans/SKILL.md` — Checklist 항목 8 삭제 + dot + After Save step 3 삭제 (code-pretty 는 유지)
+5. `skills/code-pretty/SKILL.md` — "BEFORE generating-html" 타이밍 표현을 "before user review" 로 교체 (플로우 위치 불변)
+6. auto-* 3 (`auto-brainstorming`/`auto-tech-design`/`auto-writing-plans`) — Step 4.5/4.6 섹션 + Checklist 항목 + description 문구 삭제, 안티 패턴 표를 "호출 (모든 형태) NEVER" 로 강화
+7. `README.md` — 스킬 분류에 명시 호출 전용 표기
+8. `CLAUDE.md` — 본 섹션 + 기존 3 섹션 (change-history 결합 / auto-flow mirror / 비동기 신뢰성) 분기 노트
+
+### 유지된 것 (변경 0)
+
+- `/sync-html` 커맨드 — live doc `.html` sync 의 정본 경로. `html-companion-prompt.md` 직접 사용 (스킬 안 거침 → 플래그 영향 0)
+- `html-companion-prompt.md` — 그대로 보존 (v2.2.4 디자인 톤 자유 룰 포함)
+- `scripts/preflight.py:docs_pretty_check` — 명시 호출 시 여전히 사용
+- `change-propagation` 의 `/sync-html` 안내 / `fast-tasks` 의 금지 목록 / `auto-executing-plans` 의 "호출 X" — 이미 미호출이라 그대로
+- AI 흐름은 `.md` 만 읽음 / `.html` gitignore — 모두 유지
+
+### 회귀 패턴
+
+| 안티 패턴 | 증상 |
+|---|---|
+| 기본 플로우 skill 이 generating-html 을 다시 invoke | 간헐적 미발동 문제 재발 + 컨텍스트 낭비 |
+| frontmatter `disable-model-invocation: true` 제거 | description 상주 부활 + 모델 자동 발동 부활 |
+| auto-* 에 Step 4.5/4.6 dispatch 부활 | v2.8.2 강등 무화 |
+| 5초 race delay 재도입 | 폐지된 B-2 부활 — 자동 발동 없인 무의미 |
+
+### 회귀 catch grep
+
+```bash
+# 스킬 플래그 유지
+grep -F "disable-model-invocation: true" skills/generating-html/SKILL.md
+# expected: 1
+
+# 기본 플로우 + auto-* 본문에 generating-html 발화 잔존 X (안티 패턴 표의 금지 라인 제외)
+grep -rn "generating-html" skills/{brainstorming,tech-design,writing-plans}/SKILL.md
+# expected: 0
+grep -n "generating-html" skills/auto-{brainstorming,tech-design,writing-plans,executing-plans}/SKILL.md | grep -v "NEVER\|호출 X"
+# expected: 0
+
+# 5초 delay 폐지 확인
+grep -c "5초 delay" skills/auto-brainstorming/SKILL.md skills/auto-tech-design/SKILL.md skills/auto-writing-plans/SKILL.md
+# expected: 각 0
+```
+
+### 영향 범위
+
+- 스킬 8 본문 + README + CLAUDE.md + 6 manifest. commands / scripts / hooks 변경 0.
+- 기본 플로우의 사용자 리뷰는 이제 RAW `.md` 만 (`.html` 은 사용자가 원할 때 명시 생성).
+- `/sync-html` / `/audit-risk` 명시 호출 경로 영향 0. og-* / worktree 계열 영향 0.
+- tests fixture 의 옛 발화 시나리오 (H5 등) 는 실행 무관 문서 — 후속 정리 대상.
