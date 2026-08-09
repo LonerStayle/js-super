@@ -100,7 +100,7 @@ Save path: `docs/features/YYYY-MM-DD-<slug>/<slug>-requirements.md`
 ```markdown
 # 요구사항: <feature-name>
 
-> **다음 단계 안내**: 이 문서는 PRD (기획 단계 요구사항만) 입니다. 다음 단계로 `tech-design` skill (또는 `/tech-design` 슬래시) 을 호출해서 `<slug>-tech-design.md` (기술 설계서) 를 만드세요. 기술 결정이나 구현 세부사항은 여기 박지 마세요 — 그건 다음 두 산출물에 들어갑니다.
+> **다음 단계 안내**: 이 문서는 PRD (기획 단계 요구사항만) 입니다. 다음 단계로 `tech-design` skill (또는 `/tech-design` 슬래시) 을 호출해서 `<slug>-tech-design.md` (기술 설계서) 를 만드세요. 기술 결정이나 구현 세부사항은 여기 박지 마세요 — 그건 다음 산출물 (tech-design, 3개 트랙이면 plan 까지) 에 들어갑니다.
 
 ## 1. 배경/목적
 ## 2. 사용자 스토리 / 시나리오
@@ -312,7 +312,7 @@ js-super:brainstorming 진입 시 1순위 발화. `/brainstorm` slash command �
   "multiSelect": false,
   "options": [
     {"label": "/og-brainstorm 안내", "description": "가벼운 단발 / upstream 원본 — 직접 실행하도록 안내"},
-    {"label": "js-super:brainstorming", "description": "3-MD 풀 트랙 / PRD + tech-design + plan / 변경이력 + 위험 주석"}
+    {"label": "js-super:brainstorming", "description": "js-super 풀 트랙 (2~3 MD — 깊이는 tech-design 승인 시 선택) / 변경이력 + 위험 주석"}
   ]
 }
 ```
