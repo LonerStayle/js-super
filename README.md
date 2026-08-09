@@ -10,7 +10,7 @@
 <br/>
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.8.2-7c3aed?style=for-the-badge&labelColor=0d1117">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.9.0-7c3aed?style=for-the-badge&labelColor=0d1117">
   <img alt="Upstream" src="https://img.shields.io/badge/upstream-superpowers%205.0.7-f97316?style=for-the-badge&labelColor=0d1117">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge&labelColor=0d1117">
   <img alt="Language" src="https://img.shields.io/badge/lang-한국어-3b82f6?style=for-the-badge&labelColor=0d1117">
@@ -18,8 +18,8 @@
 </p>
 
 <p>
-  <img alt="Commands" src="https://img.shields.io/badge/commands-22-06b6d4?style=flat-square&labelColor=0d1117">
-  <img alt="Skills" src="https://img.shields.io/badge/skills-32-06b6d4?style=flat-square&labelColor=0d1117">
+  <img alt="Commands" src="https://img.shields.io/badge/commands-25-06b6d4?style=flat-square&labelColor=0d1117">
+  <img alt="Skills" src="https://img.shields.io/badge/skills-29-06b6d4?style=flat-square&labelColor=0d1117">
   <img alt="Zero deps" src="https://img.shields.io/badge/dependencies-zero-22c55e?style=flat-square&labelColor=0d1117">
 </p>
 
@@ -86,8 +86,9 @@ flowchart LR
     B --> G1{확인 게이트}:::gate
     G1 --> C["/tech-design"]:::cmd
     C --> D[기술설계.md]:::doc
-    D --> G2{확인 게이트}:::gate
-    G2 --> E["/write-plan"]:::cmd
+    D --> G2{확인 게이트 + 깊이 선택}:::gate
+    G2 -->|3개 문서| E["/write-plan"]:::cmd
+    G2 -->|2개 문서로 종료| Z[여기서 마무리 — 필요해지면 /write-plan 으로 승격]:::doc
     E --> F[구현계획.md]:::doc
     F --> G3{확인 게이트}:::gate
     G3 --> H["/execute-plan"]:::cmd
@@ -122,7 +123,7 @@ flowchart LR
 
 각 단계가 끝날 때마다 AI 가 한 번씩 물어봐요. 답변에 따라 다음 단계로.
 
-<sub>산출물은 <code>docs/features/2026-05-23-사용자-잔액-출금/</code> 폴더에 3 개 <code>.md</code> 로 쌓입니다. 보기 좋은 <code>.html</code> 사본이 필요하면 <code>/sync-html</code> 한 줄로 만들 수 있어요.</sub>
+<sub>산출물은 <code>docs/features/2026-05-23-사용자-잔액-출금/</code> 폴더에 2~3 개 <code>.md</code> 로 쌓입니다 (기술설계 게이트에서 구현계획까지 갈지 선택 — v2.9.0). 보기 좋은 <code>.html</code> 사본이 필요하면 <code>/sync-html</code> 한 줄로 만들 수 있어요.</sub>
 
 <br/>
 
@@ -511,6 +512,7 @@ flowchart TD
 
 | 명령 | 한 줄 설명 |
 |---|---|
+| `/goodmorning` | 아침 브리핑 — 워크트리·세션 기록을 실행 시점에 수집해 위험 우선 보고 |
 | `/audit-risk` | 5+1 AI 가 보안·거버넌스 동시 점검 → HTML 보고서 |
 | `/worktree <브랜치>` | 격리 작업 공간 + `.env*` + Claude 메모리 자동 |
 | `/worktree-merge-back` | feature 워크트리 안에서 안전한 main 머지 |
@@ -764,7 +766,7 @@ flowchart LR
 
 **서브에이전트 (3)** — js-super-sub-driven / subagent-driven-development / dispatching-parallel-agents
 
-**워크트리 (3)** — setting-up-worktrees / using-git-worktrees / worktree-merge-back
+**워크트리 (4)** — setting-up-worktrees / using-git-worktrees / worktree-merge-back / worktree-remove
 
 **테스트·디버깅 (2)** — test-driven-development / systematic-debugging
 
@@ -793,7 +795,7 @@ flowchart LR
 
 ## upstream superpowers 와의 관계
 
-이 저장소는 [superpowers](https://github.com/obra/superpowers) v5.0.7 풀 카피 위에 **프로덕션 안전성 확장** 을 얹은 형태입니다. 단계별 확인 게이트 / 변경이력 자동 footer / 위험 주석 / 서브에이전트 wave-parallel 실행 / `.html` 다크 모드 사본 / 보안·거버넌스 감사 — 실무에서 발생하는 검토 부담 / AI 자동승인 폭주 / 문서·코드 정합 문제를 풀기 위한 확장입니다. 게이트 UI 는 한국어로 노출됩니다. upstream 업데이트는 수동 머지로 따라갑니다.
+이 저장소는 [superpowers](https://github.com/obra/superpowers) v5.0.7 에서 갈라져 나온 포크에 **프로덕션 안전성 확장** 을 얹은 형태입니다 (v2.8.1 부터 og 스킬을 커맨드로 인라인하며 upstream 과 완전 분리). 단계별 확인 게이트 / 변경이력 자동 footer / 위험 주석 / 서브에이전트 wave-parallel 실행 / `.html` 다크 모드 사본 / 보안·거버넌스 감사 — 실무에서 발생하는 검토 부담 / AI 자동승인 폭주 / 문서·코드 정합 문제를 풀기 위한 확장입니다. 게이트 UI 는 한국어로 노출됩니다. upstream 업데이트는 수동 머지로 따라갑니다.
 
 **`/og-*` — upstream 원본 흐름이 필요할 때**:
 
@@ -820,6 +822,7 @@ og-* 흐름은 변경이력 / 위험 주석 / `.html` 사본 / 검증 게이트�
 
 | 버전 | 무엇이 바뀌었나요 |
 |---|---|
+| **v2.9.0** | 산출물 깊이 선택 (2~3 문서) + 구현계획서 테스트 자연어 축약 + `/goodmorning` 단일화 (goodnight 통합) + 워크트리 재분기·심링크 훅 안정화 |
 | **v2.8.2** | `.html` 자동 생성 제거 — 원할 때 `/sync-html` 등 명시 호출로만 (간헐적 누락 문제 해결) |
 | **v2.8** | `/goodnight` · `/goodmorning` 세션 핸드오프 + og 흐름 커맨드 전용화 |
 | **v2.7** | skill 빌더 3종 고도화 — 생성 스코프(프로젝트 / 전체) + 출처 표식 + `/list-skills` 조회 |
