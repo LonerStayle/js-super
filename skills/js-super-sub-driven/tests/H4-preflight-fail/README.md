@@ -22,7 +22,7 @@
 3. 메인이 `human_reason` 한 줄 노출 후 AskUserQuestion 게이트:
    - choices: `"수정 후 재시도"` / `"강제 진행 (위험)"` / `"스킵 (이번만)"`
 4. 사용자가 `"수정 후 재시도"` 선택 → entry 제거 후 재호출 → preflight ok=True → Step 2 dispatch
-5. 사용자가 `"스킵 (이번만)"` 선택 → caller (brainstorming/tech-design/writing-plans) 에게 abnormal return → caller 가 docs-pretty 단계 스킵하고 change-history 직행
+5. 사용자가 `"스킵 (이번만)"` 선택 → 이번 호출 스킵 + skill 즉시 종료 (v2.8.2+ 명시 호출 전용 — caller 계약 폐지)
 
 ## 매핑
 

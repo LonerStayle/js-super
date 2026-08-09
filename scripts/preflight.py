@@ -61,7 +61,7 @@ def docs_pretty_check(file_path: Path) -> PreflightResult:
         return PreflightResult(
             False,
             "변경이력 footer not empty (doc is live)",
-            "이미 변경이력 entry 가 존재합니다 (live doc). docs-pretty 는 최초 생성 단계에서만 발화합니다",
+            "이미 변경이력 entry 가 존재합니다 (live doc). generating-html 은 초안 단계 전용입니다 — live doc 재생성은 /sync-html 을 사용하세요",
         )
     return PreflightResult(True, "ok", "정상")
 

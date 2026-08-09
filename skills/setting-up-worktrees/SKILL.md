@@ -182,7 +182,7 @@ done
 
 **Step 5.5 — Memory symlink (handled automatically by hook)**
 
-Memory-folder symlinking is performed by the `worktree-memory-symlink` PostToolUse hook (see `hooks/hooks.json` + `hooks/worktree-memory-symlink`). It fires automatically whenever any `git worktree add ...` command runs through the Bash tool, parses the worktree path from the command, and invokes `scripts/setup-memory-symlinks.sh`. **Do nothing here.** No mkdir, no ln, no sed — the hook owns this concern entirely. The script's output (e.g. `🔗 <branch> ← Claude 메모리 폴더 심링크 ...`) appears as hook stderr in your tool output and should be forwarded to the user as part of the Step 6 summary if visible.
+Memory-folder symlinking is performed by the `worktree-memory-symlink` PostToolUse hook (see `hooks/hooks.json` + `hooks/worktree-memory-symlink`). It fires only when a Bash command starts with the exact prefix `git worktree add ` — which is why Step 4 issues each add as a standalone prefixed command. It parses the worktree path from the command, and invokes `scripts/setup-memory-symlinks.sh`. **Do nothing here.** No mkdir, no ln, no sed — the hook owns this concern entirely. The script's output (e.g. `🔗 <branch> ← Claude 메모리 폴더 심링크 ...`) appears as hook stderr in your tool output and should be forwarded to the user as part of the Step 6 summary if visible.
 
 Behavior summary:
 - Main memory dir missing → skip with notice (first-run user, nothing to share yet).
@@ -249,7 +249,7 @@ Claude 메모리 폴더: 메인 → 워크트리 심링크 (n개)
 If the user later asks to remove a worktree:
 
 ```bash
-git worktree remove "$ROOT/.worktrees/<branch>"
+git worktree remove "$MAIN_ROOT/.worktrees/<branch>"
 git branch -d <branch>   # only if no longer needed
 ```
 

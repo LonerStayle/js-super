@@ -40,7 +40,7 @@
 
 ## 5. 핵심 결정 + 대안 비교 (why this path)
 
-- **D-1 메인 루트 판정 = `git worktree list --porcelain` 첫 entry** (채택). 첫 entry 가 메인 워크트리라는 것은 git 문서가 보장하고, `/goodnight` 등 기존 커맨드와 같은 컨벤션. 대안: `git rev-parse --git-common-dir` 의 부모 디렉토리 — bare repo / `.git` 위치 특수 배치에서 가정이 깨질 수 있어 기각.
+- **D-1 메인 루트 판정 = `git worktree list --porcelain` 첫 entry** (채택). 첫 entry 가 메인 워크트리라는 것은 git 문서가 보장하고, `/goodmorning` 등 기존 커맨드와 같은 컨벤션. 대안: `git rev-parse --git-common-dir` 의 부모 디렉토리 — bare repo / `.git` 위치 특수 배치에서 가정이 깨질 수 있어 기각.
 - **D-2 분기 기준 = 호출 cwd 의 HEAD** (채택). git 명령을 호출 위치에서 실행하면 HEAD 가 자동으로 현재 워크트리 커밋 — 별도 인자 불필요, 사용자 질문 0. `BASE_SHA`/`BASE_BRANCH` 를 생성 직전 캡처해 보고에 사용. 사용자가 "dev 기준으로" 처럼 베이스를 명시하면 그 브랜치를 `git worktree add` 마지막 인자로 지정. 대안: 항상 메인 브랜치 기준 — FR-2 위반이라 기각.
 - **D-3 dirty 게이트 = AskUserQuestion 2 옵션** (채택). `git status --porcelain` 이 비어있지 않으면 "WIP 커밋 후 분기" / "마지막 커밋 시점 기준 분기" 선택 (FR-3). WIP 커밋 메시지는 변경 요약으로 LLM 생성. stash 금지 (요구사항 명시). 대안: worktree-merge-back v2.5.2 처럼 무조건 자동 커밋 — 분기 시작점이 달라지는 결정이라 사용자 선택 유지 (요구사항 FR-3 명시).
 - **D-4 심링크 훅 수정** (채택). 훅의 ROOT 해석만 메인 워크트리로 교체 — 스크립트 (`setup-memory-symlinks.sh`) 는 인자 기반이라 무변경. 대안: 스킬 본문에서 심링크 직접 수행 — 과거 회귀 (v1.1.2~v1.1.4, 에이전트가 인코딩을 머리로 시뮬레이션) 때문에 Anti-Pattern 으로 금지된 경로라 기각.

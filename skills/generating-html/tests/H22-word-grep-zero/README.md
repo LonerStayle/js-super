@@ -21,8 +21,11 @@ grep -rn "docs-pretty\|regen-html" \
   --exclude-dir=og-* \
   --exclude-dir=H4-preflight-fail \
   --exclude-dir=H5-docs-pretty-pre-review \
-  --exclude-dir=H6-task-name-friendly
-# expected: 0
+  --exclude-dir=H6-task-name-friendly \
+  --exclude-dir=H19-pretty-md \
+  --exclude-dir=H22-word-grep-zero
+# expected: 역사 메타 참조만 허용 — tests/ fixture 인덱스 (H5 행) + CLAUDE.md v2.2.2 rename 메모 자기 참조.
+#           live skill / command 본문 hit = 회귀.
 ```
 
 ## 검증 체크리스트

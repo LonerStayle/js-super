@@ -45,7 +45,7 @@ disable-model-invocation: true
 
 - AskUserQuestion 게이트 — fire-and-forget 의도상 사용자 입력 wait X
 - `.md` 가공 (`.md` 는 source-of-truth, 손대지 않음)
-- **상세** 로그는 silent (`.js-super/html-regen.log`, `--check` 로 조회). 단 메인은 **dispatch 여부**를 1줄로 노출한다 (예: "`.html` 백그라운드 호출됨 — 완료 여부는 `/sync-html --check` 로 조회"). sync-html 은 fire-and-forget 라 dispatch 직후엔 완료/크기를 알 수 없다 (race delay 를 두고 완료를 확인·보고하는 auto-* Step 4.5/4.6 흐름과 다름).
+- **상세** 로그는 silent (`.js-super/html-regen.log`, `--check` 로 조회). 단 메인은 **dispatch 여부**를 1줄로 노출한다 (예: "`.html` 백그라운드 호출됨 — 완료 여부는 `/sync-html --check` 로 조회"). sync-html 은 fire-and-forget 라 dispatch 직후엔 완료/크기를 알 수 없다.
 
 ## `--check` 옵션 (v2.4+)
 

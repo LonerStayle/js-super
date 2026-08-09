@@ -183,7 +183,7 @@ After saving the plan, offer execution choice:
 | 위험 코드 지점 §2 섹션 | 있음 | 없음 |
 | 변경이력 footer | 자동 누적 | 없음 |
 | verifying-spec 게이트 | 자동 실행 | 없음 |
-| docs-pretty 포맷 정돈 | 자동 1회 | 없음 |
+| .html 시각화 (generating-html) | `/sync-html` 명시 호출 | 없음 |
 | Execution Handoff | Inline / Subagent (js-super-sub-driven) 양자택일 | Subagent-Driven (subagent-driven-development) / Inline (/og-execute-plan) 양자택일 |
 
 ## 다음 단계

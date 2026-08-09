@@ -68,7 +68,7 @@ sys.exit(0 if result.ok else 1)
   - choices:
     - `"수정 후 재시도"` → 사용자가 doc 수정 후 메인이 helper 재호출.
     - `"강제 진행 (위험)"` → preflight 무시하고 Step 2 진입. 메인이 `⚠️ preflight 우회. <reason> 무시하고 진행.` 한 줄 안내.
-    - `"스킵 (이번만)"` → generating-html 단계 스킵, caller 에게 abnormal return (caller 가 change-history 직행 결정).
+    - `"스킵 (이번만)"` → 이번 호출 스킵 + skill 즉시 종료. 메인이 "이번 .html 생성은 스킵했습니다" 한 줄 안내 (v2.8.2+ 명시 호출 전용 — 반환할 caller 흐름 없음).
 - **exit ≠ 0,1** (invocation 실패: 127 / 2 / etc., harness 환경 이슈) → stderr 전문 노출 + `AskUserQuestion` 게이트:
   - 메시지: `"preflight helper invocation 실패 (exit <code>): <stderr 전문>. 어떻게 할까요?"`
   - choices:

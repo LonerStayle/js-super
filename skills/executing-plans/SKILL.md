@@ -59,7 +59,7 @@ import sys
 from pathlib import Path
 from scripts.preflight import execute_plan_mode_check
 result = execute_plan_mode_check(Path('<PLAN_PATH>'))
-print(f'ok={result.ok} reason={result.reason}')
+print(f'ok={result.ok} reason={result.reason} | {result.human_reason}')
 sys.exit(0 if result.ok else 1)
 "
 ```

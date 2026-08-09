@@ -516,8 +516,8 @@ grep -nE "https?://.*\.(css|js)|read_file.*\.html|Read.*\.html" \
 
 # Anti-Pattern: 다른 skill 본문에 .html 참조
 grep -rn "\.html" \
-  skills/{brainstorming,tech-design,writing-plans,executing-plans,auto-*,og-*}/SKILL.md
-# expected: 0 (.html 흐름은 generating-html 전용)
+  skills/{brainstorming,tech-design,writing-plans,executing-plans,auto-*}/SKILL.md
+# expected: auto-* 3 skill 의 안티 패턴 NEVER 행 3건만 (v2.8.2 강등 catch 라인) — 그 외 hit = 회귀
 
 # v2.2.1+ Anti-Pattern: 메인이 결과 대기 (fire-and-forget 위반)
 grep -nE "await.*Task|sync.*dispatch.*\.html" skills/generating-html/SKILL.md
@@ -569,7 +569,7 @@ grep -c "적극 시각화 v2.2.3" skills/generating-html/html-companion-prompt.m
 v2.2.2+ 에서 `docs-pretty` → `generating-html` skill 명칭 + `/regen-html` → `/sync-html` slash command 명칭 일괄 교체. 다음 룰 atomic patch:
 
 - **5 항목 atomic** — skill 디렉토리 rename + slash command rename + 13 파일 단어 swap + CLAUDE.md 결합 메모 + manifest 항목
-- **단어 grep 0 검증** — `grep -rn "docs-pretty\|regen-html" skills/ commands/ CLAUDE.md README.md --exclude-dir=og-* --exclude-dir=H4-preflight-fail --exclude-dir=H5-docs-pretty-pre-review --exclude-dir=H6-task-name-friendly` → 0
+- **단어 grep 검증** — `grep -rn "docs-pretty\|regen-html" skills/ commands/ CLAUDE.md README.md --exclude-dir=og-* --exclude-dir=H4-preflight-fail --exclude-dir=H5-docs-pretty-pre-review --exclude-dir=H6-task-name-friendly` → 역사 메타 참조만 허용 (tests/ fixture 인덱스·H19 회고 라인·본 섹션 자기 참조). live skill/command 본문 hit = 회귀 (H22 fixture 참조)
 - **Acceptance 5번 자동→안내** — `change-propagation` 마지막 단계의 `/sync-html` 자동 호출 → 사용자 안내로 완화 (auto-fire X). 사용자가 명시 호출
 - **commands/regen-html.md 삭제** — old slash command 제거 (sync-html.md 신규 생성으로 대체)
 
@@ -790,9 +790,9 @@ grep -c -E "no-ask.? 플래그 \(v2\.5\+\)" \
 # expected: 각 ≥ 1
 
 grep -l -e "--no-ask" \
-  skills/og-brainstorming/SKILL.md \
-  skills/og-writing-plans/SKILL.md \
-  skills/og-executing-plans/SKILL.md \
+  commands/og-brainstorm.md \
+  commands/og-write-plan.md \
+  commands/og-execute-plan.md \
   commands/fast-tasks.md \
   skills/worktree-merge-back/SKILL.md 2>/dev/null
 # expected: empty
@@ -912,8 +912,7 @@ v2.5.2+ 에서 9 skill body 에 `## Checklist` 섹션 신규 추가 — `using-s
 for f in skills/auto-brainstorming/SKILL.md skills/auto-tech-design/SKILL.md \
          skills/auto-writing-plans/SKILL.md skills/auto-executing-plans/SKILL.md \
          skills/executing-plans/SKILL.md skills/change-propagation/SKILL.md \
-         skills/js-super-sub-driven/SKILL.md skills/og-writing-plans/SKILL.md \
-         skills/og-executing-plans/SKILL.md; do
+         skills/js-super-sub-driven/SKILL.md; do
   echo "=== $f ==="
   echo "-- Process Step 헤더 --"
   grep -E "^### Step [0-9]" "$f"
@@ -933,10 +932,8 @@ grep -lF "## Checklist" \
   skills/auto-executing-plans/SKILL.md \
   skills/executing-plans/SKILL.md \
   skills/change-propagation/SKILL.md \
-  skills/js-super-sub-driven/SKILL.md \
-  skills/og-writing-plans/SKILL.md \
-  skills/og-executing-plans/SKILL.md
-# expected: 9 lines (모두 매치)
+  skills/js-super-sub-driven/SKILL.md
+# expected: 7 lines (모두 매치 — og 2종은 v2.8.1 에서 스킬 삭제)
 
 # og-* mirror 룰 예외 명시
 grep -cF "og-* mirror 룰 예외" CLAUDE.md
@@ -1311,7 +1308,7 @@ grep -F "Advise: run /og-brainstorm" skills/brainstorming/SKILL.md
 - **커맨드 4종** → `disable-model-invocation: true`. auto-flow 는 승인 게이트 자동 통과 + subagent 강제 실행이라, 모델 자동 발동 차단이 og-* 보다 더 중요.
 - **스킬 4종 description** → 진입 제약 문구. **체인 스킬(2~4단계)은 반드시 "커맨드 또는 앞 단계의 명시 invoke 로만 진입, 자유 요청에서 자동 선택 금지"** 로 써야 한다. 그냥 "do NOT auto-select" 만 쓰면 체인 invoke 시 모델이 주저할 수 있음.
 - **auto-* 는 upstream mirror 아님** (js-super 자작 self-contained mirror, v1.1.17+). og-* 의 mirror 룰 예외 논리 불필요 — description 자유 수정 OK.
-- **본문 룰 보존**: auto-* 의 "AskUserQuestion 호출 X / Socratic prose-default / Step 4.5·4.6 fire-and-forget" 등 기존 결합 룰은 description 만 바꿨으니 영향 0.
+- **본문 룰 보존**: auto-* 의 "AskUserQuestion 호출 X / Socratic prose-default" 등 기존 결합 룰은 description 만 바꿨으니 영향 0. (당시 함께 보존된 Step 4.5·4.6 fire-and-forget 은 이후 v2.8.2 generating-html 강등에서 삭제됨 — v2.8.2 섹션 참조.)
 
 #### auto-* 회귀 catch grep
 

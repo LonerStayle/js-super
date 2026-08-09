@@ -1,3 +1,8 @@
+---
+name: worktree-merge-back
+description: 커맨드 /worktree-merge-back 명시 호출로만 진입 — 자유 요청에서 자동 선택 금지. feature 워크트리 안에서 parent 브랜치를 먼저 흡수해 충돌을 sandbox 에서 해소한 뒤 parent 로 안전 머지 + env 동기화. worktree-only (main 에서 호출 시 차단).
+---
+
 # Worktree Merge-Back (v2.5.2 — auto)
 
 워크트리에서 진행한 feature 작업을 parent (main) 워크트리로 안전하게 머지 + 환경 파일 동기화. "Merge down before merging up" 패턴 — 충돌 해결은 feature sandbox 에서만, parent 워크트리는 항상 깨끗. v2.5.1+ 에서 자동화 강화 (parent 로컬 흡수 + 재귀 머지 자동 + env LLM 판단 + `/worktree-remove` 안내). v2.5.2+ 에서 dirty working tree 자동 커밋 추가 (커밋 안 된 변경이 있으면 묻지 않고 자동 커밋 후 진행 — 사용자 명시 요청).

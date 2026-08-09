@@ -1,3 +1,8 @@
+---
+name: worktree-remove
+description: 커맨드 /worktree-remove 명시 호출로만 진입 — 자유 요청에서 자동 선택 금지. 현재 feature 워크트리를 정리 (git worktree remove + 브랜치 안전 삭제 -d, --force 옵트인 시 -D). worktree-only (main 에서 호출 시 차단).
+---
+
 # Worktree Remove (v2.5.1+)
 
 현재 feature 워크트리를 정리 — `git worktree remove` + `git branch -d` 를 한 슬래시로 묶음. `worktree-merge-back` 직후 정리 흐름의 사용자 편의 명령. chain 없음 — 사용자가 `/worktree-remove` 명시 호출.
