@@ -843,3 +843,43 @@ python3 -c "from scripts.preflight import feature_depth; print('OK')"
 - **무엇이**: Task 15 를 "6 manifest bump" 에서 "bump 스킵 확인 [검증]" 으로 교체, §3 롤백 문구 정정, Task 12 payload 의 버전 표기·manifest 언급 제거, Task 1/13 payload 의 v2.9.0 표기 제거
 - **영향범위**: 실행 단계 Task 12/15 동작 변경 (코드 미착수 시점 — 실행 영향 없음)
 - **연관 항목**: CH-20260809-004, CH-20260809-005
+
+### [2026-08-09 21:50] [코드-수정] (batch: tasks 1..15)
+- **id**: CH-20260809-007
+- **이유**: 산출물 깊이 선택 기능 구현 — 서브에이전트 wave-parallel batch 종합 (end-of-run consolidation)
+- **무엇이**: CLAUDE.md, commands/auto-brainstorm.md, commands/auto-tech-design.md, commands/auto-write-plan.md, commands/tech-design.md, scripts/preflight.py, scripts/tests/test_preflight.py, skills/auto-tech-design/SKILL.md, skills/auto-writing-plans/SKILL.md, skills/brainstorming/SKILL.md, skills/change-history/SKILL.md, skills/change-propagation/SKILL.md, skills/js-super-sub-driven/tests/H14-depth-select/README.md, skills/tech-design/SKILL.md, skills/verifying-spec/SKILL.md, skills/writing-plans/SKILL.md
+- **영향범위**: 정식 게이트 (Gate #12) + auto 체인 (Step 7) + 소비자 4곳 (change-history / change-propagation / preflight / write-plan 승격) + 표기 정합 (brainstorming) + fixture H14
+- **위험 카테고리**: breaking, side-effect
+- **task별 세부 (15건)**:
+  - Task 1: `scripts/preflight.py:100-160` + `scripts/tests/test_preflight.py:172-213` — feature_depth() 신규 + human_reason 승격 안내 + 테스트 6건 (`side-effect`) — commit: `cda5322`, RISK follow-up: `3a90c34`
+  - Task 2: `skills/tech-design/SKILL.md` — Gate #12 3지선다 확장 (10개 지점) (`breaking`) — commit: `e3f90bc`
+  - Task 3: `commands/tech-design.md:13` — 다음 단계 문구 교체 (`none`) — commit: `4a969cd`
+  - Task 4: `skills/auto-tech-design/SKILL.md:17,57,69` — Step 7 깊이 판정 분기 + invoke 문자열 보존 (`breaking`) — commit: `04fda1e`
+  - Task 5: `commands/auto-{brainstorm,tech-design,write-plan}.md:12` — 조기 종료/승격 병기 (`none`) — commit: `76a98d0`
+  - Task 6: `skills/change-history/SKILL.md:28-30` — 2-doc 라우팅 subsection (`side-effect`) — commit: `2003186`
+  - Task 7: `skills/change-propagation/SKILL.md` — 2-doc 분기 + Acceptance 예외 (4개 지점) (`side-effect`) — commit: `1bc5100`
+  - Task 8: `skills/verifying-spec/SKILL.md:22-26` — 대체 커버 문단 (`none`) — commit: `777b05c`
+  - Task 9: `skills/writing-plans/SKILL.md:32-44` — 승격 subsection (`none`) — commit: `f1ee6b1`
+  - Task 10: `skills/auto-writing-plans/SKILL.md:24-27` — 승격 문단 (mirror) (`none`) — commit: `f598f1b`
+  - Task 11: `skills/brainstorming/SKILL.md:103,315` — 표기 정합 (`none`) — commit: `0e61a4c`
+  - Task 12: `CLAUDE.md` — 결합 메모 + 회귀 grep append (`none`) — commit: `9109bdb`
+  - Task 13: `skills/js-super-sub-driven/tests/H14-depth-select/README.md:1-42` — fixture 신규 (`none`) — commit: `8256041`
+  - Task 14: 코드 변경 0 — [검증] entry CH-20260809-008 참조
+  - Task 15: 코드 변경 0 — [검증] entry CH-20260809-009 참조
+- **연관 commits**: 080e582..3a90c34 (task 1~13 + [risk-annotate])
+- **변경 전/후 코드**: 생략 — `git show <SHA>` 로 조회
+- **연관 항목**: CH-20260809-003, CH-20260809-006
+
+### [2026-08-09 21:50] [검증] (task: Task 14 — 전수 검증)
+- **id**: CH-20260809-008
+- **이유**: 릴리즈 전 회귀 검증 — 신규 grep 4종 + 기존 계약 grep 8종 + pytest
+- **무엇이**: 신규 회귀 catch grep / auto 체인 invoke 문자열 3종 / auto-* description 진입 제약 / --no-ask 8 skill / disable-model-invocation 7 커맨드 / Checklist 7 skill / FR-10 generating-html 무변경 / pytest 전체
+- **결과**: PASS — 13/13 (spec reviewer 독립 재실행으로 교차 확인)
+- **연관 항목**: CH-20260809-007
+
+### [2026-08-09 21:50] [검증] (task: Task 15 — 버전 bump 스킵 확인)
+- **id**: CH-20260809-009
+- **이유**: CLAUDE.md "버전 bump 는 main 전용 — 워크트리 세션 금지" 룰 준수 확인
+- **무엇이**: `git diff 080e582..HEAD --name-only` 에 6 manifest 부재 + package.json 2.8.1 유지
+- **결과**: PASS — 버전 bump 와 git tag 는 main 머지 후 main 에서 수행
+- **연관 항목**: CH-20260809-004, CH-20260809-007
