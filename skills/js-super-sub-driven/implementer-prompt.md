@@ -4,7 +4,7 @@ Use this template when dispatching an implementer subagent under `js-super-sub-d
 
 ```
 Task tool (general-purpose):
-  model: "haiku"   # v2.0.0+ HAIKU FIXED — byte-copy mode does not need LLM transcription. plan's `**Model**:` hint is ignored under subagent-driven-development. (See CLAUDE.md "implementer-prompt + reorder-prompt + plan_byte_check" section.)
+  model: "haiku"   # v2.0.0+ 기본 haiku (순수 byte-copy task). v2.9+: 신규 테스트 작성 포함 task (`**검증**:` 필드 + Test: 경로 + 테스트 코드 블록 없음) 는 plan 의 `**Model**:` 값 (최소 sonnet) 으로 dispatch. (See CLAUDE.md "plan 테스트 자연어 축약 결합" + "implementer-prompt + reorder-prompt + plan_byte_check" sections.)
   description: "Implement Task N: [task name]"
   prompt: |
     You are implementing Task N: [task name]
@@ -72,12 +72,23 @@ Task tool (general-purpose):
     ## Your Job
 
     Once you're clear on requirements:
-    1. Implement exactly what the task specifies — byte-copy the blocks
-    2. Write tests (following TDD if task says to) — same byte-copy rule
+    1. Write tests FIRST per the Test Authoring rule below (TDD) — run them, confirm FAIL
+    2. Implement exactly what the task specifies — byte-copy the blocks
     3. Verify implementation works (run tests in working tree, no commit)
     4. **DO NOT git commit** — main agent commits at wave end in plan order
     5. Self-review (see below)
     6. Report back
+
+    ## Test Authoring (v2.9+ split rule)
+
+    구현 코드와 테스트 코드는 다르게 다룬다:
+
+    - **구현 코드 = STRICT BYTE-COPY (불변)** — 위 byte-copy 룰 그대로. 약화 금지.
+    - **테스트 코드 = 자연어 설명 기반 자체 작성** — task 헤더의 `**검증**:` 필드
+      (무엇을 검증하는지 + 성공 기준) 를 읽고 네가 테스트 코드를 직접 작성한다.
+      테스트 먼저 작성 → 실행해 FAIL 확인 → 구현 byte-copy → PASS 확인 (TDD 순서 유지).
+    - **하위 호환**: task 에 테스트 코드 블록이 이미 있으면 (v2.8 이전 형식) 그 블록을
+      byte-copy 한다 — 자체 작성 금지. 블록 존재 = 기존 룰 우선.
 
     ## Why no commit (v1.1.14+)
 
@@ -145,6 +156,8 @@ Task tool (general-purpose):
     - Do tests actually verify behavior (not just mock behavior)?
     - Did I follow TDD if required?
     - Are tests comprehensive?
+    - (v2.9+) 자체 작성한 테스트가 `**검증**:` 필드의 "무엇을 + 기준" 을 그대로 커버하는가?
+    - (v2.9+) task 에 테스트 코드 블록이 있었는데 자체 작성으로 대체하지 않았는가? (블록 존재 = byte-copy 우선)
 
     **Governance hands-off:**
     - Did I avoid adding RISK comments? (main does this)
