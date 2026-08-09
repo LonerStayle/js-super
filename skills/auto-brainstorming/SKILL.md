@@ -1,6 +1,6 @@
 ---
 name: auto-brainstorming
-description: auto-flow 진입점. /auto-brainstorm 명시 호출 전용 — 대화 중 자동 선택 금지 (js-super 기본 진입은 brainstorming). Socratic clarifying Q (1~5개 적응) + AI 자동 approach 선택 + 자동 section 작성 + change-history 자동 + auto-tech-design 자동 invoke. 사용자 입력은 clarifying Q 답변에만. AskUserQuestion / Visual Companion 호출 X. generating-html 은 Step 4.5 에서 백그라운드(fire-and-forget) 호출.
+description: auto-flow 진입점. /auto-brainstorm 명시 호출 전용 — 대화 중 자동 선택 금지 (js-super 기본 진입은 brainstorming). Socratic clarifying Q (1~5개 적응) + AI 자동 approach 선택 + 자동 section 작성 + change-history 자동 + auto-tech-design 자동 invoke. 사용자 입력은 clarifying Q 답변에만. AskUserQuestion / Visual Companion / generating-html 호출 X.
 ---
 
 # Auto Brainstorming → <slug>-requirements.md (Socratic auto)
@@ -31,7 +31,6 @@ auto-flow 는 이미 prose-default 라 `--no-ask` 는 **no-op** (추가 분기 �
 - [ ] Step 2 — Socratic clarifying questions (1~5개 적응)
 - [ ] Step 3 — AI 자동 approach 선택
 - [ ] Step 4 — 산출물 자동 작성 (<slug>-requirements.md)
-- [ ] Step 4.5 — generating-html fire-and-forget dispatch + 5초 race delay
 - [ ] Step 5 — change-history 자동 (첫 [요구사항-수정] entry)
 - [ ] Step 6 — Transition notice + auto-tech-design invoke
 
@@ -68,18 +67,6 @@ mkdir -p docs/features/$(date +%Y-%m-%d)-<slug>/
 - H1 + Mode line + 배경 + 핵심 결정 + 우려/해결 + 다음 단계 + 변경이력 footer
 - RAW 본문 그대로.
 
-### Step 4.5 — generating-html fire-and-forget dispatch (v2.3.2+)
-
-`<slug>-requirements.md` 작성 직후, **change-history 자동 entry 박히기 전** (footer 아직 비어있는 시점) 에 `generating-html` skill fire-and-forget dispatch:
-
-- `run_in_background: true` (fire-and-forget, 메인 latency 거의 0)
-- target: `<slug>-requirements.md`
-- 메인은 결과 wait X — 다음 Step 즉시 진행
-
-**왜 v2.3.2+ 도입**: v1.1.17 PRD D9 amend ("auto-flow 는 review 없으므로 prettify 의미 없음") 는 잘못된 가정. transition notice 시점에 사용자가 `.html` 검토 가능 (Type "stop" 으로 abort). v2.3.1 dogfood 에서 사용자 명시 catch — auto-flow 에서도 `.html` 동봉본 필요.
-
-**v2.4+ race delay**: dispatch 후 **5초 delay** 후에 Step 5 (change-history) 진행. background subagent 가 .md 의 footer 0건 시점에 읽도록 보장 (race condition 해결).
-
 ### Step 5 — change-history 자동
 
 `change-history` skill invoke → 첫 `[요구사항-수정]` entry append. CH-id 자동 생성.
@@ -97,7 +84,7 @@ mkdir -p docs/features/$(date +%Y-%m-%d)-<slug>/
 | Wrong | Right |
 |---|---|
 | AskUserQuestion 호출 | NEVER. auto-flow 의 사용자 입력은 clarifying Q 답변에만. |
-| generating-html 동기 호출 (sync wait) | NEVER. v2.3.2+ — Step 4.5 fire-and-forget dispatch 만. 메인이 결과 wait X. (v1.1.17 의 "호출 부재" 룰은 v2.3.2 에서 반전됨.) |
+| generating-html 호출 (모든 형태) | NEVER. v2.8.2+ 커맨드 강등 — 자동 발동 폐지 (v2.3.2 의 Step 4.5 dispatch 제거). `.html` 필요 시 사용자가 명시 호출. |
 | Visual Companion offer | NEVER. D-T11. |
 | 일반 brainstorming skill body 호출 | NEVER. self-contained mirror (D-T1). |
 | transition notice 후 사용자 응답 wait sleep | NEVER. harness 모델은 자동 다음 turn — sleep X. |
