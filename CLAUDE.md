@@ -123,6 +123,23 @@ Before proposing changes to skill design, workflow philosophy, or architecture, 
 
 **회귀 사례**: v2.4 의 한국어 친화 톤 룰 (A-1~A-5) 을 CLAUDE.md 에만 박았는데 효과 미흡했음. 진짜 이유는 사용자 환경에 안 전달돼서. v2.4.2 에서 사용자 catch + 정정 (skill body + commands 의 실제 본문 정리로 전환).
 
+## ⚠️ 버전 bump 는 main 전용 — 워크트리 세션 금지
+
+**워크트리 (`.worktrees/*`) 세션에서는 버전 bump 를 하지 않는다.** 6 manifest
+(`.claude-plugin/plugin.json` / `.claude-plugin/marketplace.json` /
+`.codex-plugin/plugin.json` / `.cursor-plugin/plugin.json` /
+`gemini-extension.json` / `package.json`) 의 `version` 필드를 절대 수정·커밋하지 말 것.
+작업 프롬프트나 기존 결합 메모에 "6 manifest bump" 라는 지시가 있어도, 워크트리 안에서는
+그 단계를 **건너뛴다** (본 룰이 우선).
+
+- **Why**: 여러 워크트리가 병렬로 진행 중 — 각자 버전을 올리면 main 머지 시 버전 충돌
+  + 중복 bump + 순서 꼬임이 발생한다. 실제로 워크트리 작업이 임의로 버전을 올리는 회귀가
+  반복됨 (2026-08-09 사용자 catch).
+- **How**: 워크트리에서는 코드/문서 변경만 커밋. 버전 번호 결정과 6 manifest bump 커밋은
+  main 워크트리로 머지된 뒤 main 에서만 수행한다.
+- **회귀 catch**: 워크트리 브랜치에서 `git diff main --name-only` 에 위 6 파일이 보이면
+  버전 필드 변경인지 확인하고, 맞으면 되돌릴 것.
+
 ---
 
 ## generating-html ↔ change-history 결합
@@ -137,6 +154,10 @@ Before proposing changes to skill design, workflow philosophy, or architecture, 
 - footer가 영구적으로 빈 채로 남음 → 이후 사용자가 부분 수정을 요청할 때마다 generating-html가 재발동 (의도와 반대)
 
 요약: 이 두 skill의 룰 변경은 atomic하게 묶어 처리할 것.
+
+### v2.8.2+ 분기 — 자동 발동 폐지로 결합 해소
+
+v2.8.2 에서 위 옵션 중 "자동 발동 자체 폐지" 를 채택. generating-html 은 커맨드 전용 (`disable-model-invocation: true`) 이 됐고 어떤 skill 흐름도 자동 invoke 하지 않는다. footer empty 신호는 이제 "발동 트리거" 가 아니라 명시 호출 시 preflight 의 draft/live 경계 검사 (draft → 본 skill / live → `/sync-html` 안내) 로만 쓰인다. change-history 의 boilerplate entry 룰은 그대로 — 향후 그 룰을 바꿔도 generating-html 재발동 회귀는 더 이상 발생하지 않는다 (자동 발동 경로 부재). 자세한 내용은 "generating-html 커맨드 강등 (v2.8.2+)" 섹션.
 
 ## writing-plans `**Model**:` 필드 ↔ js-super-sub-driven 결합
 
@@ -182,7 +203,7 @@ js-super 자체 skill 의 Checklist 본문에 박힌 task 명칭은 **사용자 
 
 - **기존 4 skill body 변경 0** — auto-* 본문은 self-contained mirror. 본 4 skill 어떤 라인도 손대지 않음. 회귀 catch: `git diff HEAD~1 HEAD -- skills/{brainstorming,tech-design,writing-plans,executing-plans}/SKILL.md` empty 보장.
 - **Gate #14 (실행 모드 선택) override 명시** — v1.1.12+ "자동승인 절대 X" 룰을 auto-executing-plans 가 명시 override. 일반 `/execute-plan` 영향 0 (게이트 그대로). auto-* 명시적 invoke 시에만 작동.
-- **generating-html fire-and-forget dispatch** (v2.3.2+, v1.1.17 D9 amend 반전) — auto-brainstorming Step 4.5 / auto-tech-design Step 4.5 / auto-writing-plans Step 4.6 에서 `run_in_background: true` 로 dispatch. 메인 latency 거의 0 + 사용자가 transition notice 시점에 `.html` 검토 가능 (Type "stop" abort). **auto-executing-plans 는 제외** (코드 실행 단계 — 의미 없음). 동기 호출 (sync wait) 은 여전히 금지. 회귀 catch: 3 skill 본문에 `Step 4.5\|Step 4.6` + `run_in_background: true` 매치 필수.
+- **generating-html fire-and-forget dispatch — v2.8.2 에서 폐지** (v2.3.2+ 도입 → v2.8.2 반전) — auto-brainstorming Step 4.5 / auto-tech-design Step 4.5 / auto-writing-plans Step 4.6 의 `run_in_background: true` dispatch 는 v2.8.2 커맨드 강등에서 제거됨. 회귀 catch 반전: 3 skill 본문에 `generating-html` dispatch 매치 0 이어야 함 (`grep -n "generating-html.*dispatch" skills/auto-{brainstorming,tech-design,writing-plans}/SKILL.md` → 안티 패턴 표의 금지 라인 외 0). 자세한 내용은 "generating-html 커맨드 강등 (v2.8.2+)" 섹션.
 - **AskUserQuestion 호출 부재** — auto-* 본문 어디에도 AskUserQuestion 호출 X. clarifying Q 는 메인 turn 의 일반 prose 질의로 처리.
 - **Visual Companion / 카테고리 미니질문 / question plan 동의 등 PRD-mode 분기 부재** — Socratic only (D3).
 
@@ -673,14 +694,18 @@ grep -c "한국어 친화 안내 톤 (v2.4+)" CLAUDE.md
 회귀 catch grep:
 
 ```bash
-grep -c "5초 delay" skills/auto-brainstorming/SKILL.md skills/auto-tech-design/SKILL.md skills/auto-writing-plans/SKILL.md
-# expected: 각 ≥ 1
-
 grep -c "silent log monitor (v2.4+)" skills/generating-html/SKILL.md
 # expected: ≥ 1
 ```
 
 요약: v2.4 메이저 — A 광범위 (10+ skill + 10+ commands + README + CLAUDE.md) + B 4 룰 (generating-html + auto-* 3 race delay + `/sync-html --check`). atomic 처리.
+
+### v2.8.2+ 분기 — B-2 폐지 + B-1/B-4 적용 범위 축소
+
+v2.8.2 커맨드 강등으로 auto-* 3 skill 의 자동 dispatch 가 사라지면서:
+
+- **B-2 (5초 race delay) 폐지** — race 자체가 자동 발동 (dispatch 직후 change-history 가 footer 를 채우던 시점) 전용이었음. 옛 grep (`grep -c "5초 delay" skills/auto-*/SKILL.md` 각 ≥ 1) 은 반전 — 이제 0 이어야 함.
+- **B-1 / B-4 는 명시 호출 경로만** — `/sync-html` / `/audit-risk` 등. B-3 silent log 는 그대로.
 
 ## --no-ask 플래그 ↔ 8 skill body 결합 (v2.5+)
 
@@ -1238,3 +1263,113 @@ grep -cF "js-super:auto-executing-plans" skills/auto-writing-plans/SKILL.md
 ```
 
 파일럿 누적: og-* 3 + auto-* 4 = **7 커맨드** 전환. 나머지 17개는 후속.
+
+## generating-html 커맨드 강등 (v2.8.2+)
+
+v2.8.2 에서 `generating-html` 을 기본 플로우에서 완전히 제거하고 명시 호출 전용으로 강등. 배경: 백그라운드 자동 발동이 간헐적으로 누락되던 문제 (사용자 catch) + og/auto 커맨드 전용화 (v2.8.1) 와 같은 컨텍스트 절감 원리.
+
+### og-* (v2.8.1) 와 다른 점 — 스킬 삭제가 아니라 플래그 강등
+
+og-* 는 스킬을 삭제하고 커맨드에 인라인했지만, generating-html 은 **스킬 유지 + frontmatter `disable-model-invocation: true`**. 이유: (1) `html-companion-prompt.md` 자산을 `/sync-html` 이 그대로 공유 — 스킬 디렉토리가 자산의 집, (2) preflight user-gate / 디바운스 / silent log 등 절차가 커맨드 인라인엔 과함, (3) `disable-model-invocation: true` 만으로 description 컨텍스트 상주 제거 + 모델 자동 발동 차단이 동시에 해결됨.
+
+### 실제 변경 (10 본문 + 6 manifest)
+
+1. `skills/generating-html/SKILL.md` — frontmatter 플래그 + description 재작성 + HARD-GATE / When-to-Use / dot / Related Skills / B-2 를 명시 호출 전용으로 정리
+2. `skills/brainstorming/SKILL.md` — Checklist 항목 6 삭제 + dot 노드 + Process detail step 6 + Gate #8 문구
+3. `skills/tech-design/SKILL.md` — Checklist 항목 6 삭제 + dot + Process detail step 6 + Gate #11 문구 + After Save 재구성
+4. `skills/writing-plans/SKILL.md` — Checklist 항목 8 삭제 + dot + After Save step 3 삭제 (code-pretty 는 유지)
+5. `skills/code-pretty/SKILL.md` — "BEFORE generating-html" 타이밍 표현을 "before user review" 로 교체 (플로우 위치 불변)
+6. auto-* 3 (`auto-brainstorming`/`auto-tech-design`/`auto-writing-plans`) — Step 4.5/4.6 섹션 + Checklist 항목 + description 문구 삭제, 안티 패턴 표를 "호출 (모든 형태) NEVER" 로 강화
+7. `README.md` — 스킬 분류에 명시 호출 전용 표기
+8. `CLAUDE.md` — 본 섹션 + 기존 3 섹션 (change-history 결합 / auto-flow mirror / 비동기 신뢰성) 분기 노트
+
+### 유지된 것 (변경 0)
+
+- `/sync-html` 커맨드 — live doc `.html` sync 의 정본 경로. `html-companion-prompt.md` 직접 사용 (스킬 안 거침 → 플래그 영향 0)
+- `html-companion-prompt.md` — 그대로 보존 (v2.2.4 디자인 톤 자유 룰 포함)
+- `scripts/preflight.py:docs_pretty_check` — 명시 호출 시 여전히 사용
+- `change-propagation` 의 `/sync-html` 안내 / `fast-tasks` 의 금지 목록 / `auto-executing-plans` 의 "호출 X" — 이미 미호출이라 그대로
+- AI 흐름은 `.md` 만 읽음 / `.html` gitignore — 모두 유지
+
+### 회귀 패턴
+
+| 안티 패턴 | 증상 |
+|---|---|
+| 기본 플로우 skill 이 generating-html 을 다시 invoke | 간헐적 미발동 문제 재발 + 컨텍스트 낭비 |
+| frontmatter `disable-model-invocation: true` 제거 | description 상주 부활 + 모델 자동 발동 부활 |
+| auto-* 에 Step 4.5/4.6 dispatch 부활 | v2.8.2 강등 무화 |
+| 5초 race delay 재도입 | 폐지된 B-2 부활 — 자동 발동 없인 무의미 |
+
+### 회귀 catch grep
+
+```bash
+# 스킬 플래그 유지
+grep -F "disable-model-invocation: true" skills/generating-html/SKILL.md
+# expected: 1
+
+# 기본 플로우 + auto-* 본문에 generating-html 발화 잔존 X (안티 패턴 표의 금지 라인 제외)
+grep -rn "generating-html" skills/{brainstorming,tech-design,writing-plans}/SKILL.md
+# expected: 0
+grep -n "generating-html" skills/auto-{brainstorming,tech-design,writing-plans,executing-plans}/SKILL.md | grep -v "NEVER\|호출 X"
+# expected: 0
+
+# 5초 delay 폐지 확인
+grep -c "5초 delay" skills/auto-brainstorming/SKILL.md skills/auto-tech-design/SKILL.md skills/auto-writing-plans/SKILL.md
+# expected: 각 0
+```
+
+### 영향 범위
+
+- 스킬 8 본문 + README + CLAUDE.md + 6 manifest. commands / scripts / hooks 변경 0.
+- 기본 플로우의 사용자 리뷰는 이제 RAW `.md` 만 (`.html` 은 사용자가 원할 때 명시 생성).
+- `/sync-html` / `/audit-risk` 명시 호출 경로 영향 0. og-* / worktree 계열 영향 0.
+- tests fixture 의 옛 발화 시나리오 (H5 등) 는 실행 무관 문서 — 후속 정리 대상.
+
+## 워크트리-재분기 결합 (v2.9.0+)
+
+v2.9.0+ 에서 `setting-up-worktrees` 가 워크트리 안 호출 (재분기) 을 지원. 루트 해석 이원화 — 배치 기준 = 메인 저장소 루트 (`git worktree list --porcelain` 첫 entry), 분기 기준 = 호출 위치의 현재 HEAD. spec: `docs/features/2026-08-09-워크트리-재분기/`.
+
+### 적용 범위 (3 본문 + 6 manifest)
+
+- `skills/setting-up-worktrees/SKILL.md` — Step 0 이원화 + Step 3.5 dirty 게이트 신설 + Step 4 브랜치별 개별 `git worktree add` 호출 + Step 5 복사 소스 호출 위치 우선 + Step 6 보고 확장 (분기 기준 커밋 + 스택 안내)
+- `commands/worktree.md` — 안내 동기화
+- `hooks/worktree-memory-symlink` — ROOT 해석을 `--show-toplevel` → 메인 워크트리 (worktree list 첫 entry) 로 교체 (워크트리 안 호출 시 심링크 silent 생략 버그 수정)
+- `skills/setting-up-worktrees/scripts/setup-memory-symlinks.sh` — **무변경** (인자 기반, 훅이 올바른 MAIN_ROOT 전달)
+
+### 핵심 룰
+
+- **배치 = MAIN_ROOT 고정** — 워크트리 안에서 호출해도 중첩 생성 금지
+- **분기 = 호출 위치 HEAD** — 사용자 베이스 명시 시 그 브랜치
+- **dirty 게이트 (Step 3.5)** — "WIP 커밋 후 분기" / "마지막 커밋 시점 기준 분기" AskUserQuestion 선택. stash 금지
+- **`git worktree add` 는 개별 Bash 호출의 시작** — 훅 프리픽스 매치 (`git worktree add `*) 보장. for-loop 한 방 금지
+- **스택 안내** — 베이스 ≠ 메인 브랜치면 "새브랜치 → 베이스 → 메인" 머지 경로 + 리베이스 주의 출력
+
+### 회귀 패턴 (한쪽만 변경 시)
+
+| 누락 | 증상 |
+|---|---|
+| skill 만 변경 (훅 미변경) | 워크트리 안 호출 시 심링크 silent 생략 (훅 ROOT ≠ 배치 루트) |
+| 훅만 변경 (skill 미변경) | 새 워크트리가 호출 위치 아래 중첩 생성 → git status 오염 |
+| Step 4 for-loop 부활 | 훅 프리픽스 미매치 → 심링크 미생성 |
+| commands 미동기 | 사용자 안내와 실제 동작 불일치 |
+
+### 회귀 catch grep
+
+```bash
+grep -cF "MAIN_ROOT" skills/setting-up-worktrees/SKILL.md
+# expected: >= 3
+grep -c "worktree list --porcelain" hooks/worktree-memory-symlink skills/setting-up-worktrees/SKILL.md
+# expected: 각 1 이상
+grep -cF "Step 3.5" skills/setting-up-worktrees/SKILL.md
+# expected: >= 2
+grep -c "show-toplevel" hooks/worktree-memory-symlink
+# expected: 0
+awk '/\*\*Step 4/,/\*\*Step 5/' skills/setting-up-worktrees/SKILL.md | grep -c "for BR in"
+# expected: 0 (Step 4 안 for-loop add 금지)
+```
+
+### 영향 범위
+
+- 3 본문 + 6 manifest. `setup-memory-symlinks.sh` / `worktree-merge-back` / `worktree-remove` / `using-git-worktrees` (upstream) / og-* / auto-* 영향 0
+- 훅은 기존처럼 `.worktrees/` 아래 경로만 처리 — 다른 위치 워크트리는 무시 (동작 동일)
+- E2E: `docs/features/2026-08-09-워크트리-재분기/` 의 plan Task 9 시나리오 (a)~(e) — scratchpad 임시 저장소 검증 (저장소 커밋 X)
