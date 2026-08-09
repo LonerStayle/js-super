@@ -27,8 +27,9 @@ NEVER ask the user which 로컬 빌드 환경 파일 to copy. 메인 에이전�
 
 | Knob | Default behavior |
 |---|---|
-| Worktree root | `<project-root>/.worktrees/` (override only if user explicitly asks) |
-| Branch creation | If branch missing → `-b <name>` from current HEAD. Existing local → use as-is. Remote-only → `-B <name> origin/<name>` |
+| Worktree root | `<메인 저장소 루트>/.worktrees/` — 워크트리 안에서 호출해도 메인 루트 기준, 중첩 생성 금지 (override only if user explicitly asks) |
+| Branch creation | If branch missing → `-b <name>` from **호출 위치 HEAD** (워크트리 안이면 그 워크트리의 커밋이 시작점; 사용자가 베이스 명시 시 그 브랜치). Existing local → use as-is. Remote-only → `-B <name> origin/<name>` |
+| Dirty 워크트리에서 분기 (v2.9.0+) | Step 3.5 게이트 — "WIP 커밋 후 분기" / "마지막 커밋 시점 기준 분기" 선택. stash 금지 |
 | 로컬 빌드 환경 파일 복사 | **메인 에이전트가 프로젝트 컨텍스트 기반 후보 판단** (Node/Web → `.env*` / Android → `local.properties`, keystore 류 / iOS → `*.xcconfig` 등 / Desktop → `secrets.*`). 후보 list 사용자 노출 후 자동 복사. committed templates / build artifacts 자동 제외. |
 | Claude memory folder | **Symlink handled by `worktree-memory-symlink` PostToolUse hook** — fires automatically on `git worktree add`. Skips if main has no memory yet or if worktree's memory dir already exists. The skill body does NOT perform this step. |
 | `.worktrees/` in `.gitignore` | Auto-add if missing |
@@ -66,14 +67,24 @@ digraph wt_flow {
 
 ## Procedure (Step-by-Step)
 
-**Step 0 — Verify git context**
+**Step 0 — Verify git context + 루트 해석 이원화 (v2.9.0+)**
 
 ```bash
 git rev-parse --is-inside-work-tree   # must print "true"
-ROOT=$(git rev-parse --show-toplevel)
+
+# 배치 기준 = 메인 저장소 루트. git worktree list 는 메인 워크트리를 항상 첫 줄에
+# 출력하므로, 워크트리 안에서 호출해도 메인 루트가 잡힌다 (중첩 생성 방지).
+MAIN_ROOT=$(git worktree list --porcelain | head -1 | sed 's/^worktree //')
+
+# 분기 기준 = 호출 위치의 현재 HEAD (워크트리 A 안에서 호출하면 A 의 커밋)
+BASE_SHA=$(git rev-parse HEAD)
+BASE_BRANCH=$(git branch --show-current)
+MAIN_BRANCH=$(git -C "$MAIN_ROOT" branch --show-current)
 ```
 
 If not in a repo, abort with: "현재 디렉터리가 git repo 아닙니다. `git init` 후 다시 호출해주세요."
+
+호출 위치가 워크트리 안이어도 (`git rev-parse --show-toplevel` ≠ `$MAIN_ROOT`) 새 워크트리는 항상 **메인 루트의 `.worktrees/`** 아래에 생성된다 (중첩 금지). 사용자가 위치를 신경 쓰거나 별도 지시할 필요 없다 — 자동 판정.
 
 **Step 1 — Parse branch names from user's message**
 
