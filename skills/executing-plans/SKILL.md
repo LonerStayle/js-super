@@ -163,6 +163,15 @@ No 영향범위, no 위험 카테고리, no before/after code blocks.
 Triviality is determined ONLY by the three criteria above. Logic changes — even one-line ones — are NOT trivial. When in doubt, take the safe path.
 </HARD-GATE>
 
+## 테스트 소스 분기 (v2.9+ — 계획서 테스트 자연어 축약)
+
+task 의 "실패 테스트 작성" step 에서 테스트 코드의 소스는 task 형식에 따라 갈린다:
+
+- **새 형식** (task 헤더에 `**검증**:` 필드, 테스트 코드 블록 없음) — `**검증**:` 의 자연어 설명 (무엇을 + 성공 기준) 을 읽고 실행 단계가 테스트 코드를 직접 작성한다. TDD 순서 (작성 → FAIL 확인 → 구현 → PASS) 는 그대로.
+- **기존 형식** (task 에 테스트 코드 블록 존재) — 블록의 코드를 그대로 사용한다 (하위 호환. 블록 존재 = 기존 룰 우선).
+
+두 형식이 한 plan 에 섞여 있어도 task 단위로 분기한다.
+
 ## Process Flow
 
 ```dot
@@ -317,7 +326,7 @@ execute-plan 실행 흐름의 핵심 UX 룰. 사용자가 모드 (inline / subag
 | task 병렬 vs 순차 실행 여부 | plan 의 dependencies 만족 시 병렬 default |
 | task 묶음 (same-file mechanical 3-AND 룰 만족 시) | 묶음 default (v2.0.1+) |
 | task 안 보조 결정 (변수명 / format / order of imports) | plan 의 `**원본**` + `**수정본**` byte-copy 우선, 없으면 LLM 자율 |
-| dispatch model 선택 | (subagent 모드) implementer 는 haiku 고정 (byte-copy) — plan 의 `**Model**:` 필드로 바뀌지 않음 |
+| dispatch model 선택 | (subagent 모드) v2.9+ 조건부 자동 판정 — 순수 byte-copy 는 haiku / 신규 테스트 포함은 plan 의 `**Model**:` 값 (최소 sonnet). 게이트 없이 자동 |
 | task 완료 후 다음 task 진입 타이밍 | 자동 진입 (게이트 X) |
 | 중간 결과 보고 빈도 | 매 task X, 매 wave (3-5 task) 단위 OR BLOCKED 시만 |
 
@@ -369,7 +378,7 @@ prose 질문 좁은 예외:
 | 매 task 완료 후 "다음 task 진입할까요?" 게이트 | 룰 3 위반. 모드 선택 = 진행 위임. |
 | "같은 파일이라 묶을까요?" 게이트 | 룰 2 위반. 3-AND 룰 (v2.0.1+) 으로 자동 판정. |
 | BLOCKED → 곧장 사용자 재질문 (self-correct skip) | 룰 4 위반. 자가 복구 우선. |
-| dispatch model 변경 시 게이트 | 룰 2 위반. (subagent 모드) implementer 는 haiku 고정 (byte-copy). |
+| dispatch model 변경 시 게이트 | 룰 2 위반. (subagent 모드) v2.9+ 조건부 룰 (순수 byte-copy=haiku / 신규 테스트 포함=plan **Model**: 값) 로 자동 판정. |
 | 변수명 / format / import 순서 게이트 | 룰 2 위반. plan byte-copy 우선, 없으면 자율. |
 | 사용자 모드 선택 무시하고 inline → subagent 자동 전환 | 룰 1 위반. 모드 변경은 명시 동의 필수. |
 | 모든 mid-flight 결정을 "안전성" 명목으로 게이트 | 과보호. 룰 1 7 케이스 외엔 자율. |
