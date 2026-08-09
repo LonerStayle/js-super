@@ -1373,3 +1373,55 @@ awk '/\*\*Step 4/,/\*\*Step 5/' skills/setting-up-worktrees/SKILL.md | grep -c "
 - 3 본문 + 6 manifest. `setup-memory-symlinks.sh` / `worktree-merge-back` / `worktree-remove` / `using-git-worktrees` (upstream) / og-* / auto-* 영향 0
 - 훅은 기존처럼 `.worktrees/` 아래 경로만 처리 — 다른 위치 워크트리는 무시 (동작 동일)
 - E2E: `docs/features/2026-08-09-워크트리-재분기/` 의 plan Task 9 시나리오 (a)~(e) — scratchpad 임시 저장소 검증 (저장소 커밋 X)
+
+## 산출물 깊이 선택 (2개/3개) 결합
+
+피처 단위 산출물 깊이 선택 도입 — 2개 (requirements + tech-design) 또는 3개 (+ implementation-plan). 표식 = tech-design frontmatter `depth: 2` (single source of truth). 버전 표기는 main 에서 bump 시 확정. spec: `docs/features/2026-08-09-산출물-깊이-선택/`.
+
+### 핵심 룰
+
+- **D1 표식** — `depth: 2` 명시일 때만 2-doc 트랙. 필드 부재 / `depth: 3` / 파싱 실패 = 3-doc (기존 동작). 기존 피처 폴더 소급 없음. 판독 helper: `scripts/preflight.py:feature_depth()` (additive — 기존 함수 시그니처 무변경)
+- **D2 정식 결정 표면** — tech-design Gate #12 3지선다 (구현계획서까지 진행 / 여기서 종료 (2개 확정) / 나중에 결정). "나중에 결정" 은 표식 없이 종료 (기존 no 의미 보존)
+- **D3 auto 결정 표면** — auto-tech-design Step 7 깊이 판정 (구현 단계 필요성 기준, 애매하면 3). AskUserQuestion 호출 X 유지. 2개 판정 시 판단 근거 1줄 보고 + 체인 종료
+- **D4 체인 grep 계약 보존** — auto-tech-design 본문의 `js-super:auto-writing-plans` 문자열은 3개 판정 분기 문장 안에 보존 (기존 회귀 grep 그대로 통과)
+- **D5 변경이력 라우팅** — 2-doc 트랙의 [코드-수정]/[검증]/[릴리즈] entry 는 tech-design footer 로. footer append 는 본문 수정이 아님 (change-propagation Acceptance 4 예외 조항)
+- **D6 승격** — /write-plan (또는 /auto-write-plan) 명시 실행 = 2→3 승격. frontmatter `depth: 3` 갱신 + [개발방향-수정] entry. 재확인 게이트 없음
+
+### 회귀 패턴 (한쪽만 변경 시)
+
+| 누락 | 증상 |
+|---|---|
+| Gate #12 만 확장, auto Step 7 미분기 | 정식/auto 동작 불일치 — auto 는 무조건 4단계 완주 |
+| 표식 기록만, change-history 라우팅 미갱신 | 2-doc 피처 코드·검증 이력의 목적지 소실 |
+| 라우팅 갱신만, change-propagation Acceptance 예외 누락 | footer append 가 reverse-cascade 금지 룰과 충돌 판정 |
+| auto Step 7 재작성 시 invoke 문자열 삭제 | 기존 회귀 grep (`js-super:auto-writing-plans`) 깨짐 |
+| preflight 시그니처 변경 | 4 skill bash one-liner 동기 필요 (이번 릴리즈는 additive 라 해당 없음) |
+| 판독 규칙 완화 (depth 부재를 2 로 해석 등) | 기존 3-doc 피처가 2-doc 분기로 오라우팅 |
+
+### 회귀 catch grep
+
+```bash
+# 정식 게이트 3지선다
+grep -F "여기서 종료 (2개 확정)" skills/tech-design/SKILL.md
+# expected: >= 1
+
+# auto 판정 분기 + 체인 문자열 보존
+grep -F "깊이 판정" skills/auto-tech-design/SKILL.md
+# expected: >= 1
+grep -cF "js-super:auto-writing-plans" skills/auto-tech-design/SKILL.md
+# expected: >= 1 (기존 계약 유지)
+
+# depth-aware 소비자 3곳
+grep -lF "depth: 2" skills/change-history/SKILL.md skills/change-propagation/SKILL.md skills/writing-plans/SKILL.md skills/auto-writing-plans/SKILL.md
+# expected: 4 lines
+
+# preflight helper
+python3 -c "from scripts.preflight import feature_depth; print('OK')"
+# expected: OK
+```
+
+### 영향 범위
+
+- skill 본문 9 + commands 4 + `scripts/preflight.py` + fixture H14 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서. og-* / fast-tasks / worktree 계열 / generating-html 구조 영향 0
+- executing-plans / js-super-sub-driven skill 본문 변경 0 — plan 부재 안내 보강은 preflight `human_reason` 안에서
+- writing-plans `**Model**:` ↔ js-super-sub-driven 결합 — 3-doc 트랙 전용이라 영향 0
