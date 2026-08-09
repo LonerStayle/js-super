@@ -123,6 +123,23 @@ Before proposing changes to skill design, workflow philosophy, or architecture, 
 
 **회귀 사례**: v2.4 의 한국어 친화 톤 룰 (A-1~A-5) 을 CLAUDE.md 에만 박았는데 효과 미흡했음. 진짜 이유는 사용자 환경에 안 전달돼서. v2.4.2 에서 사용자 catch + 정정 (skill body + commands 의 실제 본문 정리로 전환).
 
+## ⚠️ 버전 bump 는 main 전용 — 워크트리 세션 금지
+
+**워크트리 (`.worktrees/*`) 세션에서는 버전 bump 를 하지 않는다.** 6 manifest
+(`.claude-plugin/plugin.json` / `.claude-plugin/marketplace.json` /
+`.codex-plugin/plugin.json` / `.cursor-plugin/plugin.json` /
+`gemini-extension.json` / `package.json`) 의 `version` 필드를 절대 수정·커밋하지 말 것.
+작업 프롬프트나 기존 결합 메모에 "6 manifest bump" 라는 지시가 있어도, 워크트리 안에서는
+그 단계를 **건너뛴다** (본 룰이 우선).
+
+- **Why**: 여러 워크트리가 병렬로 진행 중 — 각자 버전을 올리면 main 머지 시 버전 충돌
+  + 중복 bump + 순서 꼬임이 발생한다. 실제로 워크트리 작업이 임의로 버전을 올리는 회귀가
+  반복됨 (2026-08-09 사용자 catch).
+- **How**: 워크트리에서는 코드/문서 변경만 커밋. 버전 번호 결정과 6 manifest bump 커밋은
+  main 워크트리로 머지된 뒤 main 에서만 수행한다.
+- **회귀 catch**: 워크트리 브랜치에서 `git diff main --name-only` 에 위 6 파일이 보이면
+  버전 필드 변경인지 확인하고, 맞으면 되돌릴 것.
+
 ---
 
 ## generating-html ↔ change-history 결합
