@@ -21,6 +21,8 @@ EXCEPTION: If code impact analysis requires extensive grep across many files (�
 
 <slug>-requirements.md is the source of truth and is therefore not a verification target.
 
+2-doc 확정 트랙 (tech-design frontmatter `depth: 2`) 은 첫 행 (End of `tech-design`) 만 실행된다 — 이미 requirements + tech-design 조합만 전제하므로 검사 로직 변경 없음. plan 부재로 빠지는 "FR → 결정 → task 추적" 축은 tech-design §2 (영향 컴포넌트) + §7 (테스트 전략) 매핑으로 대체 커버한다.
+
 ## Procedure
 
 ```dot
