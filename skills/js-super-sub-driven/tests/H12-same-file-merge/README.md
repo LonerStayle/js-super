@@ -23,7 +23,7 @@
 Task N: ChatScreen 화면 4 변경
   Files: ChatScreen.kt
   Model: sonnet
-  - step 1: 통합 UI preview test 작성
+  - step 1: 검증 설명 기반 통합 테스트 작성 + FAIL 확인 (실행 단계 수행, v2.9+)
   - step 2: Scaffold contentWindowInsets Edit
   - step 3: LaunchedEffect 자동 스크롤 Edit
   - step 4: BackHandler Edit
