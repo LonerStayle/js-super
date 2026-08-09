@@ -273,7 +273,7 @@ D1 (3 조건 AND — 같은 파일 / test 경계 X / mechanical) 룰 은 두 ski
 5. `skills/executing-plans/SKILL.md` — 테스트 소스 분기 섹션 + 룰 2 dispatch row
 6. `PROMPT_KO.md` — writing-plans 한국어 mirror
 7. `CLAUDE.md` — v2.0.0 결합 메모 갱신 + 본 섹션
-8. fixtures — H12 갱신 + H14 신규 + G5/G6 기대값 갱신
+8. fixtures — H12 갱신 + H15 신규 (H15-natural-lang-verify — H14 는 depth-select 가 선점) + G5/G6 기대값 갱신
 
 ### 회귀 패턴 (한쪽만 변경 시)
 

@@ -1108,3 +1108,8 @@ Expected: 출력 없음 (미변경)
 - **무엇이**: 회귀 grep 11개 (Task 9 Step 1 스위트) + og-* / plan_byte_check.py / code-pretty / test-driven-development / reorder-prompt 미변경 확인 + 메인 독립 spot-check 3건
 - **결과**: PASS — grep 11개 전부 기대값 일치, 범위 밖 파일 변경 없음
 - **연관 항목**: CH-20260809-004
+
+### [2026-08-09 22:05] [코드-수정] (trivial)
+- **id**: CH-20260809-006
+- **이유**: fixture 번호 충돌 해소 — main 머지 시 depth 피처의 H14-depth-select 와 겹쳐 본 피처 fixture 를 H15 로 rename
+- **무엇이**: skills/js-super-sub-driven/tests/H15-natural-lang-verify/ (구 H14-natural-lang-verify) + README 제목 1줄 + CLAUDE.md 참조 1줄
