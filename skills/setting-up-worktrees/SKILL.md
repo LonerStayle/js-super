@@ -115,15 +115,32 @@ Extract `BRANCHES=(...)` from the user's message. Korean ticket-style names like
 
 후보가 없으면 한 줄 안내 (`ℹ️ 프로젝트 루트에 로컬 빌드 환경 파일 후보 없음 — 복사 skip`) 후 다음 Step 진행. Don't abort.
 
-**Step 3 — Ensure `.worktrees/` exists and is gitignored**
+**Step 3 — Ensure `.worktrees/` exists and is gitignored (메인 루트 기준)**
 
 ```bash
-mkdir -p "$ROOT/.worktrees"
+mkdir -p "$MAIN_ROOT/.worktrees"
 
-if ! grep -qE '^\.worktrees/?$' "$ROOT/.gitignore" 2>/dev/null; then
-    echo ".worktrees/" >> "$ROOT/.gitignore"
+if ! grep -qE '^\.worktrees/?$' "$MAIN_ROOT/.gitignore" 2>/dev/null; then
+    echo ".worktrees/" >> "$MAIN_ROOT/.gitignore"
 fi
 ```
+
+워크트리 안에서 호출했고 위 append 가 실제로 일어났다면 한 줄 알림: "ℹ️ 메인 루트 `.gitignore` 에 `.worktrees/` 를 추가했습니다 (메인 워크트리에 커밋 안 된 변경 1건이 생겼습니다)."
+
+**Step 3.5 — 분기 전 dirty 확인 (v2.9.0+)**
+
+호출 위치에 커밋 안 된 변경이 있는지 확인한다:
+
+```bash
+git status --porcelain   # 출력이 있으면 dirty
+```
+
+dirty 면 `AskUserQuestion` 으로 선택받는다 (stash 로 변경을 넘기는 방식 금지):
+
+- **"WIP 커밋 후 분기"** — `git add -A` 후 커밋. 커밋 메시지는 `git diff HEAD` 요약으로 자동 생성 (고정 문구 금지). 새 브랜치가 WIP 내용을 포함한다.
+- **"마지막 커밋 시점 기준 분기"** — 커밋하지 않고 현재 HEAD 커밋에서만 분기. 커밋 안 된 변경은 호출 위치 워크트리에 그대로 남는다.
+
+clean 이면 질문 없이 다음 Step 으로 진행.
 
 **Step 4 — For each branch, create or attach the worktree**
 
