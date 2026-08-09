@@ -213,7 +213,7 @@ js-super 자체 skill 의 Checklist 본문에 박힌 task 명칭은 **사용자 
 
 v2.0.0 메이저에서 subagent dispatch 패턴이 LLM transcription → byte-copy + reorder 3-stage 분담 으로 근본 변경. 다음 4 파일은 atomic 변경 규칙 적용:
 
-1. `skills/js-super-sub-driven/implementer-prompt.md` — STRICT BYTE-COPY 룰 + haiku 고정 + Status enum BLOCKED
+1. `skills/js-super-sub-driven/implementer-prompt.md` — STRICT BYTE-COPY 룰 (구현 코드) + 테스트 자연어 자체 작성 분리 (v2.9+) + 조건부 dispatch 모델 + Status enum BLOCKED
 2. `skills/js-super-sub-driven/reorder-prompt.md` — Status NEEDS_USER 형식 + sonnet 고정 + silent overwrite 차단
 3. `scripts/plan_byte_check.py` — `**원본**` 블록 byte-equal 검증 helper (writing-plans + auto-writing-plans 의 Self-Review)
 4. `skills/js-super-sub-driven/SKILL.md` — Per-wave Sequence W-2 의 Stage 1/2/3 분기
@@ -259,6 +259,56 @@ D1 (3 조건 AND — 같은 파일 / test 경계 X / mechanical) 룰 은 두 ski
 `skills/js-super-sub-driven/tests/H12-same-file-merge/README.md` — 같은 파일 4 mechanical 변경 plan → 1 task multi-step 묶음 검증 (positive + negative).
 
 요약: 2 skill + fixture + CLAUDE.md 변경은 묶어서 처리.
+
+## plan 테스트 자연어 축약 결합 (v2.9+)
+
+구현계획서에서 테스트 코드 블록을 없애고 task 헤더 `**검증**:` 필드 (자연어 1~2줄 — 무엇을 + 성공 기준) 로 대체. 실제 테스트 작성·실행은 실행 단계가 TDD 순서 그대로 수행. 하위 호환 — task 에 테스트 코드 블록이 있으면 기존 룰 (byte-copy) 우선, task 단위 분기. spec: `docs/features/2026-08-09-plan-test-자연어축약/`.
+
+### 적용 8 영역 (atomic)
+
+1. `skills/writing-plans/SKILL.md` — 검증 필드 스키마 + 템플릿 + placeholder 룰 반전 + Model sonnet floor
+2. `skills/auto-writing-plans/SKILL.md` — mirror 3곳 동기 (페어 atomic)
+3. `skills/js-super-sub-driven/implementer-prompt.md` — 구현=byte-copy / 테스트=자체 작성 분리 + 하위 호환 분기
+4. `skills/js-super-sub-driven/SKILL.md` — 조건부 dispatch (신규 테스트 포함 task = `**Model**:` 값, 최소 sonnet / 순수 byte-copy = haiku)
+5. `skills/executing-plans/SKILL.md` — 테스트 소스 분기 섹션 + 룰 2 dispatch row
+6. `PROMPT_KO.md` — writing-plans 한국어 mirror
+7. `CLAUDE.md` — v2.0.0 결합 메모 갱신 + 본 섹션
+8. fixtures — H12 갱신 + H14 신규 + G5/G6 기대값 갱신
+
+### 회귀 패턴 (한쪽만 변경 시)
+
+| 누락 | 증상 |
+|---|---|
+| implementer-prompt 하위 호환 분기 누락 | 기존 계획서 (테스트 코드 블록) 실행 시 자체 작성으로 drift |
+| sub-driven dispatch 조건부 룰 한쪽만 변경 | plan Model 값과 실제 dispatch 모델 불일치 (v1.1.14 결합 회귀) |
+| writing-plans 만 변경 (auto 미동기) | auto-flow plan 에 테스트 코드 블록 잔존 |
+| 템플릿에서 `Test:` 경로 제거 | wave 병렬 테스트 파일 충돌 감지 손실 |
+| 구현 코드 byte-copy 룰 약화 | v2.0.0 drift 회귀 — 절대 금지 |
+
+### 회귀 catch grep
+
+```bash
+grep -cF '계획서에는 테스트 코드를 싣지 않는다' skills/writing-plans/SKILL.md
+# expected: 1
+grep -n 'without actual test code' skills/writing-plans/SKILL.md
+# expected: 0
+grep -n 'same byte-copy rule' skills/js-super-sub-driven/implementer-prompt.md
+# expected: 0 (테스트 byte-copy 룰 제거)
+grep -cF 'Test Authoring (v2.9+' skills/js-super-sub-driven/implementer-prompt.md
+# expected: 1
+grep -n '항상 haiku 고정' skills/js-super-sub-driven/SKILL.md
+# expected: 0 (조건부 룰로 대체)
+grep -cF '테스트 소스 분기 (v2.9+' skills/executing-plans/SKILL.md
+# expected: 1
+grep -cF '**검증**' skills/writing-plans/SKILL.md skills/auto-writing-plans/SKILL.md PROMPT_KO.md
+# expected: 각 >= 2
+```
+
+### 영향 범위
+
+- plan 작성 (writing-plans / auto-writing-plans) + 실행 (executing-plans / js-super-sub-driven) 만.
+- og-* / code-pretty / plan_byte_check / verifying-spec / test-driven-development 영향 0 — 테스트 블록은 원래 라벨이 없어 검사 대상 밖.
+- 6 manifest bump — dev 직접 (에이전트 임의 bump 금지).
 
 ## setting-up-worktrees ↔ commands/worktree.md 결합 (v2.0.2+)
 
