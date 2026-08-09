@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 산출물은 `<slug>-tech-design.md` 입니다 (RAW 본문).
 
-다음 단계는 자동으로 이어집니다 — `/auto-write-plan` → `/auto-execute-plan`.
+다음 단계는 자동으로 이어집니다 — `/auto-write-plan` → `/auto-execute-plan`. 단 본 단계 끝의 깊이 판정이 "2개 (tech-design 까지)" 로 나오면 구현계획서 단계 전에 자동 종료됩니다.
 
 ## `--no-ask` 플래그 (v2.5+)
 
