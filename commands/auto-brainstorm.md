@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 산출물은 `docs/features/<오늘날짜>-<slug>/<slug>-requirements.md` 입니다 (Socratic 자유 형식, RAW).
 
-다음 단계는 자동으로 이어집니다 — `/auto-tech-design` → `/auto-write-plan` → `/auto-execute-plan`.
+다음 단계는 자동으로 이어집니다 — `/auto-tech-design` → `/auto-write-plan` → `/auto-execute-plan`. 단 auto-tech-design 끝의 깊이 판정이 "2개 (tech-design 까지)" 로 나오면 구현계획서 단계 전에 자동 종료됩니다.
 
 흐름 중간에 멈추고 싶으면 각 skill 전환 시 한 줄 안내가 노출되니, 그때 `stop` / `멈춰` / `잠깐` 같은 단어를 입력하면 깨끗하게 종료합니다.
 

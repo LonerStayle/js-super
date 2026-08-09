@@ -33,6 +33,15 @@ Take <slug>-requirements.md + <slug>-tech-design.md as inputs and produce a comp
 Both <slug>-requirements.md and <slug>-tech-design.md must exist in the current feature folder. If either is missing, instruct the user to run /brainstorm or /tech-design first.
 </HARD-GATE>
 
+### 2-doc → 3-doc 승격 (산출물 깊이 선택)
+
+`<slug>-tech-design.md` frontmatter 가 `depth: 2` (2-doc 확정 트랙) 인 피처에서 본 skill 이 명시 실행되면 승격으로 간주한다:
+
+1. `ℹ️ 2개 확정 트랙 피처입니다. /write-plan 실행으로 3개 트랙으로 승격합니다.` 한 줄 안내 (질문 아님 — 사용자가 명시 실행했으므로 재확인 게이트 없음)
+2. frontmatter 를 `depth: 3` 으로 갱신 + `depth_reason` 을 승격 사유로 교체
+3. `change-history` 로 tech-design 에 [개발방향-수정] entry (이유: 2-doc → 3-doc 승격) 기록
+4. 이후 본 skill 의 기존 흐름 그대로 진행
+
 ### 예외 — `--no-ask` 플래그 (v2.5+)
 
 사용자가 슬래시 명령에 `--no-ask` 토큰을 **명시** 한 경우에만 진입. 메인 자체 판단으로 활성화 X.
