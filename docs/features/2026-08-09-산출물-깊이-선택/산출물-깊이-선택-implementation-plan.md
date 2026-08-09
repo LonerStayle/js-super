@@ -79,7 +79,7 @@ _DEPTH_LINE = re.compile(r"^depth:\s*([23])\s*$", re.MULTILINE)
 
 
 def feature_depth(feature_dir: Path) -> int:
-    """피처 폴더의 산출물 깊이 (v2.9.0+ 산출물 깊이 선택).
+    """피처 폴더의 산출물 깊이 (산출물 깊이 선택 기능).
 
     *-tech-design.md 의 frontmatter 에 depth: 2 가 명시된 경우에만 2 (2-doc
     확정 트랙). 필드 부재 / depth: 3 / 파일 부재 / 파싱 실패는 전부 3 (기존
@@ -677,9 +677,9 @@ Both <slug>-requirements.md and <slug>-tech-design.md must exist in the current 
 
 ````markdown
 
-## 산출물 깊이 선택 (2개/3개) 결합 (v2.9.0+)
+## 산출물 깊이 선택 (2개/3개) 결합
 
-v2.9.0+ 에서 피처 단위 산출물 깊이 선택 도입 — 2개 (requirements + tech-design) 또는 3개 (+ implementation-plan). 표식 = tech-design frontmatter `depth: 2` (single source of truth). spec: `docs/features/2026-08-09-산출물-깊이-선택/`.
+피처 단위 산출물 깊이 선택 도입 — 2개 (requirements + tech-design) 또는 3개 (+ implementation-plan). 표식 = tech-design frontmatter `depth: 2` (single source of truth). 버전 표기는 main 에서 bump 시 확정. spec: `docs/features/2026-08-09-산출물-깊이-선택/`.
 
 ### 핵심 룰
 
@@ -725,7 +725,7 @@ python3 -c "from scripts.preflight import feature_depth; print('OK')"
 
 ### 영향 범위
 
-- skill 본문 9 + commands 4 + `scripts/preflight.py` + fixture H14 + CLAUDE.md + 6 manifest. og-* / fast-tasks / worktree 계열 / generating-html 구조 영향 0
+- skill 본문 9 + commands 4 + `scripts/preflight.py` + fixture H14 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서. og-* / fast-tasks / worktree 계열 / generating-html 구조 영향 0
 - executing-plans / js-super-sub-driven skill 본문 변경 0 — plan 부재 안내 보강은 preflight `human_reason` 안에서
 - writing-plans `**Model**:` ↔ js-super-sub-driven 결합 — 3-doc 트랙 전용이라 영향 0
 ````
@@ -746,7 +746,7 @@ python3 -c "from scripts.preflight import feature_depth; print('OK')"
 ````markdown
 # H14 — 산출물 깊이 선택 (depth 2/3) 시나리오 fixture
 
-v2.9.0+ 산출물 깊이 선택의 기대 동작 검증. spec: `docs/features/2026-08-09-산출물-깊이-선택/`.
+산출물 깊이 선택 기능의 기대 동작 검증. spec: `docs/features/2026-08-09-산출물-깊이-선택/`.
 
 ## 시나리오 A — 정식 플로우, 3개 선택 (기존 동작)
 
@@ -802,16 +802,14 @@ v2.9.0+ 산출물 깊이 선택의 기대 동작 검증. spec: `docs/features/20
 
 ---
 
-### Task 15: 6 manifest 버전 bump + [릴리즈]
+### Task 15: 버전 bump 스킵 확인 (main 전용 룰) [검증]
 
-**Files:**
-- Modify: `package.json`, `.claude-plugin/plugin.json`, `.cursor-plugin/plugin.json`, `.codex-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `gemini-extension.json`
+**Files:** 없음 (검증 전용 — CLAUDE.md "버전 bump 는 main 전용 — 워크트리 세션 금지" 룰 준수)
 
-**Model**: sonnet
+**Model**: haiku
 
-- [ ] **Step 1: 현재 버전 확인** — `package.json` 의 `version` 을 읽고 차기 minor 결정 (현재 2.8.1 → 2.9.0). 값이 다르면 그 기준 차기 minor.
-- [ ] **Step 2: bump 실행** — `scripts/bump-version.sh` 사용 (6 manifest 동기). CLAUDE.md 신규 섹션 헤딩의 버전 표기 (v2.9.0+) 가 실제 bump 버전과 다르면 헤딩도 동기 수정.
-- [ ] **Step 3: [릴리즈] entry + commit** — 연관 commit SHA 기록. (git tag 는 사용자가 merge-back 후 결정 — 워크트리 안 tag 생성 금지)
+- [ ] **Step 1: 6 manifest 미변경 확인** — `git diff <BASE_SHA>..HEAD --name-only` 에 `package.json` / `.claude-plugin/plugin.json` / `.cursor-plugin/plugin.json` / `.codex-plugin/plugin.json` / `.claude-plugin/marketplace.json` / `gemini-extension.json` 이 없는지 확인 (expected: 0건)
+- [ ] **Step 2: 안내** — 버전 bump 와 git tag 는 main 머지 후 main 에서 수행함을 최종 보고에 명시
 
 ## 2. 위험 코드 지점
 
@@ -824,7 +822,7 @@ v2.9.0+ 산출물 깊이 선택의 기대 동작 검증. spec: `docs/features/20
 
 ## 3. 롤백 전략
 
-- Code: Task 1~15 의 commit 을 역순 `git revert`. 신규 파일 1개 (fixture README) 삭제, CLAUDE.md 섹션 revert, 6 manifest 를 이전 버전으로 되돌림.
+- Code: Task 1~15 의 commit 을 역순 `git revert`. 신규 파일 1개 (fixture README) 삭제, CLAUDE.md 섹션 revert. 6 manifest 는 이 워크트리에서 변경하지 않음 (bump 는 main 전용).
 - 산출물 표식: 이미 기록된 피처 폴더의 `depth: 2` frontmatter 는 문서 편집으로 제거 가능 (제거 = 3-doc 복귀, 파괴적 아님).
 - Config: feature flag 없음 — 본문 룰 기반이라 revert 로 완전 복원.
 
@@ -838,3 +836,10 @@ v2.9.0+ 산출물 깊이 선택의 기대 동작 검증. spec: `docs/features/20
 - **무엇이**: 산출물-깊이-선택-implementation-plan.md 전체 (Task 1~15 / §2 위험 코드 지점 6건 / §3 롤백 전략)
 - **영향범위**: verifying-spec 4축 보고 — gap 0 (FR-10 확인 항목 self-correct 1건), conflict 0, plan_byte_check ALL BYTE-EQUAL
 - **연관 항목**: CH-20260809-001, CH-20260809-002
+
+### [2026-08-09 21:42] [구현계획서-수정]
+- **id**: CH-20260809-006
+- **이유**: CLAUDE.md 신규 룰 "버전 bump 는 main 전용 — 워크트리 세션 금지" 반영
+- **무엇이**: Task 15 를 "6 manifest bump" 에서 "bump 스킵 확인 [검증]" 으로 교체, §3 롤백 문구 정정, Task 12 payload 의 버전 표기·manifest 언급 제거, Task 1/13 payload 의 v2.9.0 표기 제거
+- **영향범위**: 실행 단계 Task 12/15 동작 변경 (코드 미착수 시점 — 실행 영향 없음)
+- **연관 항목**: CH-20260809-004, CH-20260809-005

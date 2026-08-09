@@ -57,7 +57,7 @@ js-super 정식 플로우 (brainstorming → tech-design → writing-plans) 는 
 1. 정식 플로우에서 tech-design 승인 게이트에 3지선다가 노출되고, "여기서 종료 (2개 확정)" 선택 시 writing-plans 가 호출되지 않으며 깊이 표식 + 종료 안내가 남는다.
 2. auto-flow 에서 순수 문서 성격 피처 실행 시 auto-writing-plans 가 호출되지 않고 판단 근거가 보고된다. 구현 성격 피처는 기존과 동일하게 4단계 완주한다.
 3. CLAUDE.md 의 기존 회귀 catch grep 이 전부 통과한다 (특히 `js-super:auto-writing-plans` invoke 문자열 grep).
-4. 신규 회귀 catch grep + CLAUDE.md 결합 메모 갱신 + 6 manifest bump 가 같은 배치에 포함된다.
+4. 신규 회귀 catch grep + CLAUDE.md 결합 메모 갱신이 같은 배치에 포함된다. 버전 bump 는 "워크트리 세션 금지" 룰 (CLAUDE.md) 에 따라 이 워크트리에서 하지 않고, main 머지 후 main 에서 수행한다.
 5. 구현 완료 후 강도 높은 최종 검증 패스를 별도로 실행한다 (사용자 요청) — 회귀 grep 전수 + verifying-spec + 주요 시나리오 (정식 2개 / 정식 3개 / auto 2개 / auto 3개 / 승격) 점검.
 
 ## 다음 단계
@@ -73,3 +73,10 @@ js-super 정식 플로우 (brainstorming → tech-design → writing-plans) 는 
 - **이유**: 신규 피처 auto-brainstorming 결과 (Socratic auto 모드, 사용자 결정: 선택 시점 = tech-design 승인 직후)
 - **무엇이**: 산출물-깊이-선택-requirements.md 전체 (배경 / 핵심 결정 4건 / FR-1..FR-10 / 우려·해결 / 범위 밖 / 수용 기준)
 - **영향범위**: 없음 (최초 생성)
+
+### [2026-08-09 21:42] [요구사항-수정]
+- **id**: CH-20260809-004
+- **이유**: CLAUDE.md 신규 룰 "버전 bump 는 main 전용 — 워크트리 세션 금지" (사용자 갱신, 세션 중 발견) 반영
+- **무엇이**: 수용 기준 4 — manifest bump 를 배치에서 제외, main 머지 후 main 에서 수행으로 정정
+- **영향범위**: 산출물-깊이-선택-tech-design.md §2 (CH-20260809-005), 산출물-깊이-선택-implementation-plan.md Task 15 (CH-20260809-006)
+- **연관 항목**: CH-20260809-005, CH-20260809-006

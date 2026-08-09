@@ -45,7 +45,7 @@
 | `scripts/preflight.py` | `feature_depth()` 신규 함수 + `execute_plan_mode_check` / `subagent_task_entry_check` 의 plan-부재 human_reason 보강 | FR-2, FR-5 |
 | `skills/brainstorming/SKILL.md` | Entry Router 라벨 "3-MD 풀 트랙" → "2~3 MD (깊이는 tech-design 승인 시 선택)" + "다음 두 산출물" blockquote 조건부 문구 | 표기 정합 |
 | `CLAUDE.md` | 결합 메모 신규 섹션 + 신규 회귀 catch grep | 수용 기준 4 |
-| 6 manifest | minor bump (구현 시점의 main 기준 차기 minor — 병합 시 확정) | 릴리즈 |
+| 6 manifest | 이 워크트리에서 변경 금지 (CLAUDE.md "버전 bump 는 main 전용" 룰) — main 머지 후 main 에서 bump | 릴리즈 |
 
 - 기존 회귀 grep 계약 유지 확인 대상: `js-super:auto-writing-plans` 문자열 (auto-tech-design 본문), auto-* 4종 description 진입 제약 문구, `--no-ask` 8 skill grep, Checklist 9 skill grep.
 - `.gitignore` 변경 없음 (신규 산출물 파일 없음 — 표식은 기존 .md 의 frontmatter).
@@ -142,3 +142,10 @@ change-propagation Acceptance 4번 ("code-only 편집이 requirements/tech-desig
 - **무엇이**: 산출물-깊이-선택-tech-design.md 전체 (아키텍처 / 영향 컴포넌트 21파일 / 깊이 표식 frontmatter 스키마 / 핵심 결정 D1~D6 / 위험 6건 / 테스트 전략 5항)
 - **영향범위**: verifying-spec 4축 보고 — gap 0, conflict 0, 위험 후보 side-effect 2·breaking 2·race 1
 - **연관 항목**: CH-20260809-001
+
+### [2026-08-09 21:42] [개발방향-수정]
+- **id**: CH-20260809-005
+- **이유**: CLAUDE.md 신규 룰 "버전 bump 는 main 전용 — 워크트리 세션 금지" 반영
+- **무엇이**: §2 영향 컴포넌트 표의 6 manifest 행 — "minor bump" 를 "워크트리 변경 금지, main 에서 bump" 로 정정
+- **영향범위**: 산출물-깊이-선택-implementation-plan.md Task 15 (CH-20260809-006)
+- **연관 항목**: CH-20260809-004, CH-20260809-006
