@@ -169,3 +169,45 @@ def test_real_changelog_entry_still_detected(tmp_path):
 - **id**: CH-20260510-001
 '''
     assert _has_changelog_entries(text) is True
+
+
+def test_feature_depth_marker_2(tmp_path):
+    td = tmp_path / "foo-tech-design.md"
+    _write(td, "---\ndepth: 2\ndepth_reason: 사용자 선택\n---\n# x\n## 변경이력\n")
+    from scripts.preflight import feature_depth
+    assert feature_depth(tmp_path) == 2
+
+
+def test_feature_depth_no_frontmatter(tmp_path):
+    td = tmp_path / "foo-tech-design.md"
+    _write(td, "# x\n## 변경이력\n")
+    from scripts.preflight import feature_depth
+    assert feature_depth(tmp_path) == 3
+
+
+def test_feature_depth_promoted_3(tmp_path):
+    td = tmp_path / "foo-tech-design.md"
+    _write(td, "---\ndepth: 3\ndepth_reason: 승격\n---\n# x\n## 변경이력\n")
+    from scripts.preflight import feature_depth
+    assert feature_depth(tmp_path) == 3
+
+
+def test_feature_depth_missing_dir(tmp_path):
+    from scripts.preflight import feature_depth
+    assert feature_depth(tmp_path / "nope") == 3
+
+
+def test_execute_plan_mode_check_depth2_hint(tmp_path):
+    td = tmp_path / "foo-tech-design.md"
+    _write(td, "---\ndepth: 2\n---\n# x\n## 변경이력\n")
+    result = execute_plan_mode_check(tmp_path / "foo-implementation-plan.md")
+    assert result.ok is False
+    assert "승격" in result.human_reason
+
+
+def test_subagent_task_entry_check_depth2_hint(tmp_path):
+    td = tmp_path / "foo-tech-design.md"
+    _write(td, "---\ndepth: 2\n---\n# x\n## 변경이력\n")
+    result = subagent_task_entry_check(tmp_path / "foo-implementation-plan.md")
+    assert result.ok is False
+    assert "승격" in result.human_reason
