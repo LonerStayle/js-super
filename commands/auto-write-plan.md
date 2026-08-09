@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 산출물은 `<slug>-implementation-plan.md` 입니다 (RAW 본문, frontmatter 의 `commit_policy: per-task`).
 
-다음 단계는 자동으로 이어집니다 — `/auto-execute-plan`.
+다음 단계는 자동으로 이어집니다 — `/auto-execute-plan`. 2개 확정 피처 (tech-design frontmatter `depth: 2`) 에서 실행하면 3개 트랙으로 승격됩니다 (frontmatter 갱신 + 변경이력 기록).
 
 ## `--no-ask` 플래그 (v2.5+)
 

@@ -97,10 +97,16 @@ def code_pretty_check(file_path: Path) -> PreflightResult:
 
 def execute_plan_mode_check(plan_path: Path) -> PreflightResult:
     if not plan_path.exists():
+        hint = ""
+        if feature_depth(plan_path.parent) == 2:
+            hint = (
+                " — 이 피처는 2개 문서로 확정된 트랙입니다."
+                " 구현이 필요해졌다면 /write-plan 으로 승격하세요."
+            )
         return PreflightResult(
             False,
             f"plan not found: {plan_path}",
-            f"구현계획서를 찾을 수 없습니다: {plan_path}",
+            f"구현계획서를 찾을 수 없습니다: {plan_path}{hint}",
         )
     text = plan_path.read_text(encoding="utf-8")
     policy = _read_commit_policy(text)
@@ -109,10 +115,16 @@ def execute_plan_mode_check(plan_path: Path) -> PreflightResult:
 
 def subagent_task_entry_check(plan_path: Path) -> PreflightResult:
     if not plan_path.exists():
+        hint = ""
+        if feature_depth(plan_path.parent) == 2:
+            hint = (
+                " — 이 피처는 2개 문서로 확정된 트랙입니다."
+                " 구현이 필요해졌다면 /write-plan 으로 승격하세요."
+            )
         return PreflightResult(
             False,
             f"plan not found: {plan_path}",
-            f"플랜 파일이 존재하지 않습니다: {plan_path}",
+            f"플랜 파일이 존재하지 않습니다: {plan_path}{hint}",
         )
     text = plan_path.read_text(encoding="utf-8")
     policy = _read_commit_policy(text)
@@ -123,3 +135,26 @@ def subagent_task_entry_check(plan_path: Path) -> PreflightResult:
             f"js-super-sub-driven 는 commit_policy: per-task 를 요구합니다 (현재: {policy})",
         )
     return PreflightResult(True, "ok", "정상")
+
+
+_DEPTH_LINE = re.compile(r"^depth:\s*([23])\s*$", re.MULTILINE)
+
+
+# ⚠️ RISK(side-effect): 공유 preflight helper — execute_plan/subagent 진입 안내가 이 판독에 의존, 판독 실패는 3-doc 안전 fallback — by 산출물-깊이-선택 task 1
+def feature_depth(feature_dir: Path) -> int:
+    """피처 폴더의 산출물 깊이 (산출물 깊이 선택 기능).
+
+    *-tech-design.md 의 frontmatter 에 depth: 2 가 명시된 경우에만 2 (2-doc
+    확정 트랙). 필드 부재 / depth: 3 / 파일 부재 / 파싱 실패는 전부 3 (기존
+    3-doc 기본 트랙). 판독 규칙 엄격 — 안전한 방향(3)으로 fallback.
+    """
+    if not feature_dir.exists():
+        return 3
+    for md in sorted(feature_dir.glob("*-tech-design.md")):
+        m = _FRONTMATTER_COMMIT_POLICY.match(md.read_text(encoding="utf-8"))
+        if not m:
+            continue
+        line = _DEPTH_LINE.search(m.group(1))
+        if line and line.group(1) == "2":
+            return 2
+    return 3

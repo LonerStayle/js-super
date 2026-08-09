@@ -1,6 +1,6 @@
 ---
 name: auto-tech-design
-description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계 auto-brainstorming 의 명시 invoke 로만 진입, 사용자 자유 요청에서 자동 선택 금지. requirements.md 읽기 + adaptive 7-topic 자동 판정 + design decision 자동 alternatives 비교 → recommendation 자동 선택 + verifying-spec 4축 보고서 transition 직전 노출 + auto-writing-plans 자동 invoke. AskUserQuestion 호출 X. generating-html 은 Step 4.5 에서 백그라운드(fire-and-forget) 호출.
+description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계 auto-brainstorming 의 명시 invoke 로만 진입, 사용자 자유 요청에서 자동 선택 금지. requirements.md 읽기 + adaptive 7-topic 자동 판정 + design decision 자동 alternatives 비교 → recommendation 자동 선택 + verifying-spec 4축 보고서 transition 직전 노출 + auto-writing-plans 자동 invoke. AskUserQuestion / generating-html 호출 X.
 ---
 
 # Auto Designing Direction → <slug>-tech-design.md (auto)
@@ -11,10 +11,9 @@ description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계
 - [ ] Step 2 — adaptive 7-topic 자동 판정
 - [ ] Step 3 — AI 자동 design decision (각 활성 토픽)
 - [ ] Step 4 — 산출물 자동 작성 (<slug>-tech-design.md)
-- [ ] Step 4.5 — generating-html fire-and-forget dispatch + 5초 race delay
 - [ ] Step 5 — verifying-spec 자동 실행 (4축 보고서)
 - [ ] Step 6 — change-history 자동 ([개발방향-수정] entry)
-- [ ] Step 7 — Transition notice + auto-writing-plans invoke
+- [ ] Step 7 — 깊이 판정 + Transition notice + (3개 판정 시) auto-writing-plans invoke
 
 ## Process
 
@@ -40,12 +39,6 @@ description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계
 
 `<slug>-tech-design.md` 7-section schema 따라 작성. RAW 본문.
 
-### Step 4.5 — generating-html fire-and-forget dispatch (v2.3.2+)
-
-`<slug>-tech-design.md` 작성 직후, **change-history entry 박히기 전** (footer 비어있음) 에 `generating-html` skill fire-and-forget dispatch (`run_in_background: true`). 메인 latency 거의 0. transition notice 시점에 사용자가 `.html` 검토 가능 (Type "stop" abort). v1.1.17 PRD D9 amend 반전 (v2.3.2+).
-
-**v2.4+ race delay**: dispatch 후 **5초 delay** 후에 Step 5 (verifying-spec) 진행. background subagent 가 .md 의 footer 0건 시점에 읽도록 보장 (race condition 해결).
-
 ### Step 5 — verifying-spec 자동 실행
 
 `verifying-spec` skill invoke (메인 자체 수행 또는 skill 호출). 4축 보고서 생성. 결과는 다음 단계 transition notice 직전 노출.
@@ -54,7 +47,7 @@ description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계
 
 `change-history` skill invoke → 첫 `[개발방향-수정]` entry. CH-id 자동.
 
-### Step 7 — Transition notice + auto-writing-plans invoke
+### Step 7 — 깊이 판정 + Transition notice + (3개 판정 시) auto-writing-plans invoke
 
 ```
 🔍 verifying-spec 결과:
@@ -66,7 +59,10 @@ description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계
 ℹ️ /write-plan 단계로 자동 넘어갑니다. 멈추려면 "stop" 입력해주세요.
 ```
 
-`parse_interrupt` 매치 시 exit + `ℹ️ 알겠습니다. /write-plan 은 나중에 직접 실행해주세요.` 안내. 매치 X → `js-super:auto-writing-plans` invoke.
+**깊이 판정 (산출물 깊이 선택)**: transition notice 출력 전에 메인이 requirements + tech-design 내용으로 판정한다 — 코드 변경·구현 task 가 예상되는 피처면 **3개** (아래 invoke 진행), 순수 문서·설계·조사 성격 (산출물이 설계 문서 자체) 이면 **2개**. 애매하면 3개 (기존 동작 보존). 사용자에게 묻지 않는다 (AskUserQuestion 호출 X).
+
+- **3개 판정**: 위 transition notice 출력. `parse_interrupt` 매치 시 exit + `ℹ️ 알겠습니다. /write-plan 은 나중에 직접 실행해주세요.` 안내. 매치 X → `js-super:auto-writing-plans` invoke.
+- **2개 판정**: tech-design frontmatter 에 `depth: 2` + `depth_reason: <판단 근거 1줄>` 기록 + `change-history` [개발방향-수정] entry 후, `ℹ️ 이 피처는 2개 문서 트랙으로 자동 확정했습니다 (판단 근거: <1줄>). 구현이 필요해지면 /write-plan 으로 승격하세요.` 출력하고 체인 종료. auto-writing-plans 미호출. transition notice 미출력.
 
 ## --no-ask 플래그 (v2.5+) — 짧은 reference
 
@@ -79,7 +75,7 @@ description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계
 | Wrong | Right |
 |---|---|
 | AskUserQuestion 호출 | NEVER. |
-| generating-html 동기 호출 (sync wait) | NEVER. v2.3.2+ — Step 4.5 fire-and-forget 만. (v1.1.17 "호출 부재" 룰 v2.3.2 반전.) |
+| generating-html 호출 (모든 형태) | NEVER. v2.8.2+ 커맨드 강등 — 자동 발동 폐지 (v2.3.2 의 Step 4.5 dispatch 제거). `.html` 필요 시 사용자가 명시 호출. |
 | 일반 tech-design skill body 호출 | NEVER. self-contained mirror (D-T1). |
 | transition notice 후 wait sleep | NEVER. |
 

@@ -40,6 +40,15 @@ If the request is ambiguous, ask the user once: "이건 요구사항 변경인�
 
 Code edits never cascade upward to 요구사항 or 개발방향. The reasoning is unchanged; only the implementation moved.
 
+### 2-doc 트랙 분기 (산출물 깊이 선택)
+
+피처의 tech-design frontmatter 가 `depth: 2` (2-doc 확정 트랙) 이면 위 matrix 를 다음과 같이 적용한다:
+
+- `<slug>-implementation-plan.md` 행 (변경 지점·cascade 대상 양쪽) 은 무효 — 문서가 존재하지 않는다.
+- `<slug>-requirements.md` / `<slug>-tech-design.md` 행의 cascade 대상에서 `<slug>-implementation-plan.md` 를 제외한다.
+- `code (direct edit)` 행의 기록 목적지는 `<slug>-tech-design.md` `## 변경이력` 으로 대체한다 (footer append 는 본문 수정이 아님 — Acceptance 4 참조).
+- 구현이 필요해진 변경이면 `/write-plan` 승격을 안내한다 (frontmatter `depth: 3` 갱신 후 기존 matrix 복귀).
+
 ## Checklist
 
 - [ ] Trigger Detection — 변경 신호 catch
@@ -135,7 +144,7 @@ Example entry skeleton (one of N in a batch):
 |---|---|
 | Skipping cascading because "user only mentioned 요구사항" | Apply impact matrix → show downstream → let user decide scope. |
 | Guessing change level on ambiguous request | Ask once. Don't silently pick. |
-| Editing code directly without <slug>-implementation-plan.md entry | Code edits always log to <slug>-implementation-plan.md (reverse direction). |
+| Editing code directly without <slug>-implementation-plan.md entry | Code edits always log to <slug>-implementation-plan.md (reverse direction; 2-doc 트랙은 <slug>-tech-design.md footer). |
 | Forgetting to cross-link CH-ids | Cross-link is the audit chain. Every propagation batch shares **연관 항목**. |
 
 ## Red Flags
@@ -143,7 +152,7 @@ Example entry skeleton (one of N in a batch):
 | Thought | Reality |
 |---|---|
 | "It's a tiny FR tweak, no downstream impact" | Run the matrix anyway. The user can decline cascading. |
-| "User said 'just fix the bug'" | Even bug fixes get a [코드-수정] entry in <slug>-implementation-plan.md. |
+| "User said 'just fix the bug'" | Even bug fixes get a [코드-수정] entry in <slug>-implementation-plan.md (2-doc 트랙은 <slug>-tech-design.md footer). |
 | "Cross-linking is overkill for 2 entries" | Two entries today, twenty linked entries six months from now. Always link. |
 
 ## Acceptance
@@ -152,7 +161,7 @@ A propagation run is correct when ALL hold:
 1. The user saw the impact list before any downstream edit
 2. Every approved target produced a change-history entry
 3. All entries in the batch share **연관 항목** with the other CH-ids in the batch
-4. Code-only edits did not modify <slug>-requirements.md or <slug>-tech-design.md (reverse-cascade is forbidden)
+4. Code-only edits did not modify the BODY of <slug>-requirements.md or <slug>-tech-design.md (reverse-cascade is forbidden — 단 2-doc 트랙의 `## 변경이력` footer append 는 본문 수정이 아니므로 예외)
 5. (v2.2.2+) `.html` 동봉본이 존재하는 feature 라면 마지막 단계에서 안내문 출력 → `이 변경으로 .html 이 stale 됐을 수 있음. 필요시 /sync-html <slug>` (자동 호출 X — stale 허용 철학 보존)
 
 ## Related Skills

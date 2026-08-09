@@ -1168,64 +1168,83 @@ grep -cF "## new-skill-enhanced — 스코프 분기 + 출처 표식 결합 (v2.
 
 요약: 3 command 본문 + CLAUDE.md 결합 메모 + 6 manifest = 10 파일 atomic patch (Wave 0~5 + spec + [log] 묶음 commit).
 
-## /goodnight + /goodmorning 결합 (v2.8.0+)
+## /goodnight + /goodmorning 결합 (v2.8.0+) — v2.9.0 에서 단일화로 대체
 
-v2.8.0+ 에서 세션 핸드오프 커맨드 2종 추가 — `/goodnight` (저녁 저장) + `/goodmorning` (아침 브리핑). instruction-only 커맨드이며 여러 워크트리를 한 번에 파악한다. spec: `docs/features/2026-07-18-미라클모닝/`.
+v2.8.0 에서 세션 핸드오프 커맨드 2종(`/goodnight` 저녁 저장 + `/goodmorning` 아침 브리핑)을 추가했으나, **v2.9.0 에서 `/goodnight` 를 삭제하고 `/goodmorning` 하나로 통합**했다. git 상태·진행 문서·세션 기록은 아침에도 그대로 남아 있어 저녁 저장 단계가 불필요했고, 저녁 실행을 깜빡하면 다음날 브리핑이 비는 문제도 있었다 (사용자 결정). 현행 룰은 아래 "/goodmorning 단일화" 섹션 참조. spec `docs/features/2026-07-18-미라클모닝/` 은 v2.8.0 당시 기록으로 보존 (단일화는 spec 캐스케이드 없이 커맨드 직접 개편 — 사용자 결정).
 
-### 적용 범위 (2 본문 + 6 manifest = 8 파일)
+## /goodmorning 단일화 — /goodnight 흡수 (v2.9.0+)
 
-- `commands/goodnight.md` (신규) — 최상위 워크트리 전용 저장. 워크트리별 병렬 보조 에이전트 수집 + 위험 자동 판정 + `.js-super/session-handoff/YYYY-MM-DD.md` 저장
-- `commands/goodmorning.md` (신규) — 최신 노트 브리핑. 경고 배너 우선 출력
-- `CLAUDE.md` (본 섹션)
-- 6 manifest — 2.7.0 → 2.8.0
+v2.9.0+ 에서 `/goodnight` 삭제 + `/goodmorning` 자급형 개편. 수집(워크트리별 병렬 보조 에이전트 + 위험 자동 판정)을 goodmorning 실행 시점으로 이동해 수집 직후 브리핑까지 한 번에 처리한다.
 
-### 핵심 룰
+### 적용 범위 (커맨드 1 삭제 + 1 재작성 + CLAUDE.md = 3 파일)
 
-- **D-1 저장은 최상위 워크트리 전용** — `git worktree list` 첫 줄이 최상위. 하위 워크트리에서 `/goodnight` 실행 시 저장하지 않고 최상위 경로 안내. 읽기(`/goodmorning`)는 어느 워크트리에서도 최상위 노트를 대상으로 허용
-- **D-2 데이터 소스 = git + 진행 문서 + 세션 기록 종합** — 세션 기록은 깊게 분석하되 워크트리별 병렬 보조 에이전트로 분산해 메인 컨텍스트를 보호. 메인은 원문을 직접 읽지 않고 요약만 취합
-- **D-3 경고는 자동 판정** — 위험 신호 체크리스트(미커밋 대량 변경 / 실패한 테스트 / 미완료 배포 / 미해결 충돌 / 사용자 명시 경고 요청)로 판정. 위험 있을 때만 배너, 없으면 담백
-- **D-4 저장 = 날짜별 누적** — `.js-super/session-handoff/YYYY-MM-DD.md`. 같은 날 재실행 시 덮어쓰기. `.js-super/` glob 에 흡수돼 gitignore 수정 불필요
-- **D-5 출력 스타일** — 비유법 금지 + 불필요한 용어 병기 금지 + 사람이 읽기 위한 명확한 한국어. 두 커맨드 본문에 동일하게 박힘
-- **D-6 자동 발동 차단 = `disable-model-invocation: true`** — 두 커맨드 frontmatter 에 명시. 모델이 대화 중 임의로 호출하지 못하고 사용자 슬래시 명시 호출만 발동. description 에는 발동 조건 문구를 넣지 않음 (frontmatter 필드가 보장하므로 불필요)
+- `commands/goodnight.md` — 삭제
+- `commands/goodmorning.md` — 자급형 재작성 (수집 + 위험 판정 + 브리핑 + 노트 저장)
+- `CLAUDE.md` (본 섹션 + v2.8.0 섹션 압축)
+- 6 manifest 버전 bump 는 dev 가 릴리즈 시점에 main 에서 직접 (에이전트가 임의로 올리지 않음 — "버전 bump 는 main 전용" 룰 참조)
 
-### 회귀 패턴 (한쪽만 변경 시)
+### 핵심 룰 (v2.8.0 D 룰 승계 + 신규)
+
+- **E-1 실행 위치 자유 + 최상위 기준** — 어느 워크트리에서 실행해도 됨. 수집 대상 열거와 노트 저장 위치는 항상 `git worktree list` 첫 줄(최상위) 기준. v2.8.0 D-1 의 "최상위 전용 가드"는 저녁 저장 커맨드가 사라지며 필요 없어짐
+- **E-2 병렬 보조 에이전트 수집 유지** (D-2 승계) — 워크트리당 보조 에이전트 1, 메인은 요약만 취합 (세션 원문 직접 읽기 금지)
+- **E-3 위험 자동 판정 유지** (D-3 승계) — 체크리스트 판정, 위험 있을 때만 배너, 없으면 담백
+- **E-4 노트 저장 유지** (D-4 승계) — 브리핑 결과를 최상위의 `.js-super/session-handoff/YYYY-MM-DD.md` 에 저장 (같은 날 덮어쓰기, gitignore 수정 불필요). 저장 시점만 저녁 → 아침으로 이동
+- **E-5 출력 스타일 유지** (D-5 승계) — 비유법 금지 + 불필요한 용어 병기 금지 + 명확한 한국어
+- **E-6 자동 발동 차단 유지** (D-6 승계) — `disable-model-invocation: true`, description 에 발동 조건 문구 X
+- **E-7 뒤처진 워크트리 제외 (신규)** — behind ≥ 1 이고 ahead = 0 이고 미커밋 변경 없음, 3 조건 **모두** 해당하는 워크트리만 수집 제외 + 개요에 한 줄 알림
+- **E-8 세션 분석 48시간 한도 (신규)** — 최근 48시간 안에 수정된 세션 파일만 깊게 분석, 그보다 오래된 세션은 건너뜀 (아침 대기 시간 단축)
+
+### 회귀 패턴
 
 | 누락 | 증상 |
 |---|---|
-| goodnight 최상위 가드 약화 | 하위 워크트리에서 저장 → 노트가 여러 위치에 흩어짐 |
+| goodnight.md 부활 | 저녁 저장 의존 재발 — 통합 의도 무화 |
+| goodmorning 이 저장된 노트를 전제 (노트 없으면 종료) | v2.8.0 동작 회귀 — 저녁 실행 깜빡하면 브리핑 빔 |
 | 세션 수집 병렬 분산 제거 | 메인 컨텍스트 폭발 (세션 기록 깊은 분석 요구와 충돌) |
-| 경고 배너 억지 생성 | 위험 없는데 오버 배너 → 사용자 피로 (FR-8 위반) |
-| 출력 스타일 룰 한쪽 누락 | 비유법·용어 병기 재발 (FR-11 위반) |
-| `disable-model-invocation: true` 누락 | 모델이 대화 중 커맨드를 자동 호출 → 사용자 의도 없이 실행 |
+| 뒤처진 워크트리 제외 3 조건 중 하나 누락 | 작업 중인 워크트리(새 커밋 있음 또는 미커밋 변경 있음)가 스캔에서 빠짐 — 브리핑 누락 |
+| 48시간 한도 제거 | 세션 누적 시 아침 대기 시간 증가 |
+| 경고 배너 억지 생성 / 출력 스타일 룰 누락 / `disable-model-invocation: true` 누락 | v2.8.0 과 동일 증상 |
 
 ### 회귀 catch grep
 
 ```bash
-# 두 커맨드 존재
-test -f commands/goodnight.md && test -f commands/goodmorning.md && echo OK
+# goodnight 삭제 + goodmorning 존재
+test ! -f commands/goodnight.md && test -f commands/goodmorning.md && echo OK
 # expected: OK
 
-# 최상위 전용 가드
-grep -F "최상위 워크트리에서 실행" commands/goodnight.md
+# 자급형 수집 — 삭제된 커맨드 참조 잔존 X
+grep -cF "/goodnight" commands/goodmorning.md
+# expected: 0
+
+# 병렬 보조 에이전트 수집
+grep -F "병렬" commands/goodmorning.md
 # expected: >= 1
 
-# 출력 스타일 룰 (비유법 금지) 두 커맨드 모두
-grep -lF "비유" commands/goodnight.md commands/goodmorning.md
-# expected: 2 lines
+# 뒤처진 워크트리 제외 (ahead/behind 비교)
+grep -F "ahead" commands/goodmorning.md
+# expected: >= 1
 
-# 모델 자동 호출 차단 두 커맨드 모두
-grep -lF "disable-model-invocation: true" commands/goodnight.md commands/goodmorning.md
-# expected: 2 lines
+# 48시간 한도
+grep -F "48시간" commands/goodmorning.md
+# expected: >= 1
+
+# 노트 저장 유지
+grep -F "session-handoff" commands/goodmorning.md
+# expected: >= 1
+
+# 모델 자동 호출 차단
+grep -cF "disable-model-invocation: true" commands/goodmorning.md
+# expected: 1
 
 # 결합 메모 본문 존재
-grep -cF "## /goodnight + /goodmorning 결합 (v2.8.0+)" CLAUDE.md
+grep -cF "## /goodmorning 단일화 — /goodnight 흡수 (v2.9.0+)" CLAUDE.md
 # expected: >= 1
 ```
 
 ### 영향 범위
 
-- 2 command 본문 + CLAUDE.md + 6 manifest. 다른 skill / scripts / hooks / settings 영향 0
-- 사용자 환경 출력 — `.js-super/session-handoff/` (gitignored, 저장소 외 산출물)
+- 커맨드 1 삭제 + 1 재작성 + CLAUDE.md. 다른 skill / scripts / hooks / settings 영향 0
+- 사용자 환경 출력 — `.js-super/session-handoff/` (gitignored, 저장소 외 산출물). 파일 형식 유지 — 기존 노트와 호환
 - `using-superpowers` 본문 변경 X
 - 자동 발동 경로 없음 — 명시 슬래시 호출만 (`disable-model-invocation: true`)
 
@@ -1423,3 +1442,55 @@ awk '/\*\*Step 4/,/\*\*Step 5/' skills/setting-up-worktrees/SKILL.md | grep -c "
 - 3 본문 + 6 manifest. `setup-memory-symlinks.sh` / `worktree-merge-back` / `worktree-remove` / `using-git-worktrees` (upstream) / og-* / auto-* 영향 0
 - 훅은 기존처럼 `.worktrees/` 아래 경로만 처리 — 다른 위치 워크트리는 무시 (동작 동일)
 - E2E: `docs/features/2026-08-09-워크트리-재분기/` 의 plan Task 9 시나리오 (a)~(e) — scratchpad 임시 저장소 검증 (저장소 커밋 X)
+
+## 산출물 깊이 선택 (2개/3개) 결합
+
+피처 단위 산출물 깊이 선택 도입 — 2개 (requirements + tech-design) 또는 3개 (+ implementation-plan). 표식 = tech-design frontmatter `depth: 2` (single source of truth). 버전 표기는 main 에서 bump 시 확정. spec: `docs/features/2026-08-09-산출물-깊이-선택/`.
+
+### 핵심 룰
+
+- **D1 표식** — `depth: 2` 명시일 때만 2-doc 트랙. 필드 부재 / `depth: 3` / 파싱 실패 = 3-doc (기존 동작). 기존 피처 폴더 소급 없음. 판독 helper: `scripts/preflight.py:feature_depth()` (additive — 기존 함수 시그니처 무변경)
+- **D2 정식 결정 표면** — tech-design Gate #12 3지선다 (구현계획서까지 진행 / 여기서 종료 (2개 확정) / 나중에 결정). "나중에 결정" 은 표식 없이 종료 (기존 no 의미 보존)
+- **D3 auto 결정 표면** — auto-tech-design Step 7 깊이 판정 (구현 단계 필요성 기준, 애매하면 3). AskUserQuestion 호출 X 유지. 2개 판정 시 판단 근거 1줄 보고 + 체인 종료
+- **D4 체인 grep 계약 보존** — auto-tech-design 본문의 `js-super:auto-writing-plans` 문자열은 3개 판정 분기 문장 안에 보존 (기존 회귀 grep 그대로 통과)
+- **D5 변경이력 라우팅** — 2-doc 트랙의 [코드-수정]/[검증]/[릴리즈] entry 는 tech-design footer 로. footer append 는 본문 수정이 아님 (change-propagation Acceptance 4 예외 조항)
+- **D6 승격** — /write-plan (또는 /auto-write-plan) 명시 실행 = 2→3 승격. frontmatter `depth: 3` 갱신 + [개발방향-수정] entry. 재확인 게이트 없음
+
+### 회귀 패턴 (한쪽만 변경 시)
+
+| 누락 | 증상 |
+|---|---|
+| Gate #12 만 확장, auto Step 7 미분기 | 정식/auto 동작 불일치 — auto 는 무조건 4단계 완주 |
+| 표식 기록만, change-history 라우팅 미갱신 | 2-doc 피처 코드·검증 이력의 목적지 소실 |
+| 라우팅 갱신만, change-propagation Acceptance 예외 누락 | footer append 가 reverse-cascade 금지 룰과 충돌 판정 |
+| auto Step 7 재작성 시 invoke 문자열 삭제 | 기존 회귀 grep (`js-super:auto-writing-plans`) 깨짐 |
+| preflight 시그니처 변경 | 4 skill bash one-liner 동기 필요 (이번 릴리즈는 additive 라 해당 없음) |
+| 판독 규칙 완화 (depth 부재를 2 로 해석 등) | 기존 3-doc 피처가 2-doc 분기로 오라우팅 |
+
+### 회귀 catch grep
+
+```bash
+# 정식 게이트 3지선다
+grep -F "여기서 종료 (2개 확정)" skills/tech-design/SKILL.md
+# expected: >= 1
+
+# auto 판정 분기 + 체인 문자열 보존
+grep -F "깊이 판정" skills/auto-tech-design/SKILL.md
+# expected: >= 1
+grep -cF "js-super:auto-writing-plans" skills/auto-tech-design/SKILL.md
+# expected: >= 1 (기존 계약 유지)
+
+# depth-aware 소비자 3곳
+grep -lF "depth: 2" skills/change-history/SKILL.md skills/change-propagation/SKILL.md skills/writing-plans/SKILL.md skills/auto-writing-plans/SKILL.md
+# expected: 4 lines
+
+# preflight helper
+python3 -c "from scripts.preflight import feature_depth; print('OK')"
+# expected: OK
+```
+
+### 영향 범위
+
+- skill 본문 9 + commands 4 + `scripts/preflight.py` + fixture H14 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서. og-* / fast-tasks / worktree 계열 / generating-html 구조 영향 0
+- executing-plans / js-super-sub-driven skill 본문 변경 0 — plan 부재 안내 보강은 preflight `human_reason` 안에서
+- writing-plans `**Model**:` ↔ js-super-sub-driven 결합 — 3-doc 트랙 전용이라 영향 0

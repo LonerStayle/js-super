@@ -1,6 +1,6 @@
 ---
 name: auto-writing-plans
-description: auto-flow 3단계 — /auto-write-plan 커맨드 또는 앞 단계 auto-tech-design 의 명시 invoke 로만 진입, 사용자 자유 요청에서 자동 선택 금지. requirements + tech-design 읽기 + AI 자동 task 분해 (TDD bite-sized + Model hint 자동) + RISK 코드 지점 §2 자동 + verifying-spec 자동 + code-pretty 호출 X (D-T12 와 일관) + change-history 자동 + auto-executing-plans 자동 invoke. AskUserQuestion 호출 X. generating-html 은 Step 4.6 에서 백그라운드(fire-and-forget) 호출.
+description: auto-flow 3단계 — /auto-write-plan 커맨드 또는 앞 단계 auto-tech-design 의 명시 invoke 로만 진입, 사용자 자유 요청에서 자동 선택 금지. requirements + tech-design 읽기 + AI 자동 task 분해 (TDD bite-sized + Model hint 자동) + RISK 코드 지점 §2 자동 + verifying-spec 자동 + code-pretty 호출 X (D-T12 와 일관) + change-history 자동 + auto-executing-plans 자동 invoke. AskUserQuestion / generating-html 호출 X.
 ---
 
 # Auto Writing Plans → <slug>-implementation-plan.md (auto)
@@ -12,7 +12,6 @@ description: auto-flow 3단계 — /auto-write-plan 커맨드 또는 앞 단계 
 - [ ] Step 3 — §2 위험 코드 지점 자동 (R-N → file:line 매핑)
 - [ ] Step 4 — 산출물 자동 작성 (<slug>-implementation-plan.md)
 - [ ] Step 4.5 — plan_byte_check 자동 (3회 재시도)
-- [ ] Step 4.6 — generating-html fire-and-forget dispatch + 5초 race delay
 - [ ] Step 5 — verifying-spec 자동 실행 (4축 보고서)
 - [ ] Step 6 — change-history 자동 ([구현계획서-수정] entry)
 - [ ] Step 7 — Transition notice + auto-executing-plans invoke
@@ -22,6 +21,8 @@ description: auto-flow 3단계 — /auto-write-plan 커맨드 또는 앞 단계 
 ### Step 1 — 입력 확인 + slug 추론
 
 `<slug>-requirements.md` + `<slug>-tech-design.md` 모두 존재 확인. 누락 시 `ℹ️ 입력이 누락됐습니다 (<누락 파일>). /auto-brainstorm 또는 /auto-tech-design 부터 시작해주세요.` 안내 후 종료.
+
+**2-doc → 3-doc 승격 (산출물 깊이 선택)**: tech-design frontmatter 가 `depth: 2` 면 승격으로 간주 — 한 줄 안내 후 frontmatter `depth: 3` 갱신 + `depth_reason` 승격 사유 교체 + `change-history` [개발방향-수정] entry, 이후 기존 흐름 진행 (재확인 게이트 없음 — 명시 실행이므로).
 
 ### Step 2 — AI 자동 task 분해
 
@@ -46,7 +47,7 @@ tech-design §6 R-N → file:line + mitigation 매핑. 모든 R-N 이 §2 에 en
 
 ### Step 4 — 산출물 자동 작성
 
-`<slug>-implementation-plan.md` schema 따라 작성. frontmatter `commit_policy: per-task`. RAW 본문, code-pretty 호출 X (D-T12 일관). generating-html 은 plan_byte_check 통과 후 Step 4.6 에서 fire-and-forget dispatch.
+`<slug>-implementation-plan.md` schema 따라 작성. frontmatter `commit_policy: per-task`. RAW 본문, code-pretty 호출 X (D-T12 일관).
 
 ### Step 4.5 — plan_byte_check 자동 (v2.0.0+)
 
@@ -70,12 +71,6 @@ sys.exit(0)
 ```
 
 미스매치 발견 시 메인이 즉시 plan 의 `**원본**` 블록 수정 후 재시도 (auto 모드 — 사용자 응답 wait X). 3회 재시도 후에도 실패 시 `ℹ️ plan_byte_check 가 3회 실패했습니다. 사용자가 직접 개입해주세요.` 안내 후 종료. byte-copy 정밀도 강제는 v2.0.0 구현계획서의 핵심 precondition.
-
-### Step 4.6 — generating-html fire-and-forget dispatch (v2.3.2+)
-
-plan_byte_check 통과 직후, **change-history entry 박히기 전** (footer 비어있음) 에 `generating-html` skill fire-and-forget dispatch (`run_in_background: true`). 메인 latency 거의 0. transition notice 시점에 사용자가 `.html` 검토 가능 (Type "stop" abort). v1.1.17 PRD D9 amend 반전 (v2.3.2+).
-
-**v2.4+ race delay**: dispatch 후 **5초 delay** 후에 Step 5 (verifying-spec) 진행. background subagent 가 .md 의 footer 0건 시점에 읽도록 보장 (race condition 해결).
 
 ### Step 5 — verifying-spec 자동 실행
 
@@ -105,7 +100,7 @@ plan_byte_check 통과 직후, **change-history entry 박히기 전** (footer �
 | Wrong | Right |
 |---|---|
 | AskUserQuestion 호출 | NEVER. |
-| generating-html 동기 호출 (sync wait) | NEVER. v2.3.2+ — Step 4.6 fire-and-forget 만. (v1.1.17 "호출 부재" 룰 v2.3.2 반전.) |
+| generating-html 호출 (모든 형태) | NEVER. v2.8.2+ 커맨드 강등 — 자동 발동 폐지 (v2.3.2 의 Step 4.6 dispatch 제거). `.html` 필요 시 사용자가 명시 호출. |
 | code-pretty 호출 | NEVER. D-T12 일관. |
 | 일반 writing-plans skill body 호출 | NEVER. self-contained mirror (D-T1). |
 

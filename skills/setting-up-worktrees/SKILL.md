@@ -1,6 +1,6 @@
 ---
 name: setting-up-worktrees
-description: Use when the user asks to create one or more git worktrees ("워크트리 만들어줘", "<티켓명> 워크트리"). Default location is <project-root>/.worktrees/<branch-name>; creates the branch from current HEAD if it doesn't exist, then auto-copies the project's 로컬 빌드 환경 파일 (LLM-judged per platform — Node `.env*`, Android `local.properties`/keystore, iOS `*.xcconfig`, etc.) AND symlinks the main repo's Claude Code memory folder so the worktree shares user/feedback/project memory from the start. NEVER asks the user which files to copy — detects candidates, notifies, and copies (honoring explicit excludes).
+description: Use when the user asks to create one or more git worktrees ("워크트리 만들어줘", "<티켓명> 워크트리"). Default location is <main-repo-root>/.worktrees/<branch-name>; creates the branch from current HEAD if it doesn't exist, then auto-copies the project's 로컬 빌드 환경 파일 (LLM-judged per platform — Node `.env*`, Android `local.properties`/keystore, iOS `*.xcconfig`, etc.) AND symlinks the main repo's Claude Code memory folder so the worktree shares user/feedback/project memory from the start. NEVER asks the user which files to copy — detects candidates, notifies, and copies (honoring explicit excludes). Invoked from inside a worktree, it places the new worktree under the MAIN repo root's .worktrees/ (no nesting) and branches from the invoking worktree's current HEAD.
 ---
 
 # Setting Up Worktrees (Quick Batch Creation)
@@ -27,8 +27,9 @@ NEVER ask the user which 로컬 빌드 환경 파일 to copy. 메인 에이전�
 
 | Knob | Default behavior |
 |---|---|
-| Worktree root | `<project-root>/.worktrees/` (override only if user explicitly asks) |
-| Branch creation | If branch missing → `-b <name>` from current HEAD. Existing local → use as-is. Remote-only → `-B <name> origin/<name>` |
+| Worktree root | `<메인 저장소 루트>/.worktrees/` — 워크트리 안에서 호출해도 메인 루트 기준, 중첩 생성 금지 (override only if user explicitly asks) |
+| Branch creation | If branch missing → `-b <name>` from **호출 위치 HEAD** (워크트리 안이면 그 워크트리의 커밋이 시작점; 사용자가 베이스 명시 시 그 브랜치). Existing local → use as-is. Remote-only → `-B <name> origin/<name>` |
+| Dirty 워크트리에서 분기 (v2.9.0+) | Step 3.5 게이트 — "WIP 커밋 후 분기" / "마지막 커밋 시점 기준 분기" 선택. stash 금지 |
 | 로컬 빌드 환경 파일 복사 | **메인 에이전트가 프로젝트 컨텍스트 기반 후보 판단** (Node/Web → `.env*` / Android → `local.properties`, keystore 류 / iOS → `*.xcconfig` 등 / Desktop → `secrets.*`). 후보 list 사용자 노출 후 자동 복사. committed templates / build artifacts 자동 제외. |
 | Claude memory folder | **Symlink handled by `worktree-memory-symlink` PostToolUse hook** — fires automatically on `git worktree add`. Skips if main has no memory yet or if worktree's memory dir already exists. The skill body does NOT perform this step. |
 | `.worktrees/` in `.gitignore` | Auto-add if missing |
@@ -44,7 +45,7 @@ digraph wt_flow {
     "For each branch" [shape=box];
     "Branch exists?" [shape=diamond];
     "git worktree add <path> <branch>" [shape=box];
-    "git worktree add -b <branch> <path>" [shape=box];
+    "git worktree add -b <branch> <path> HEAD" [shape=box];
     "Copy ALL detected env files" [shape=box];
     "Symlink Claude memory folder\n(automatic via PostToolUse hook)" [shape=box];
     "Report summary" [shape=doublecircle];
@@ -55,9 +56,9 @@ digraph wt_flow {
     "Ensure .worktrees/ exists\n+ in .gitignore" -> "For each branch";
     "For each branch" -> "Branch exists?";
     "Branch exists?" -> "git worktree add <path> <branch>" [label="local or remote"];
-    "Branch exists?" -> "git worktree add -b <branch> <path>" [label="new"];
+    "Branch exists?" -> "git worktree add -b <branch> <path> HEAD" [label="new"];
     "git worktree add <path> <branch>" -> "Copy ALL detected env files";
-    "git worktree add -b <branch> <path>" -> "Copy ALL detected env files";
+    "git worktree add -b <branch> <path> HEAD" -> "Copy ALL detected env files";
     "Copy ALL detected env files" -> "Symlink Claude memory folder\n(automatic via PostToolUse hook)";
     "Symlink Claude memory folder\n(automatic via PostToolUse hook)" -> "For each branch" [label="next"];
     "Symlink Claude memory folder\n(automatic via PostToolUse hook)" -> "Report summary" [label="done"];
@@ -66,14 +67,24 @@ digraph wt_flow {
 
 ## Procedure (Step-by-Step)
 
-**Step 0 — Verify git context**
+**Step 0 — Verify git context + 루트 해석 이원화 (v2.9.0+)**
 
 ```bash
 git rev-parse --is-inside-work-tree   # must print "true"
-ROOT=$(git rev-parse --show-toplevel)
+
+# 배치 기준 = 메인 저장소 루트. git worktree list 는 메인 워크트리를 항상 첫 줄에
+# 출력하므로, 워크트리 안에서 호출해도 메인 루트가 잡힌다 (중첩 생성 방지).
+MAIN_ROOT=$(git worktree list --porcelain | head -1 | sed 's/^worktree //')
+
+# 분기 기준 = 호출 위치의 현재 HEAD (워크트리 A 안에서 호출하면 A 의 커밋)
+BASE_SHA=$(git rev-parse HEAD)
+BASE_BRANCH=$(git branch --show-current)
+MAIN_BRANCH=$(git -C "$MAIN_ROOT" branch --show-current)
 ```
 
 If not in a repo, abort with: "현재 디렉터리가 git repo 아닙니다. `git init` 후 다시 호출해주세요."
+
+호출 위치가 워크트리 안이어도 (`git rev-parse --show-toplevel` ≠ `$MAIN_ROOT`) 새 워크트리는 항상 **메인 루트의 `.worktrees/`** 아래에 생성된다 (중첩 금지). 사용자가 위치를 신경 쓰거나 별도 지시할 필요 없다 — 자동 판정.
 
 **Step 1 — Parse branch names from user's message**
 
@@ -104,50 +115,67 @@ Extract `BRANCHES=(...)` from the user's message. Korean ticket-style names like
 
 후보가 없으면 한 줄 안내 (`ℹ️ 프로젝트 루트에 로컬 빌드 환경 파일 후보 없음 — 복사 skip`) 후 다음 Step 진행. Don't abort.
 
-**Step 3 — Ensure `.worktrees/` exists and is gitignored**
+**Step 3 — Ensure `.worktrees/` exists and is gitignored (메인 루트 기준)**
 
 ```bash
-mkdir -p "$ROOT/.worktrees"
+mkdir -p "$MAIN_ROOT/.worktrees"
 
-if ! grep -qE '^\.worktrees/?$' "$ROOT/.gitignore" 2>/dev/null; then
-    echo ".worktrees/" >> "$ROOT/.gitignore"
+if ! grep -qE '^\.worktrees/?$' "$MAIN_ROOT/.gitignore" 2>/dev/null; then
+    echo ".worktrees/" >> "$MAIN_ROOT/.gitignore"
 fi
 ```
 
-**Step 4 — For each branch, create or attach the worktree**
+워크트리 안에서 호출했고 위 append 가 실제로 일어났다면 한 줄 알림: "ℹ️ 메인 루트 `.gitignore` 에 `.worktrees/` 를 추가했습니다 (메인 워크트리에 커밋 안 된 변경 1건이 생겼습니다)."
+
+**Step 3.5 — 분기 전 dirty 확인 (v2.9.0+)**
+
+호출 위치에 커밋 안 된 변경이 있는지 확인한다:
 
 ```bash
-for BR in "${BRANCHES[@]}"; do
-    WT_PATH="$ROOT/.worktrees/$BR"
-
-    # Already a worktree? Skip with notice
-    if [ -d "$WT_PATH" ]; then
-        echo "⏭️  $BR — 이미 존재 ($WT_PATH), 건너뜀"
-        continue
-    fi
-
-    # Branch exists locally?
-    if git show-ref --verify --quiet "refs/heads/$BR"; then
-        git worktree add "$WT_PATH" "$BR"
-    # Exists on remote?
-    elif git show-ref --verify --quiet "refs/remotes/origin/$BR"; then
-        git worktree add -B "$BR" "$WT_PATH" "origin/$BR"
-    # Brand new
-    else
-        git worktree add -b "$BR" "$WT_PATH"
-    fi
-done
+git status --porcelain   # 출력이 있으면 dirty
 ```
+
+dirty 면 `AskUserQuestion` 으로 선택받는다 (stash 로 변경을 넘기는 방식 금지):
+
+- **"WIP 커밋 후 분기"** — `git add -A` 후 커밋. 커밋 메시지는 `git diff HEAD` 요약으로 자동 생성 (고정 문구 금지). 새 브랜치가 WIP 내용을 포함한다.
+- **"마지막 커밋 시점 기준 분기"** — 커밋하지 않고 현재 HEAD 커밋에서만 분기. 커밋 안 된 변경은 호출 위치 워크트리에 그대로 남는다.
+
+clean 이면 질문 없이 다음 Step 으로 진행.
+
+**Step 4 — For each branch, create or attach the worktree (개별 Bash 호출, v2.9.0+)**
+
+`worktree-memory-symlink` 훅은 Bash 명령 문자열이 `git worktree add ` 로 **시작**할 때만 발화한다. 브랜치·디렉토리 존재 판정과 변수 계산은 별도 선행 Bash 호출로 끝내고, 워크트리 생성은 브랜치마다 **`git worktree add` 로 시작하는 개별 Bash 호출** 로 실행한다 (for-loop 한 방에 묶으면 훅이 발화하지 않는다):
+
+```bash
+# 선행 판정 (별도 Bash 호출):
+#   [ -d "$MAIN_ROOT/.worktrees/<BR>" ]                    # 이미 존재 → skip + notice (덮어쓰기 X)
+#   git show-ref --verify --quiet refs/heads/<BR>          # 로컬 브랜치 존재?
+#   git show-ref --verify --quiet refs/remotes/origin/<BR> # remote 브랜치 존재?
+
+# 생성 — 경로·브랜치명을 실제 값으로 치환한 개별 호출 (아래 중 케이스에 맞는 1줄):
+git worktree add <MAIN_ROOT>/.worktrees/<BR> <BR>                  # 로컬 브랜치 존재 → attach
+git worktree add -B <BR> <MAIN_ROOT>/.worktrees/<BR> origin/<BR>   # remote-only
+git worktree add -b <BR> <MAIN_ROOT>/.worktrees/<BR> HEAD          # 신규 (분기 기준 = 호출 위치 HEAD)
+git worktree add -b <BR> <MAIN_ROOT>/.worktrees/<BR> <BASE>        # 사용자가 베이스 명시 시 (예: "dev 기준으로")
+```
+
+신규 브랜치 생성 직전 `BASE_SHA` / `BASE_BRANCH` (Step 0 캡처값) 를 그대로 두고, 생성 후 Step 6 보고에 사용한다.
 
 **Step 5 — Copy ALL detected env files into each worktree (no prompts)**
 
+복사 소스는 **호출 위치 워크트리 루트 우선** (base 워크트리에서 갱신된 env 가 최신일 가능성이 높다), 후보 파일이 호출 위치에 없으면 메인 루트에서 fallback:
+
 ```bash
+SRC_ROOT=$(git rev-parse --show-toplevel)   # 호출 위치 루트 (메인 루트에서 호출하면 = MAIN_ROOT)
 for BR in "${BRANCHES[@]}"; do
-    WT_PATH="$ROOT/.worktrees/$BR"
+    WT_PATH="$MAIN_ROOT/.worktrees/$BR"
     [ -d "$WT_PATH" ] || continue   # was skipped earlier
     for EF in "${ENV_FILES[@]}"; do
-        cp "$ROOT/$EF" "$WT_PATH/$EF"
-        echo "📋 $BR ← $EF 복사 완료"
+        if [ -f "$SRC_ROOT/$EF" ]; then
+            cp "$SRC_ROOT/$EF" "$WT_PATH/$EF" && echo "📋 $BR ← $EF 복사 완료"
+        elif [ -f "$MAIN_ROOT/$EF" ]; then
+            cp "$MAIN_ROOT/$EF" "$WT_PATH/$EF" && echo "📋 $BR ← $EF 복사 완료 (메인 루트 fallback)"
+        fi
     done
 done
 ```
@@ -173,12 +201,20 @@ Print a Korean-friendly summary listing each worktree path + the env files copie
 Claude 메모리 폴더: 메인 → 워크트리 심링크 (n개)
 
 - feature-a   → .worktrees/feature-a   (.env ✓ .env.local ✓ .env.production ✓ | 🔗 memory)
+  분기 기준: <BASE_BRANCH> @ <BASE_SHA 앞 7자리>
 - feature-b   → .worktrees/feature-b   (.env ✓ .env.local ✓ .env.production ✓ | 🔗 memory)
-- feature-c   → .worktrees/feature-c   (.env ✓ .env.local ✓ .env.production ✓ | 🔗 memory)
+  분기 기준: <BASE_BRANCH> @ <BASE_SHA 앞 7자리>
 
 각 워크트리에서 바로 빌드·서버 실행 가능합니다.
 워크트리 첫 세션부터 메인 레포의 Claude 메모리(user/feedback/project) 즉시 활용됩니다.
 정리: `git worktree remove <path>` — 메모리 심링크는 워크트리 디렉터리 밖이라 메인 메모리에 영향 없음.
+```
+
+분기 베이스가 메인 브랜치가 아니면 (`BASE_BRANCH` ≠ `MAIN_BRANCH`) 다음 주의를 함께 출력한다 (v2.9.0+):
+
+```
+ℹ️ 머지 경로가 스택 구조입니다: <새브랜치> → <BASE_BRANCH> → <MAIN_BRANCH>
+   <BASE_BRANCH> 가 <MAIN_BRANCH> 에 리베이스되면 <새브랜치> 도 리베이스가 필요합니다.
 ```
 
 ## Anti-Patterns
@@ -192,6 +228,9 @@ Claude 메모리 폴더: 메인 → 워크트리 심링크 (n개)
 | Skip `.gitignore` update | Always add `.worktrees/` (idempotent check). |
 | Use `git checkout -b` first then `worktree add` | Prefer `worktree add -b <branch> <path>` (atomic). |
 | Copy `.env.example` (template, already in git) | Excluded from glob. |
+| 워크트리 안에서 호출 시 호출 위치 루트 아래 `.worktrees/` 중첩 생성 | 항상 `MAIN_ROOT` (worktree list 첫 entry) 기준 배치. |
+| for-loop 한 방에 `git worktree add` 묶기 | 훅 프리픽스 미매치 → 심링크 미생성. 브랜치별 개별 Bash 호출. |
+| dirty 워크트리에서 말없이 분기 (또는 stash 로 넘기기) | Step 3.5 게이트 — WIP 커밋 / 커밋 시점 분기 선택. stash 금지. |
 | Performing the memory symlink yourself in this skill | Forbidden — handled by `worktree-memory-symlink` PostToolUse hook. The agent must not run any path-mutating shell command (directory creation, symlink, or string substitution) against the Claude memory location. Past versions failed because agents mentally simulated the encoding rule and produced folder names Claude Code never reads. |
 | Clobber worktree's existing memory dir with a symlink | Forbidden. If `$WT_MEMORY` already exists, skip and tell user to migrate manually. |
 | Skip the symlink because "user didn't ask for it" | Always attempt. The whole point is zero-friction worktree start. Only skip when main memory missing or WT memory already there. |
@@ -226,6 +265,9 @@ After running this skill:
 5. The `worktree-memory-symlink` PostToolUse hook fired for every `git worktree add` invocation issued by this skill. (The skill itself did NOT mkdir / ln any memory paths.)
 6. User got a summary report listing each worktree's path + per-file copy status + memory symlink status (the latter coming from the hook's stderr output).
 7. The user was NOT asked which env files to copy, NOR about the memory symlink.
+8. 워크트리 안에서 호출된 경우에도 새 워크트리는 메인 루트 `.worktrees/` 아래에 있고, 호출 위치 워크트리 내부에 `.worktrees/` 중첩이 생기지 않았다. (v2.9.0+)
+9. 보고에 분기 기준 커밋 해시가 포함됐고, 베이스가 메인 브랜치가 아니면 스택 구조 주의가 함께 출력됐다. (v2.9.0+)
+10. 호출 위치가 dirty 였다면 Step 3.5 게이트 (WIP 커밋 / 커밋 시점 분기) 가 발화했다. (v2.9.0+)
 
 ## Related Skills
 
