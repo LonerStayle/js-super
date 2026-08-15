@@ -20,6 +20,11 @@
    "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
    "verdict": "PENDING"
   },
+  "coupling/07577bcae4f0": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시).",
+   "verdict": "PENDING"
+  },
   "coupling/079339083f99": {
    "label": "blocked",
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
@@ -43,6 +48,11 @@
   "coupling/0d2ec79015d4": {
    "label": "blocked",
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
+  },
+  "coupling/11a1319bf853": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시).",
    "verdict": "PENDING"
   },
   "coupling/13904a263981": {
@@ -155,6 +165,11 @@
    "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
    "verdict": "PENDING"
   },
+  "coupling/37e0a461df71": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
   "coupling/38678d90d3d6": {
    "label": "confirmed",
    "reason": "",
@@ -168,6 +183,11 @@
   "coupling/3ca93d854166": {
    "label": "blocked",
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
+  },
+  "coupling/3d67f5179b56": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시).",
    "verdict": "PENDING"
   },
   "coupling/3dc84cbc46f3": {
@@ -215,6 +235,11 @@
    "reason": "",
    "verdict": "PASS"
   },
+  "coupling/4e5a2b063574": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌려 docs/audit/ 에 보고서가 생긴 뒤에만 의미 있는 검사. 저장소 상태만으로는 판정 불가 — fixture 본문도 '사람이 dogfood 시 수행' 이라 명시한다.",
+   "verdict": "FAIL"
+  },
   "coupling/4fcde152113a": {
    "label": "confirmed",
    "reason": "",
@@ -228,6 +253,16 @@
   "coupling/51d300cc7c6e": {
    "label": "blocked",
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
+  },
+  "coupling/5669b7f3d3fd": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건이나 문자열이라 기계 비교 불가. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
+  },
+  "coupling/56aac13ff550": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시).",
    "verdict": "PENDING"
   },
   "coupling/57cbcf2291b8": {
@@ -254,6 +289,11 @@
    "label": "confirmed",
    "reason": "",
    "verdict": "PASS"
+  },
+  "coupling/5e792aa8b0e8": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시).",
+   "verdict": "PENDING"
   },
   "coupling/5effbfa7e108": {
    "label": "blocked",
@@ -320,6 +360,11 @@
    "reason": "자리표시자(<slug> 등)가 들어 그대로 실행 불가. fixture 를 케이스로 옮길 때 실제 경로로 바꾼다 (2차).",
    "verdict": "BLOCKED"
   },
+  "coupling/6ff2ea69d0eb": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시).",
+   "verdict": "PENDING"
+  },
   "coupling/705c115c8cbc": {
    "label": "confirmed",
    "reason": "",
@@ -344,6 +389,16 @@
    "label": "blocked",
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
    "verdict": "PENDING"
+  },
+  "coupling/74de15837375": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시).",
+   "verdict": "PENDING"
+  },
+  "coupling/760fa80b88c6": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
   },
   "coupling/762193001b3c": {
    "label": "blocked",
@@ -393,6 +448,11 @@
   "coupling/8bae37875564": {
    "label": "blocked",
    "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
+  },
+  "coupling/8be700a69189": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시).",
    "verdict": "PENDING"
   },
   "coupling/8bfbf30a227d": {
@@ -449,6 +509,11 @@
    "label": "confirmed",
    "reason": "",
    "verdict": "PASS"
+  },
+  "coupling/9e9c81456075": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시).",
+   "verdict": "PENDING"
   },
   "coupling/9f69d821ed4d": {
    "label": "blocked",
@@ -762,7 +827,7 @@
   },
   "pytest/scripts+evals": {
    "label": "confirmed",
-   "reason": "179 passed in 1.83s",
+   "reason": "179 passed in 2.64s",
    "verdict": "PASS"
   },
   "self/command-skill-name-collision": {
@@ -773,7 +838,7 @@
   "self/eval-assets-not-loaded": {
    "label": "regression-open",
    "reason": "commands/audit-report-prompt.md 가 프롬프트 자산인데 js-super:audit-report-prompt 슬래시로 등록됨. 고치려면 자산을 commands/ 밖으로 옮기고 commands/audit-risk.md 참조 3곳을 같이 수정해야 한다. 옮길 위치는 미정 (/audit-risk 는 소유 스킬이 없는 커맨드).",
-   "verdict": "PASS"
+   "verdict": "FAIL"
   }
  },
  "schema_version": 1

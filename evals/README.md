@@ -6,46 +6,77 @@ js-super 의 스킬과 커맨드가 의도대로 동작하는지 확인하는 �
 
 ---
 
-## 처음 한 번만
+## 빠르게 — 이것만 알면 됩니다
+
+**스킬이나 CLAUDE.md 를 고쳤으면 이 한 줄을 돌립니다.**
+
+```bash
+.venv/bin/python evals/run.py
+```
+
+3초쯤 걸립니다. 출력에 **"새로 깨짐"** 이 없으면 그대로 커밋하면 됩니다. 나머지 항목은 이미 알고 있는 상태라 신경 쓰지 않아도 됩니다.
+
+처음이라 `.venv` 가 없다면 한 번만 만들어 둡니다. 워크트리마다 한 번씩입니다.
 
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements-dev.txt
 ```
 
-`.venv/` 는 gitignore 대상이라 커밋되지 않습니다. 워크트리마다 한 번씩 만들면 됩니다.
-
-## 매번 쓰는 명령
+pytest 를 따로 돌려보고 싶을 때는 이렇게 합니다.
 
 ```bash
-.venv/bin/python evals/run.py
+.venv/bin/python -m pytest evals/tests scripts/tests -q
 ```
 
-이게 전부입니다. 3초 정도 걸립니다. 스킬 본문을 고친 뒤에 이 한 줄을 돌리면 됩니다.
+---
 
-| 종료 코드 | 뜻 |
+## 명령 모음
+
+| 하려는 일 | 명령 |
+|---|---|
+| 그냥 검사 | `.venv/bin/python evals/run.py` |
+| 요약 한 줄만 | `.venv/bin/python evals/run.py --quiet` |
+| 지금 결과를 정답으로 굳히기 | `.venv/bin/python evals/run.py --accept` |
+| 테스트만 따로 | `.venv/bin/python -m pytest evals/tests scripts/tests -q` |
+| 처음 환경 만들기 | `python3 -m venv .venv && .venv/bin/python -m pip install -r requirements-dev.txt` |
+
+옵션은 `--quiet` 와 `--accept` 둘뿐입니다.
+
+### 종료 코드
+
+| 코드 | 뜻 |
 |---|---|
 | 0 | 새로 깨진 것이 없음 |
 | 1 | 새로 깨진 것이나 분류 안 된 항목이 있음 |
 | 2 | 검사 단계에서 막힘 (상충하는 기대값이나 케이스 형식 오류) |
 | 3 | `--accept` 했는데 분류 안 된 항목이 있어 거부됨 |
 
-옵션은 두 개뿐입니다.
+### `--accept` 가 거부될 때
 
-```bash
-.venv/bin/python evals/run.py --quiet    # 요약 한 줄만
-.venv/bin/python evals/run.py --accept   # 지금 결과를 정답으로 굳힘
+`--accept` 는 통과하지 않은 항목이 분류되지 않은 채로 남아 있으면 거부합니다. 화면에 뜬 항목을 `evals/labels.json` 에 적고 다시 돌리면 됩니다.
+
+```json
+{
+ "labels": {
+  "coupling/4e5a2b063574": {
+   "label": "blocked",
+   "reason": "왜 지금은 기계로 판정할 수 없는지 한 문장"
+  }
+ }
+}
 ```
+
+`label` 은 `blocked` (지금은 판정 불가) / `stale` (기대값이 낡음) / `regression-open` (진짜 회귀인데 아직 못 고침) 중 하나를 씁니다.
 
 ## 결과 읽는 법
 
 ```
-검증 결과 — 117건, 3.0초
+검증 결과 — 135건, 3.2초
 
-  통과                 62
   이미 알려진 실패           3
-  판정 대기              46
-  실행 못 함              6
+  통과                 79
+  판정 대기              53
 ```
 
 | 표시 | 뜻 | 할 일 |
@@ -122,6 +153,17 @@ grep -c "무언가" skills/x/SKILL.md
 - 코드 펜스 언어가 `bash` / `sh` / `shell` 이어야 합니다
 - 명령이 읽기 전용이어야 합니다. 파일을 고치거나 지우는 명령은 관문에 막혀 실행되지 않습니다
 - 기대값이 순수 숫자면 기계가 판정합니다. `0 (Anti-Pattern catch 라인만 허용)` 처럼 조건이 붙으면 판정 대기로 남습니다
+
+**자주 밟는 함정**: 기대값 뒤에 괄호로 설명을 달면 그 검사가 조용히 기계 판정에서 빠집니다. 설명은 명령 위쪽 주석으로 올리세요.
+
+```bash
+# 이렇게 (설명은 위로, 기대값은 숫자만)
+# 흐름도 라벨과 산문 언급은 빼고 절차 헤더만 센다
+grep -cE '^### 블록 [1-4] — ' skills/brainstorming/SKILL.md
+# expected: 4
+```
+
+**또 하나**: 검사 대상에 `CLAUDE.md` 자신을 넣으면 검사 명령 자체가 매치돼 늘 실패합니다. 대상에서 빼거나 결과를 `grep -c .` 로 세어 숫자로 비교하세요.
 
 ## 지금 안 되는 것
 

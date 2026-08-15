@@ -187,6 +187,50 @@
   "self/eval-assets-not-loaded": {
    "label": "regression-open",
    "reason": "commands/audit-report-prompt.md 가 프롬프트 자산인데 js-super:audit-report-prompt 슬래시로 등록됨. 고치려면 자산을 commands/ 밖으로 옮기고 commands/audit-risk.md 참조 3곳을 같이 수정해야 한다. 옮길 위치는 미정 (/audit-risk 는 소유 스킬이 없는 커맨드)."
+  },
+  "coupling/4e5a2b063574": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌려 docs/audit/ 에 보고서가 생긴 뒤에만 의미 있는 검사. 저장소 상태만으로는 판정 불가 — fixture 본문도 '사람이 dogfood 시 수행' 이라 명시한다."
+  },
+  "coupling/5669b7f3d3fd": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건이나 문자열이라 기계 비교 불가. 모델 판정 대상 (2차)."
+  },
+  "coupling/6ff2ea69d0eb": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시)."
+  },
+  "coupling/9e9c81456075": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시)."
+  },
+  "coupling/5e792aa8b0e8": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시)."
+  },
+  "coupling/56aac13ff550": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시)."
+  },
+  "coupling/11a1319bf853": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시)."
+  },
+  "coupling/8be700a69189": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시)."
+  },
+  "coupling/3d67f5179b56": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시)."
+  },
+  "coupling/07577bcae4f0": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시)."
+  },
+  "coupling/74de15837375": {
+   "label": "blocked",
+   "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시)."
   }
  }
 }

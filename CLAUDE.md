@@ -1715,6 +1715,7 @@ grep -rn '/tech-design\|/auto-tech-design\|/worktree-merge-back\|/worktree-remov
   | grep -v 'skills/tech-design\|skills/auto-tech-design\|skills/worktree-merge-back\|skills/worktree-remove' \
   | grep -v 'commands/tech-design\|commands/auto-tech-design\|commands/worktree-merge-back\|commands/worktree-remove' \
   | grep -v '<slug>-tech-design' | grep -v 'brainstorming/tech-design' \
+  | grep -v '/design-tech\|/auto-design-tech\|/merge-back-worktree\|/remove-worktree' \
   | grep -c . || true
 # expected: 0
 ```

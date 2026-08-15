@@ -761,6 +761,20 @@ flowchart LR
 
 ---
 
+## 이 저장소를 고칠 때 (기여자용)
+
+스킬이나 `CLAUDE.md` 를 고쳤으면 검증 환경을 한 번 돌려주세요. 3초 걸립니다.
+
+```bash
+.venv/bin/python evals/run.py
+```
+
+`.venv` 가 없으면 `python3 -m venv .venv && .venv/bin/python -m pip install -r requirements-dev.txt` 를 한 번만 하면 됩니다. 자세한 사용법은 [`evals/README.md`](evals/README.md) 에 있습니다.
+
+<br/>
+
+---
+
 ## 필요한 도구 (사용자 환경)
 
 | 용도 | 필요한 것 |
