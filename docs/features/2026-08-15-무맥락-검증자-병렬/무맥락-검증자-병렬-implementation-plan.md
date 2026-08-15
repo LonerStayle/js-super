@@ -37,6 +37,8 @@ Expected: 파일 부재 — FAIL
 
 - [ ] **Step 2: 파일 작성**
 
+**수정 후** (`skills/verifying-spec/clean-solo-prompt.md` 전체):
+
 ````markdown
 # Clean Solo Verifier Prompt Template
 
@@ -144,6 +146,8 @@ git commit -m "feat(verifying-spec): 단독 무맥락 검증자 프롬프트 추
 Expected: 파일 부재 — FAIL
 
 - [ ] **Step 2: 파일 작성**
+
+**수정 후** (`skills/verifying-spec/clean-cross-prompt.md` 전체):
 
 ````markdown
 # Clean Cross Verifier Prompt Template
@@ -755,6 +759,8 @@ git commit -m "docs(commands): /auto-write-plan 에 --no-clean-verify 안내 추
 Expected: 디렉토리 부재 — FAIL
 
 - [ ] **Step 2: fixture 작성**
+
+**수정 후** (`skills/js-super-sub-driven/tests/H16-clean-verify/README.md` 전체):
 
 ````markdown
 # H16 — 무맥락 검증자 병렬 (clean-context verifiers)
