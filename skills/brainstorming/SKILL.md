@@ -124,7 +124,7 @@ Save path: `docs/features/YYYY-MM-DD-<slug>/<slug>-requirements.md`
 
 모드를 표기하는 줄은 쓰지 않는다. 경로가 하나뿐이라 표기할 모드가 없다.
 
-## Process Flow (two modes)
+## Process Flow
 
 ```dot
 digraph brainstorm_flow {
@@ -133,24 +133,16 @@ digraph brainstorm_flow {
     "AskUserQuestion 게이트\n(og / js-super)" [shape=diamond];
     "Explore project context" [shape=box];
     "Confirm feature name + slug" [shape=box];
-    "Mode gate: PRD (default) / Socratic" [shape=diamond];
 
-    "[PRD] Category mini-question\n(외부향 / 내부도구 / 수정 / 인프라)" [shape=box];
-    "[PRD] UI/visual feature?" [shape=diamond];
-    "[PRD] Offer Visual Companion\n(own message, no other content)" [shape=box];
-    "[PRD] Show question plan\n(essential / minimal / skipped + reasons)" [shape=box];
-    "[PRD] User confirms plan?" [shape=diamond];
-    "[PRD] Run agreed PRD questions\n(only the agreed subset)" [shape=box];
+    "블록 1 — 질문\n(한 번에 하나, 커버 목록 5)" [shape=box];
+    "커버 목록 다 채워졌나?" [shape=diamond];
+    "블록 2 — 대안\n(2~3안, 고정 비교축 3, 추천 먼저)" [shape=box];
+    "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/FR-N)" [shape=box];
+    "제외 항목 취합해서 되돌려주기" [shape=box];
 
-    "[Socratic] Visual questions ahead?" [shape=diamond];
-    "[Socratic] Offer Visual Companion\n(own message, no other content)" [shape=box];
-    "[Socratic] Free-form clarifying questions\n(one at a time)" [shape=box];
-    "[Socratic] Propose 2-3 approaches\n(tradeoffs + recommendation)" [shape=box];
-    "[Socratic] Present design sections\n(section-by-section approval)" [shape=box];
-
-    "Self-review (mode-specific)" [shape=box];
-    "User reviews RAW <slug>-requirements.md" [shape=diamond];
-    "Invoke change-history\n(first entry: 요구사항-수정/생성)" [shape=box];
+    "Self-review (6 items)" [shape=box];
+    "블록 4 — 승인\n초안 전체 한 번에" [shape=diamond];
+    "Invoke change-history\n(first entry: 요구사항-수정)" [shape=box];
     "Auto-invoke /tech-design (no gate, v1.1.9+)" [shape=box];
     "Auto-invoke tech-design skill" [shape=doublecircle];
     "Exit: tell user to run /tech-design later" [shape=oval];
@@ -160,30 +152,19 @@ digraph brainstorm_flow {
     "AskUserQuestion 게이트\n(og / js-super)" -> "Advise: run /og-brainstorm\n(no auto-invoke)" [label="og"];
     "AskUserQuestion 게이트\n(og / js-super)" -> "Explore project context" [label="js-super"];
     "Explore project context" -> "Confirm feature name + slug";
-    "Confirm feature name + slug" -> "Mode gate: PRD (default) / Socratic";
+    "Confirm feature name + slug" -> "블록 1 — 질문\n(한 번에 하나, 커버 목록 5)";
 
-    "Mode gate: PRD (default) / Socratic" -> "[PRD] Category mini-question\n(외부향 / 내부도구 / 수정 / 인프라)" [label="PRD"];
-    "[PRD] Category mini-question\n(외부향 / 내부도구 / 수정 / 인프라)" -> "[PRD] UI/visual feature?";
-    "[PRD] UI/visual feature?" -> "[PRD] Offer Visual Companion\n(own message, no other content)" [label="yes"];
-    "[PRD] UI/visual feature?" -> "[PRD] Show question plan\n(essential / minimal / skipped + reasons)" [label="no — skip"];
-    "[PRD] Offer Visual Companion\n(own message, no other content)" -> "[PRD] Show question plan\n(essential / minimal / skipped + reasons)";
-    "[PRD] Show question plan\n(essential / minimal / skipped + reasons)" -> "[PRD] User confirms plan?";
-    "[PRD] User confirms plan?" -> "[PRD] Show question plan\n(essential / minimal / skipped + reasons)" [label="add items"];
-    "[PRD] User confirms plan?" -> "[PRD] Run agreed PRD questions\n(only the agreed subset)" [label="OK"];
-    "[PRD] Run agreed PRD questions\n(only the agreed subset)" -> "Self-review (mode-specific)";
+    "블록 1 — 질문\n(한 번에 하나, 커버 목록 5)" -> "커버 목록 다 채워졌나?";
+    "커버 목록 다 채워졌나?" -> "블록 1 — 질문\n(한 번에 하나, 커버 목록 5)" [label="아직 — 다음 질문"];
+    "커버 목록 다 채워졌나?" -> "블록 2 — 대안\n(2~3안, 고정 비교축 3, 추천 먼저)" [label="다 채워짐 / 사용자가 그만"];
+    "블록 2 — 대안\n(2~3안, 고정 비교축 3, 추천 먼저)" -> "제외 항목 취합해서 되돌려주기";
+    "제외 항목 취합해서 되돌려주기" -> "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/FR-N)";
+    "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/FR-N)" -> "Self-review (6 items)";
+    "Self-review (6 items)" -> "블록 4 — 승인\n초안 전체 한 번에";
 
-    "Mode gate: PRD (default) / Socratic" -> "[Socratic] Visual questions ahead?" [label="Socratic"];
-    "[Socratic] Visual questions ahead?" -> "[Socratic] Offer Visual Companion\n(own message, no other content)" [label="yes"];
-    "[Socratic] Visual questions ahead?" -> "[Socratic] Free-form clarifying questions\n(one at a time)" [label="no — skip"];
-    "[Socratic] Offer Visual Companion\n(own message, no other content)" -> "[Socratic] Free-form clarifying questions\n(one at a time)";
-    "[Socratic] Free-form clarifying questions\n(one at a time)" -> "[Socratic] Propose 2-3 approaches\n(tradeoffs + recommendation)";
-    "[Socratic] Propose 2-3 approaches\n(tradeoffs + recommendation)" -> "[Socratic] Present design sections\n(section-by-section approval)";
-    "[Socratic] Present design sections\n(section-by-section approval)" -> "Self-review (mode-specific)";
-
-    "Self-review (mode-specific)" -> "User reviews RAW <slug>-requirements.md";
-    "User reviews RAW <slug>-requirements.md" -> "User reviews RAW <slug>-requirements.md" [label="changes — revise → re-show"];
-    "User reviews RAW <slug>-requirements.md" -> "Invoke change-history\n(first entry: 요구사항-수정/생성)" [label="approve"];
-    "Invoke change-history\n(first entry: 요구사항-수정/생성)" -> "Auto-invoke /tech-design (no gate, v1.1.9+)";
+    "블록 4 — 승인\n초안 전체 한 번에" -> "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/FR-N)" [label="수정 요청 — 고쳐서 다시"];
+    "블록 4 — 승인\n초안 전체 한 번에" -> "Invoke change-history\n(first entry: 요구사항-수정)" [label="승인"];
+    "Invoke change-history\n(first entry: 요구사항-수정)" -> "Auto-invoke /tech-design (no gate, v1.1.9+)";
     "Auto-invoke /tech-design (no gate, v1.1.9+)" -> "Auto-invoke tech-design skill" [label="continue"];
     "Auto-invoke /tech-design (no gate, v1.1.9+)" -> "Exit: tell user to run /tech-design later" [label="user: stop/멈춰"];
 }
