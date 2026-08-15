@@ -4,6 +4,7 @@ from pathlib import Path
 from scripts.preflight import (
     code_pretty_check,
     execute_plan_mode_check,
+    glossary_check,
     subagent_task_entry_check,
 )
 
@@ -20,6 +21,37 @@ def test_code_pretty_check_only_implementation_plan(tmp_path):
     _write(plan, "# x\n**수정 후**:\n```py\npass\n```\n## 변경이력\n")
     assert code_pretty_check(req).ok is False
     assert code_pretty_check(plan).ok is True
+
+
+def test_glossary_check_file_not_found(tmp_path):
+    result = glossary_check(tmp_path / "missing-implementation-plan.md")
+    assert result.ok is False
+    assert "not found" in result.reason
+
+
+def test_glossary_check_only_implementation_plan(tmp_path):
+    req = tmp_path / "foo-requirements.md"
+    plan = tmp_path / "foo-implementation-plan.md"
+    _write(req, "# x\n## 변경이력\n")
+    _write(plan, "# x\n**수정 후**:\n```py\npass\n```\n## 변경이력\n")
+    assert glossary_check(req).ok is False
+    assert glossary_check(plan).ok is True
+
+
+def test_glossary_check_footer_not_empty(tmp_path):
+    plan = tmp_path / "foo-implementation-plan.md"
+    _write(plan, "# x\n## 변경이력\n### [2026-05-10] [구현계획서-수정]\n- id: CH-1\n")
+    result = glossary_check(plan)
+    assert result.ok is False
+    assert "변경이력" in result.reason
+
+
+def test_glossary_check_passes_without_modified_blocks(tmp_path):
+    """code_pretty_check 와의 의도적 차이 — 코드 블록이 없어도 용어집은 만든다."""
+    plan = tmp_path / "foo-implementation-plan.md"
+    _write(plan, "# 문서만 고치는 계획\n## Task 1\n**검증**: 문구가 바뀐다.\n## 변경이력\n")
+    assert code_pretty_check(plan).ok is False
+    assert glossary_check(plan).ok is True
 
 
 def test_execute_plan_mode_check_per_task(tmp_path):
