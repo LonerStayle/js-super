@@ -92,6 +92,23 @@ def has_blocking_failure(rows: list[Classified]) -> bool:
     return any(row.status in {"REGRESSION", "FAIL", "NEW"} for row in rows)
 
 
-def unclassified(rows: list[Classified]) -> list[Classified]:
-    """사람이 아직 회귀인지 낡음인지 정하지 않은 항목."""
-    return [row for row in rows if row.status in {"NEW", "FAIL", "PENDING"}]
+def unclassified(rows: list[Classified], labels: dict | None = None) -> list[Classified]:
+    """사람이 아직 회귀인지 낡음인지 정하지 않은 항목.
+
+    통과한 항목은 분류가 필요 없다 — 그대로 정답으로 굳혀도 안전하다.
+    통과하지 않은 항목만 사람의 라벨을 요구한다. 이 구분이 없으면
+    첫 기준선을 아예 못 만든다 (전부 신규라서).
+    """
+    labels = labels or {}
+    return [
+        row for row in rows
+        if row.verdict != "PASS" and row.label is None and row.case_id not in labels
+    ]
+
+
+def load_labels(path: Path) -> dict:
+    """사람이 붙인 라벨 파일. 통과하지 않은 항목의 판단 근거를 담는다."""
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data.get("labels", data)

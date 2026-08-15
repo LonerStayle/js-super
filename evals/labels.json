@@ -1,0 +1,212 @@
+{
+ "labels": {
+  "coupling/031e7db4dd05": {
+   "label": "blocked",
+   "reason": "\"각 N\" 은 파일마다 N 이라는 뜻이라 목록 명령으로는 기계 판정 불가. 모델 판정 대상 (2차)."
+  },
+  "coupling/079339083f99": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/09e7210c9664": {
+   "label": "stale",
+   "reason": "H22 fixture 자신이 문서화한 자기 참조 문제. 제외 경로에 sub-driven tests README 가 안 들어 있어 옛 단어가 잡힌다. 룰을 고치거나 fixture 를 갱신해야 한다."
+  },
+  "coupling/0b43f0656807": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/0d2ec79015d4": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/151bab66a576": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/180c8c2498f4": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/19433f10ae97": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/1d4ccf75b528": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/1d52ecec0719": {
+   "label": "blocked",
+   "reason": "자리표시자가 들어 그대로 실행 불가. fixture 이관 시 실제 경로로 바꾼다 (2차)."
+  },
+  "coupling/227ffc008e48": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/3b5212886a09": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/3ca93d854166": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/3e511d0e8e9a": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/40fa16a45a60": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/4337c71a6b11": {
+   "label": "stale",
+   "reason": "H17 fixture 의 기대값 0 은 낡음. CLAUDE.md 가 정본이고 auto-* 3 스킬의 안티 패턴 행 3건은 정상 (2026-08-15 사용자 결정, CH-20260815-003 참조)."
+  },
+  "coupling/4873231e0f2c": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/51d300cc7c6e": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/5b2aab5d3e2e": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/5c87fd3d1766": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/5effbfa7e108": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/63c1eb1122d2": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/6681f017e1d5": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/6977d00955e1": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/6ce1da91af68": {
+   "label": "blocked",
+   "reason": "자리표시자(<slug> 등)가 들어 그대로 실행 불가. fixture 를 케이스로 옮길 때 실제 경로로 바꾼다 (2차)."
+  },
+  "coupling/6e83580e2360": {
+   "label": "blocked",
+   "reason": "자리표시자(<slug> 등)가 들어 그대로 실행 불가. fixture 를 케이스로 옮길 때 실제 경로로 바꾼다 (2차)."
+  },
+  "coupling/7274d68c6321": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/7471a7593fd6": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/7e6f0e430d47": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/808c4d235646": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/9f69d821ed4d": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/b040022cff13": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/b4dd51d84d9b": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/b55757f5b7e4": {
+   "label": "blocked",
+   "reason": "기대값 주석이 없어 통과 기준이 정의되지 않음. 룰 작성자가 기대값을 채워야 한다."
+  },
+  "coupling/bae760bbbecf": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/c3845d8c4041": {
+   "label": "blocked",
+   "reason": "기대값 주석이 없어 통과 기준이 정의되지 않음. 룰 작성자가 기대값을 채워야 한다."
+  },
+  "coupling/c6f921f7677e": {
+   "label": "blocked",
+   "reason": "자리표시자(<slug> 등)가 들어 그대로 실행 불가. fixture 를 케이스로 옮길 때 실제 경로로 바꾼다 (2차)."
+  },
+  "coupling/ca9bade00288": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/cba44b2d950f": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/cce57b9c32eb": {
+   "label": "blocked",
+   "reason": "자리표시자(<slug> 등)가 들어 그대로 실행 불가. fixture 를 케이스로 옮길 때 실제 경로로 바꾼다 (2차)."
+  },
+  "coupling/d8b74387b3d0": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/d91c094956c3": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/daecd937337d": {
+   "label": "stale",
+   "reason": "H22 fixture 자신이 문서화한 자기 참조 문제. 제외 경로에 sub-driven tests README 가 안 들어 있어 옛 단어가 잡힌다. 룰을 고치거나 fixture 를 갱신해야 한다."
+  },
+  "coupling/dc535becf4d8": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/dd3d0463373f": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/e2dbfbd651f0": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/e5dfa97a1415": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/e5f11aa22508": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/ec060ad73e9d": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/edcd01c02cf6": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/f6176c16c4e0": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "coupling/f72f10c9cdbc": {
+   "label": "blocked",
+   "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  }
+ }
+}

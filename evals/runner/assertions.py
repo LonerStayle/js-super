@@ -55,25 +55,53 @@ def run_shell_rule(command: str, cwd: Path) -> Outcome:
     return Outcome("PASS", actual=proc.stdout)
 
 
+def extract_counts(text: str) -> list[int]:
+    """개수 출력을 숫자 목록으로 읽는다.
+
+    `grep -c` 는 파일이 하나면 `3`, 여럿이면 `경로:3` 형식으로 낸다.
+    `wc -l` 은 그냥 숫자다. 두 형식을 모두 받는다.
+    """
+    numbers: list[int] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        tail = line.rsplit(":", 1)[-1].strip()
+        if tail.lstrip("-").isdigit():
+            numbers.append(int(tail))
+            continue
+        for token in line.split():
+            if token.lstrip("-").isdigit():
+                numbers.append(int(token))
+    return numbers
+
+
+def _nonempty_lines(text: str) -> int:
+    return len([line for line in text.splitlines() if line.strip()])
+
+
 def compare(op: str, actual: str, expected) -> Outcome:
     """관측값과 기대값을 비교한다."""
     text = actual.strip()
 
     if op == "zero":
         ok = text == "" or set(text.split()) <= {"0"}
-        return _verdict(ok, text, "출력이 비어 있거나 0 이어야 함")
+        return _verdict(ok, text, "출력이 비어 있어야 함")
     if op == "exists":
         return _verdict(bool(text), text, "출력이 있어야 함")
     if op == "capture":
         return Outcome("PASS", actual=text)
     if op == "lines_eq":
-        count = len([line for line in actual.splitlines() if line.strip()])
+        count = _nonempty_lines(actual)
         return _verdict(count == int(expected), str(count), f"{expected} 줄이어야 함")
+    if op == "lines_gte":
+        count = _nonempty_lines(actual)
+        return _verdict(count >= int(expected), str(count), f"{expected} 줄 이상이어야 함")
 
     if op not in {"eq", "gte", "lte"}:
         return Outcome("BLOCKED", actual=text, reason=f"모르는 연산: {op}")
 
-    numbers = [int(token) for token in text.split() if token.lstrip("-").isdigit()]
+    numbers = extract_counts(text)
     if not numbers:
         return Outcome("FAIL", actual=text, reason="숫자를 못 읽음")
 

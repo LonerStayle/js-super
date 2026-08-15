@@ -1547,3 +1547,45 @@ grep -rn '/tech-design\|/auto-tech-design\|/worktree-merge-back\|/worktree-remov
 - 커맨드 파일 4개 rename + 27개 파일의 슬래시 표기 80줄. 스킬 본문의 절차·룰 변경 0, 스킬 디렉토리명 변경 0.
 - `scripts/` / `hooks/` / `agents/` / 6 manifest 영향 0.
 - 확인은 머지 후 `/reload-plugins` 로. 플러그인은 `~/.claude/plugins/cache/` 에서 읽히므로 워크트리 수정만으로는 반영되지 않는다.
+
+## 스킬 검증 환경 ↔ CLAUDE.md 파싱 계약 (2026-08-15+)
+
+`evals/` 러너는 **본 파일의 bash 코드 블록을 실행 시점에 직접 읽어** 결합 회귀 룰로 쓴다. 룰을 별도 파일로 복제하지 않는다. 복제하면 정답 원천이 둘이 되고, 본 파일은 3.5개월에 54회 갱신되므로 매 릴리즈마다 어긋날 기회를 갖는다.
+
+### 파서가 기대하는 형식
+
+```
+```bash
+<검사 명령 (여러 줄 가능, 줄 끝 역슬래시 이음 지원)>
+# expected: <기대값>
+```
+```
+
+- 코드 펜스 언어는 `bash` / `sh` / `shell` 중 하나여야 한다. `text` 나 언어 없음은 안 읽힌다
+- `# expected:` 주석이 명령 바로 뒤에 와야 한다. 한 블록에 여러 룰을 넣으려면 각각 뒤에 붙인다
+- 기대값이 **순수 숫자** (`0`, `1`, `각 >= 1`, `3 lines`) 면 기계가 판정한다
+- 기대값에 조건이 붙으면 (`0 (Anti-Pattern catch 라인만 허용)`) 자연어로 보고 모델 판정으로 넘긴다. 지금은 판정 대기 상태로 남는다
+
+### 룰 작성 시 지켜야 할 것
+
+- 명령은 **읽기 전용**이어야 한다. 러너가 관문으로 검사해서 쓰기 계열이면 실행하지 않고 차단 보고한다. 허용 명령은 `grep`, `ls`, `test`, `awk`, `sed -n`, `find`, `cat`, `wc`, `head`, `tail`, `echo`, `sort`, `uniq`, `cut`, `tr`, `python3`, `git`(읽기 하위 명령만) 이다
+- `<slug>` 같은 자리표시자를 쓴 명령은 그대로 실행되지 않아 차단된다. 실행 가능한 룰로 만들려면 실제 경로를 쓴다
+- 셸은 `bash` 로 고정되어 돈다. 사용자 기본 셸(zsh) 기준으로 쓰면 결과가 달라질 수 있다
+
+### 회귀 catch
+
+```bash
+python3 -c "import sys; sys.path.insert(0,'.'); from pathlib import Path; from evals.runner.coupling import collect_rules; print(len(collect_rules(Path('.'))))"
+# expected: >= 100
+```
+
+```bash
+ls evals/run.py evals/runner/coupling.py evals/baseline.json | wc -l
+# expected: 3
+```
+
+### 영향 범위
+
+- 본 파일의 코드 블록 형식이나 `# expected:` 주석 형식을 바꾸면 러너가 조용히 룰을 놓친다. 러너는 파싱된 룰 수가 직전 실행보다 줄면 경고한다. 절대 수치를 assert 로 박지는 않는다 (자산이 계속 늘어나는 저장소에서 절대값 검사는 매 릴리즈에 마찰을 부과한다)
+- fixture README (`skills/*/tests/**/*.md`) 도 같은 형식으로 읽힌다. 두 원천을 합쳐 111건이다
+- `evals/` 는 Claude Code 의 자동 로드 경로 밖이라 사용자 세션에 안 올라간다

@@ -7,6 +7,7 @@ CLAUDE.md 는 3.5개월에 54회 갱신되므로 매 릴리즈마다 어긋날 �
 
 from __future__ import annotations
 
+import hashlib
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -16,6 +17,10 @@ FENCE_CLOSE = re.compile(r"^```\s*$")
 EXPECTED = re.compile(r"^#\s*expected:\s*(?P<value>.+?)\s*$", re.IGNORECASE)
 COMMENT = re.compile(r"^\s*#")
 LEADING_INT = re.compile(r"^\s*(?:각\s*)?(?:>=|<=|==)?\s*(\d+)")
+
+# 순수 숫자 기대값. 숫자 뒤에 조건이 붙으면 (예: "0 (Anti-Pattern catch 라인만 허용)")
+# 기계 비교로 판정할 수 없다 — 그건 자연어 기대값이라 사람이나 모델이 봐야 한다.
+PURE_INT = re.compile(r"^\s*(?:각\s*)?(?:>=|<=|==)?\s*\d+\s*(?:줄|건|개|lines?|line)?\s*$")
 
 
 @dataclass(frozen=True)
@@ -35,7 +40,23 @@ class Rule:
 
     @property
     def expected_is_numeric(self) -> bool:
-        return self.expected_int is not None
+        """기계 비교가 가능한 순수 숫자 기대값인가.
+
+        `0` 은 숫자지만 `0 (Anti-Pattern catch 라인만 허용)` 은 아니다.
+        뒤의 조건이 판정을 바꾸므로 자연어로 취급해 모델 판정으로 보낸다.
+        """
+        return self.expected is not None and bool(PURE_INT.match(self.expected))
+
+    @property
+    def key(self) -> str:
+        """기준선에 쓸 안정적인 식별자.
+
+        줄 번호를 쓰면 CLAUDE.md 에 한 줄만 끼어도 전체 기준선이 어긋난다.
+        명령 내용의 해시라 룰이 파일 안에서 옮겨다녀도 그대로다.
+        """
+        normalized = " ".join(self.command.split())
+        digest = hashlib.sha1(normalized.encode("utf-8")).hexdigest()
+        return f"coupling/{digest[:12]}"
 
     @property
     def wants_at_least(self) -> bool:
@@ -43,6 +64,46 @@ class Rule:
         if self.expected is None:
             return False
         return ">=" in self.expected or "이상" in self.expected
+
+
+WC_L = re.compile(r"\bwc\s+(-\w+\s+)*-\w*l")
+GREP_COUNT = re.compile(r"\bgrep\b(?:\s+-\w+)*\s+-\w*c\w*\b")
+# `python3 -c "... print(len(x))"` 처럼 값을 찍는 한 줄 명령. 목록이 아니다.
+PY_ONELINER = re.compile(r"\bpython3?\s+-c\b")
+
+
+def infer_check(rule: Rule) -> tuple[str, str]:
+    """룰 하나에 맞는 (비교 연산, 출력 해석 방식) 을 정한다.
+
+    CLAUDE.md 룰은 두 종류다.
+
+    - 개수를 내는 명령 (`grep -c`, `... | wc -l`) — 출력이 숫자다.
+      파일이 여럿이면 `경로:개수` 형식이 된다.
+    - 목록을 내는 명령 (`grep -n`, `grep -l`, `ls`, `find`) — 출력이 줄 목록이다.
+      이때 `# expected: 0` 은 숫자 0 이 아니라 '출력 없음' 을 뜻한다.
+
+    이 구분을 안 하면 목록 명령의 기대값 0 을 숫자 비교로 처리해
+    "숫자를 못 읽음" 이 무더기로 난다.
+    """
+    last_segment = rule.command.split("|")[-1]
+    is_count = bool(
+        WC_L.search(last_segment)
+        or GREP_COUNT.search(last_segment)
+        or PY_ONELINER.search(last_segment)
+    )
+
+    if is_count:
+        return ("gte" if rule.wants_at_least else "eq"), "count"
+
+    # "각 N" 은 파일마다 N 이라는 뜻이다. 목록을 내는 명령에서는 파일이 몇 개인지
+    # 명령만 봐서 알 수 없으므로 기계 판정을 포기하고 모델 판정으로 넘긴다.
+    if rule.expected and rule.expected.strip().startswith("각"):
+        return "pending", "lines"
+
+    target = rule.expected_int
+    if target == 0:
+        return "zero", "lines"
+    return ("lines_gte" if rule.wants_at_least else "lines_eq"), "lines"
 
 
 def collect_rules(repo_root: Path) -> list[Rule]:
