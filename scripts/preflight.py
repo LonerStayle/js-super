@@ -15,9 +15,6 @@ class PreflightResult(NamedTuple):
     human_reason: str = ""  # v1.1.15+ optional 한국어 1줄 설명. backward compat: default 빈 문자열.
 
 
-_FEATURE_MD_PATTERN = re.compile(
-    r".*-(requirements|tech-design|implementation-plan)\.md$"
-)
 _PLAN_MD_PATTERN = re.compile(r".*-implementation-plan\.md$")
 _CHANGELOG_ENTRY = re.compile(r"^### \[", re.MULTILINE)
 _FRONTMATTER_COMMIT_POLICY = re.compile(
@@ -41,29 +38,6 @@ def _read_commit_policy(text: str) -> str:
         return "per-task"
     line = _COMMIT_POLICY_LINE.search(m.group(1))
     return line.group(1) if line else "per-task"
-
-
-def docs_pretty_check(file_path: Path) -> PreflightResult:
-    if not file_path.exists():
-        return PreflightResult(
-            False,
-            f"file not found: {file_path}",
-            f"대상 파일이 존재하지 않습니다: {file_path}",
-        )
-    if not _FEATURE_MD_PATTERN.match(str(file_path)):
-        return PreflightResult(
-            False,
-            "filename doesn't match feature MD pattern",
-            "파일명이 feature MD 패턴 (-requirements.md / -tech-design.md / -implementation-plan.md) 과 일치하지 않습니다",
-        )
-    text = file_path.read_text(encoding="utf-8")
-    if _has_changelog_entries(text):
-        return PreflightResult(
-            False,
-            "변경이력 footer not empty (doc is live)",
-            "이미 변경이력 entry 가 존재합니다 (live doc). generating-html 은 초안 단계 전용입니다 — live doc 재생성은 /sync-html 을 사용하세요",
-        )
-    return PreflightResult(True, "ok", "정상")
 
 
 def code_pretty_check(file_path: Path) -> PreflightResult:
@@ -91,6 +65,29 @@ def code_pretty_check(file_path: Path) -> PreflightResult:
             False,
             "no '수정 후' code blocks found — nothing to prettify",
             "'수정 후' 코드 블록이 없습니다. prettify 할 내용이 없습니다",
+        )
+    return PreflightResult(True, "ok", "정상")
+
+
+def glossary_check(file_path: Path) -> PreflightResult:
+    if not file_path.exists():
+        return PreflightResult(
+            False,
+            f"file not found: {file_path}",
+            f"대상 파일이 존재하지 않습니다: {file_path}",
+        )
+    if not _PLAN_MD_PATTERN.match(str(file_path)):
+        return PreflightResult(
+            False,
+            "glossary target must be implementation-plan.md",
+            "용어집 대상은 -implementation-plan.md 파일이어야 합니다",
+        )
+    text = file_path.read_text(encoding="utf-8")
+    if _has_changelog_entries(text):
+        return PreflightResult(
+            False,
+            "변경이력 footer not empty (doc is live)",
+            "이미 변경이력 entry 가 존재합니다 (live doc). 용어집은 최초 생성 단계에서만 발화합니다",
         )
     return PreflightResult(True, "ok", "정상")
 

@@ -1,6 +1,6 @@
 ---
 name: auto-brainstorming
-description: auto-flow 진입점. /auto-brainstorm 명시 호출 전용 — 대화 중 자동 선택 금지 (js-super 기본 진입은 brainstorming). Socratic clarifying Q (1~5개 적응) + AI 자동 approach 선택 + 자동 section 작성 + change-history 자동 + auto-tech-design 자동 invoke. 사용자 입력은 clarifying Q 답변에만. AskUserQuestion / Visual Companion / generating-html 호출 X.
+description: auto-flow 진입점. /auto-brainstorm 명시 호출 전용 — 대화 중 자동 선택 금지 (js-super 기본 진입은 brainstorming). Socratic clarifying Q (1~5개 적응) + AI 자동 approach 선택 + 자동 section 작성 + change-history 자동 + auto-tech-design 자동 invoke. 사용자 입력은 clarifying Q 답변에만. AskUserQuestion / Visual Companion 호출 X.
 ---
 
 # Auto Brainstorming → <slug>-requirements.md (Socratic auto)
@@ -85,7 +85,6 @@ mkdir -p docs/features/$(date +%Y-%m-%d)-<slug>/
 | Wrong | Right |
 |---|---|
 | AskUserQuestion 호출 | NEVER. auto-flow 의 사용자 입력은 clarifying Q 답변에만. |
-| generating-html 호출 (모든 형태) | NEVER. v2.8.2+ 커맨드 강등 — 자동 발동 폐지 (v2.3.2 의 Step 4.5 dispatch 제거). `.html` 필요 시 사용자가 명시 호출. |
 | Visual Companion offer | NEVER. D-T11. |
 | 일반 brainstorming skill body 호출 | NEVER. self-contained mirror (D-T1). |
 | transition notice 후 사용자 응답 wait sleep | NEVER. harness 모델은 자동 다음 turn — sleep X. |

@@ -100,6 +100,27 @@ If you find yourself skipping ahead, stop and create the missing task.
 ## 변경이력
 ```
 
+## 서술 수준 — 이름보다 역할
+
+`<slug>-tech-design.md` 의 **서술 문단** (줄글로 설명하는 부분) 에서는 코드 식별자를 기본적으로 쓰지 않는다. 이름을 쓰려는 자리마다 먼저 그 역할을 말로 풀어쓴다.
+
+예외는 하나다 — **그 이름이 바뀌면 문서 밖의 무언가가 깨지는 경우**에만 실제 이름을 쓴다.
+
+| 실제 이름을 쓴다 | 말로 풀어쓴다 |
+|---|---|
+| 사용자가 입력하는 명령어 | 내부 변수, 지역 변수 |
+| 설정 파일의 키 이름 | 아직 없는 새 함수·클래스 이름 |
+| 외부나 다른 팀이 호출하는 공개 함수 | 직접 지은 중간 계산값 |
+| 저장소에 이미 있는 파일 경로 | 반복문 변수, 임시로 붙인 이름 |
+
+왼쪽은 이름 자체가 약속이라 바꾸면 문서 밖이 깨진다. 오른쪽은 구현하면서 얼마든지 달라져 지금 적어봐야 문서만 먼저 낡는다.
+
+**적용 부위는 서술 문단뿐이다.** §2 의 영향 파일 표, 코드 블록, 도식은 그대로 둔다 — 이름을 보여주는 것이 그 자리의 목적이다.
+
+### Why
+
+설계 문서는 구조·계약·결정을 담는 자리다. 구현 단계에서 바뀔 이름이 서술에 박히면 문서가 먼저 낡고, 정작 읽어야 할 결정이 이름 사이에 묻힌다. 기본 동작을 풀어쓰기로 두는 이유는 매번 판정을 통과시키는 방식으로는 결과가 달라지지 않기 때문이다.
+
 ## Process Flow
 
 ```dot
@@ -290,6 +311,7 @@ Call `AskUserQuestion`:
 - Every key decision in §5 has at least one alternative and a reason for the chosen path
 - Risk candidates in §6 are pre-classified using risk-annotation categories (`side-effect | breaking | race`)
 - §7 test strategy is consistent with §3 and §4 (DB changes → migration tests, APIs → integration/contract tests)
+- 서술 문단에 남은 코드 식별자가 모두 "그 이름이 바뀌면 문서 밖이 깨지는" 예외에 해당한다 — 아니면 역할 서술로 교체 (표 / 코드 블록 / 도식은 대상 아님, "서술 수준 — 이름보다 역할" 섹션)
 
 ## Design for Isolation and Clarity
 
@@ -320,6 +342,8 @@ If not, the boundaries need work. Smaller, well-bounded units are also easier fo
 | Missing FR mapping | Every `FR-N` from `## 요구 항목` must appear in §2 or §4. |
 | One decision, no alternatives | Always present at least one alternative + comparison. |
 | "Be careful here" without a category | Force one of the three risk-annotation categories (`side-effect`, `breaking`, `race`). |
+| 서술 문단에 내부 변수나 아직 없는 함수 이름을 그대로 박기 | 역할을 말로 풀어쓴다. 이름이 바뀌면 문서 밖이 깨지는 경우만 실제 이름. |
+| 룰을 표나 코드 블록까지 확대 적용해 이름을 지우기 | 적용 부위는 서술 문단뿐. 표와 코드 블록은 이름을 보여주는 자리다. |
 
 ## Red Flags
 

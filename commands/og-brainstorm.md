@@ -179,7 +179,6 @@ If they agree to the companion, read the detailed guide before proceeding:
 | 산출물 형식 | 자유 산문 + `## 요구 항목` 과 `FR-N` 필수 | upstream 자유 형식 단일 |
 | 대화 방식 | 소크라테스 4블록 (커버 목록 5 / 고정 비교축 3 / 3단 사다리) | upstream 자유 대화 |
 | 변경이력 footer | 자동 누적 | 없음 |
-| .html 시각화 (generating-html) | `/sync-html` 명시 호출 | 없음 |
 | 다음 단계 | `/tech-design` | `/og-write-plan` |
 
 ## 주의
