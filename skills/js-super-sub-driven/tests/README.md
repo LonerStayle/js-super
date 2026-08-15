@@ -65,3 +65,9 @@
 ## v2.0.2+ — og-flow rename + 핸드오프 강화 fixtures
 
 - `H13-og-flow-subagent-routing/` — og-flow Subagent path 매칭 검증 (upstream 원본 매칭 / js-super-sub-driven 미매칭)
+
+## PRD 제거 + 소크라테스 단일화 fixtures
+
+| Fixture | 시나리오 |
+|---|---|
+| H16-socratic-single-track | 모드 질문 부재 (A) / 요구 항목 + FR-N 계약 (B) / 제외 항목 취합 (C) / '모르겠다' 3단 사다리 (D) / 옛 6섹션 문서 하위호환 (E) |
