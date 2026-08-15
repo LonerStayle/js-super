@@ -522,6 +522,7 @@ flowchart TD
 | `/remove-skill <이름>` | js-super 가 만든 skill 안전 정리 |
 | `/pretty-md` | `.md` 본문 다듬기 (의미는 안 바꿈) |
 | `/sync-html` | `.html` 보기 좋은 사본 다시 생성 |
+| `/tech-teach-me` | 요구사항·기술설계·구현계획 문서를 강의로 쪼개 한 강씩 설명 |
 
 <br/>
 

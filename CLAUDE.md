@@ -1491,3 +1491,33 @@ python3 -c "from scripts.preflight import feature_depth; print('OK')"
 - skill 본문 9 + commands 4 + `scripts/preflight.py` + fixture H14 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서. og-* / fast-tasks / worktree 계열 / generating-html 구조 영향 0
 - executing-plans / js-super-sub-driven skill 본문 변경 0 — plan 부재 안내 보강은 preflight `human_reason` 안에서
 - writing-plans `**Model**:` ↔ js-super-sub-driven 결합 — 3-doc 트랙 전용이라 영향 0
+
+## /tech-teach-me 결합 메모
+
+`commands/tech-teach-me.md` — 요구사항·기술설계·구현계획 문서를 강의로 쪼개 한 강씩 설명하는 커맨드 전용 절차. 커맨드 본문 인라인 (스킬 없음 — v2.8.1 컨텍스트 절감 원리 답습).
+
+### 전역 룰의 명시 예외 — AskUserQuestion 호출 금지
+
+CLAUDE.md 의 "AskUserQuestion 도구 우선 (v2.3.5+)" 전역 룰에 대한 **명시 예외**. 이 커맨드 안에서는 강 진행·심화·종료를 모두 사용자 자유 입력으로 받고 `AskUserQuestion` 을 호출하지 않는다.
+
+- **Why**: 강마다 팝업이 뜨면 학습 흐름이 끊기고 피로하다 (사용자 결정). 알람 fire 를 포기하는 대신 대화 리듬을 택함.
+- **회귀 catch**: 본문에 AskUserQuestion 호출 지시가 생기면 회귀. 금지 섹션의 catch 라인만 허용.
+
+### 영향 범위
+
+- 커맨드 1 신규 + README 유틸리티 표 1행 + 본 섹션. skill / scripts / hooks 영향 0
+- 읽기 전용 — 코드·문서 수정 경로 없음
+- 자동 발동 경로 없음 (`disable-model-invocation: true`)
+
+### 회귀 catch grep
+
+```bash
+test -f commands/tech-teach-me.md && grep -c "disable-model-invocation: true" commands/tech-teach-me.md
+# expected: 1
+
+grep -n "AskUserQuestion" commands/tech-teach-me.md
+# expected: 금지 섹션의 catch 라인 1건만
+
+test ! -d skills/tech-teach-me && echo "OK: 커맨드 전용 유지"
+# expected: OK
+```
