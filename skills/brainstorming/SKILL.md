@@ -188,7 +188,7 @@ digraph brainstorm_flow {
 **7. Show the RAW doc + user review gate**
 - Show the full RAW `<slug>-requirements.md`; await approval or change requests
 - If changes requested, revise per feedback → re-show RAW
-- On approval → continue to step 7
+- On approval → continue to step 8 (change-history)
 
 **Gate #8 — 산출물(RAW) 승인**
 
@@ -428,28 +428,6 @@ On first save of <slug>-requirements.md, write a `[요구사항-수정]` entry:
 - 이유: 신규 피처 brainstorming 결과
 - 무엇이: <slug>-requirements.md 전체 (FR-1..N + 대화에서 나온 섹션들)
 - 영향범위: 없음 (최초 생성)
-
-## Visual Companion
-
-A browser-based companion for showing mockups, diagrams, and visual options during brainstorming. Available as a tool — not a mode. Accepting the companion means it's available for questions that benefit from visual treatment; it does NOT mean every question goes through the browser.
-
-**Trigger:** Requirements work is mostly textual. Do NOT offer the companion by default. Offer ONLY when the feature explicitly involves UI/layout/visual artifacts (e.g., "대시보드 화면", "폼 디자인", "리포트 레이아웃"). For pure backend/API/data-flow work, skip the offer entirely.
-
-**Offering the companion (only when triggered):** When upcoming questions will involve visual content (mockups, layouts, diagrams), offer it once for consent:
-
-> "Some of what we're working on might be easier to explain if I can show it to you in a web browser. I can put together mockups, diagrams, comparisons, and other visuals as we go. This feature is still new and can be token-intensive. Want to try it? (Requires opening a local URL)"
-
-**This offer MUST be its own message.** Do not combine it with clarifying questions, context summaries, or any other content. Wait for the user's response before continuing. If they decline, proceed with text-only brainstorming.
-
-**Per-question decision:** Even after the user accepts, decide FOR EACH QUESTION whether to use the browser or the terminal. The test: **would the user understand this better by seeing it than reading it?**
-
-- **Use the browser** for content that IS visual — mockups, wireframes, layout comparisons, side-by-side visual designs
-- **Use the terminal** for content that is text — requirements questions, conceptual choices, tradeoff lists, A/B/C/D text options, scope decisions
-
-A question about a UI topic is not automatically a visual question. "What does '관리자 메뉴' include?" is conceptual — use the terminal. "Which of these two layouts works better?" is visual — use the browser.
-
-If they agree to the companion, read the detailed guide before proceeding:
-`skills/brainstorming/visual-companion.md`
 
 ## Key Principles
 

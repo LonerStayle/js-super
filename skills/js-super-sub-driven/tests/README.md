@@ -33,14 +33,12 @@
 | H2-router-ambiguous | 모호 피처 → AskUserQuestion 게이트 | AC-7, FR-3 | (수동 dogfood) |
 | H3-adaptive-na | 비활성 토픽 dialogue 스킵 + N/A 한 줄 | AC-1, AC-8, FR-1 | (수동 dogfood) |
 | H4-preflight-fail | 변경이력 entry 존재 시 exit 1 + 게이트 | AC-11, FR-4 | (수동 dogfood) |
-| H5-docs-pretty-pre-review | docs-pretty pre-review timing 통일 | AC-14, FR-5 | (수동 dogfood) |
 | H6-task-name-friendly | Checklist 항목명 사용자 친화 한국어 | AC-15, AC-17, FR-6 | (수동 dogfood) |
 
 - H1 — entry router: small 신호 자동 라우팅 (FR-3, AC-6)
 - H2 — entry router: 모호 피처 게이트 발화 (FR-3, AC-7)
 - H3 — adaptive 7-topic: 비활성 N/A 박힘 (FR-1, AC-1, AC-8)
 - H4 — preflight 강제 실패 게이트 (FR-4, AC-11)
-- H5 — docs-pretty pre-review 통일 (FR-5, AC-14)
 - H6 — task name friendly (FR-6, AC-15, AC-17)
 
 ## v1.1.17+ — auto-flow dogfood fixtures
@@ -66,14 +64,15 @@
 
 - `H13-og-flow-subagent-routing/` — og-flow Subagent path 매칭 검증 (upstream 원본 매칭 / js-super-sub-driven 미매칭)
 
-## 구현계획서 용어집 + 정리/검증 순서 교체 fixtures
-
-- `H16-glossary-parallel-order/` — code-pretty ‖ glossary 병렬 dispatch → verifying-spec → 사용자 검토 순서 검증. 용어집 실패 non-blocking / 코드 블록 0개 계획서에서 두 helper 조건 차이 / live doc 차단 / auto-flow 미적용 5 시나리오
-
-## PRD 제거 + 소크라테스 단일화 fixtures
+## v2.9.0 이후 fixtures (H14~H19)
 
 | Fixture | 시나리오 |
 |---|---|
+| H14-depth-select | 산출물 깊이 선택 — 기술설계 게이트 3지선다 / `depth: 2` 표식 판독 / 2→3 승격 |
+| H15-natural-lang-verify | 구현계획서 테스트 자연어 축약 — `**검증**` 필드 / 구현 byte-copy 와 테스트 자체 작성 분리 |
+| H16-tech-design-abstraction | 기술설계 서술 수준 — 이름보다 역할 (통과 사례 + 위반 사례 대조) |
 | H17-socratic-single-track | 모드 질문 부재 (A) / 요구 항목 + FR-N 계약 (B) / 제외 항목 취합 (C) / '모르겠다' 3단 사다리 (D) / 옛 6섹션 문서 하위호환 (E) |
+| H18-glossary-parallel-order | code-pretty ‖ glossary 병렬 dispatch → verifying-spec → 사용자 검토 순서. 용어집 실패 non-blocking / 두 helper 조건 차이 / live doc 차단 / auto-flow 미적용 5 시나리오 |
+| H19-clean-verify | 무맥락 검증자 2종 병렬 — 단독(대상 MD 만) / 대조(대상 + upstream) / 중재 / `--no-clean-verify` skip |
 
-> 인덱스 부채: `H14-depth-select` / `H15-natural-lang-verify` 는 디렉토리만 있고 본 인덱스에 미등록 상태입니다. `H16` 번호는 `clean-verify` / `glossary-parallel-order` / `tech-design-abstraction` 세 fixture 가 나눠 쓰고 있습니다 (병렬 워크트리에서 각자 선점한 결과).
+> 번호 규약: 병렬 워크트리에서 각자 선점해 `H16` 이 세 fixture 에 중복됐던 것을 정리했습니다 (glossary → H18, clean-verify → H19). 신규 fixture 는 본 인덱스의 마지막 번호 다음을 쓰세요.

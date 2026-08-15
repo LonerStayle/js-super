@@ -1,4 +1,4 @@
-# H16 — 구현계획서 용어집 + 정리/검증 순서 교체
+# H18 — 구현계획서 용어집 + 정리/검증 순서 교체
 
 **code-pretty ‖ glossary 병렬 dispatch → verifying-spec → 사용자 검토 순서 dogfood**
 

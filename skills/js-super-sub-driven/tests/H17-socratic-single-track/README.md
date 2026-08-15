@@ -44,4 +44,5 @@ grep -c "^> \*\*모드\*\*:" docs/features/*/알림-배지-requirements.md  # 0
 - 질문 개수 상한 없음 — 커버 목록 5가지가 채워지면 종료. 가벼운 사안은 2~3개로 끝나야 함
 - 대안 제시 시 고정 비교축 3개(무엇이 달라지나 / 무엇을 포기하나 / 되돌리는 비용) + 추천 먼저 + 추천안이 깨지는 조건 1개
 - 승인은 초안 전체 1회. 섹션별 승인으로 회귀하면 실패
-- 보존 문자열: `--no-ask` 섹션 제목 / `Advise: run /og-brainstorm` / `visual-companion.md` 경로가 그대로일 것
+- 보존 문자열: `--no-ask` 섹션 제목 / `Advise: run /og-brainstorm` 이 그대로일 것
+  (`visual-companion.md` 경로는 후속 결정으로 brainstorming 본문에서 폐지 — og-brainstorm 커맨드가 정본 위치를 유지)

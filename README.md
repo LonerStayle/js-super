@@ -19,7 +19,7 @@
 
 <p>
   <img alt="Commands" src="https://img.shields.io/badge/commands-24-06b6d4?style=flat-square&labelColor=0d1117">
-  <img alt="Skills" src="https://img.shields.io/badge/skills-26-06b6d4?style=flat-square&labelColor=0d1117">
+  <img alt="Skills" src="https://img.shields.io/badge/skills-27-06b6d4?style=flat-square&labelColor=0d1117">
   <img alt="Zero deps" src="https://img.shields.io/badge/dependencies-zero-22c55e?style=flat-square&labelColor=0d1117">
 </p>
 
@@ -564,17 +564,18 @@ PR 리뷰 시 `grep "# RISK"` 한 줄로 catch.
 ## 더 깊이 알고 싶다면
 
 <details>
-<summary><b>3 개의 <code>.md</code> 분리는 왜?</b></summary>
+<summary><b><code>.md</code> 분리는 왜?</b></summary>
 
 <br/>
 
-한 피처가 한 폴더 안에 세 개의 `.md` 로 나뉘어 있어요.
+한 피처가 한 폴더 안에서 단계별 `.md` 로 나뉘어 있어요. 기술설계 단계에서 2 개(요구사항 + 기술설계)로 끝낼지 3 개(구현계획까지)로 갈지 고를 수 있고, 구현계획서를 쓰면 용어집이 함께 만들어집니다.
 
 ```
 docs/features/2026-05-23-잔액-출금/
 ├── 잔액-출금-requirements.md      ← /brainstorm
 ├── 잔액-출금-tech-design.md       ← /design-tech
-└── 잔액-출금-implementation-plan.md ← /write-plan
+├── 잔액-출금-implementation-plan.md ← /write-plan (3 개 선택 시)
+└── 잔액-출금-glossary.md            ← /write-plan 이 함께 생성
 ```
 
 - 날짜는 **생성일** — 작업이 길어져도 폴더명은 안 바뀝니다
@@ -719,7 +720,7 @@ flowchart LR
 </details>
 
 <details>
-<summary><b>전체 Skill 26 개</b></summary>
+<summary><b>전체 Skill 27 개</b></summary>
 
 <br/>
 

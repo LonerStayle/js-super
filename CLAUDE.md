@@ -464,6 +464,7 @@ grep -c "Other / 모호 응답 처리 (v2.1.1+)" \
 ### prose 예외 (좁게)
 
 - 자유 텍스트 / 긴 응답 요구 (open brainstorming question 등)
+- `/tech-teach-me` 커맨드 안 (명시 예외 — 강마다 팝업이 학습 흐름을 끊어 자유 입력으로 받는다. "/tech-teach-me 결합 메모" 참조)
 - 사용자 응답 직후 확인용 단순 ack (단 AskUserQuestion yes/no 권장)
 - 상태 보고 / 진행 알림 (질문 형식 아님)
 
@@ -1445,7 +1446,7 @@ test -f skills/js-super-sub-driven/tests/H16-tech-design-abstraction/README.md &
 6. `README.md` — 문서 분류 (2) → (3)
 7. `scripts/preflight.py` — `glossary_check()` **추가 전용** (기존 함수 시그니처 무변경 → 4 skill bash one-liner 동기 불필요)
 8. `scripts/tests/test_preflight.py` — `glossary_check` 단위 테스트 4건 추가. 그중 `test_glossary_check_passes_without_modified_blocks` 는 `code_pretty_check` 와의 의도적 조건 차이를 고정하는 회귀 테스트 (아래 G-8)
-9. `skills/js-super-sub-driven/tests/H16-glossary-parallel-order/` — 신규 fixture (5 시나리오) + tests/README.md 인덱스 등록
+9. `skills/js-super-sub-driven/tests/H18-glossary-parallel-order/` — 신규 fixture (5 시나리오) + tests/README.md 인덱스 등록
 
 ### 핵심 룰
 
@@ -1541,7 +1542,7 @@ grep -cF "## 구현계획서 용어집 + 정리/검증 순서 교체 결합" CLA
 - `skills/verifying-spec/SKILL.md` — HARD-GATE EXCEPTION 2 / Procedure dot / Clean-Context Verifiers 섹션 / Report Format 확장 / Anti-Patterns / Acceptance 4~6
 - `skills/verifying-spec/clean-solo-prompt.md`, `clean-cross-prompt.md` — 신규
 - `commands/{tech-design,write-plan,auto-tech-design,auto-write-plan}.md` — `--no-clean-verify` 안내
-- fixture `skills/js-super-sub-driven/tests/H16-clean-verify/README.md`
+- fixture `skills/js-super-sub-driven/tests/H19-clean-verify/README.md`
 
 ### 변경하지 않는 것 (의도)
 
@@ -1602,7 +1603,7 @@ grep -l "clean-solo-prompt\|clean-cross-prompt\|no-clean-verify" skills/tech-des
 # (git diff main 비교는 머지 후 항상 비어 무의미하고, 무관한 브랜치에서 거짓 실패를 낸다)
 
 # fixture 존재
-test -f skills/js-super-sub-driven/tests/H16-clean-verify/README.md && echo OK
+test -f skills/js-super-sub-driven/tests/H19-clean-verify/README.md && echo OK
 # expected: OK
 ```
 
@@ -1643,8 +1644,8 @@ grep -c "## 요구 항목" skills/brainstorming/SKILL.md skills/auto-brainstormi
 # expected: 각 1 이상
 
 # 소크라테스 4블록
-grep -c "블록 1 — 질문\|블록 2 — 대안\|블록 3 — 문서 작성\|블록 4 — 승인" skills/brainstorming/SKILL.md
-# expected: 4
+grep -cE '^### 블록 [1-4] — ' skills/brainstorming/SKILL.md
+# expected: 4  (흐름도 노드 라벨과 산문 언급을 제외한 절차 헤더만)
 
 # 보존 계약 (건드리면 안 되는 것)
 grep -c "Advise: run /og-brainstorm" skills/brainstorming/SKILL.md

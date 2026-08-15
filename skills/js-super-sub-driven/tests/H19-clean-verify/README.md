@@ -1,4 +1,4 @@
-# H16 — 무맥락 검증자 병렬 (clean-context verifiers)
+# H19 — 무맥락 검증자 병렬 (clean-context verifiers)
 
 `verifying-spec` 이 메인 자체 검증과 동시에 맥락 없는 보조 에이전트 둘을 띄우고, 결과를 중재해 하나의 보고서로 내는지 확인한다.
 

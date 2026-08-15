@@ -126,3 +126,8 @@
 - **무엇이**: FR-18 신규 추가 (산출물 나열 공용 문구의 PRD 표현 정리), 수용 기준 2 판정 범위 명확화 (다른 스펙 문서를 가리키는 참조 2건을 명시적 예외로)
 - **영향범위**: prd제거-소크라테스고도화-tech-design.md §2 영향 파일 표에 `writing-plans/SKILL.md` 행 추가, §7 정적 검증에 판정 기준 반영
 - **연관 항목**: CH-20260815-001
+
+### [2026-08-15 16:10] [요구사항-수정]
+- **이유**: 사용자 후속 결정 — Visual Companion 폐지. 본 피처가 PRD 모드를 없애면서 이 기능의 절차 진입점이 모두 사라졌고, 본문 섹션만 고아로 남아 있었다. 되살리는 대신 폐지를 선택
+- **무엇이**: FR-17 의 보존 대상 문자열 중 `visual-companion.md` 경로 항목이 무효화됨. skills/brainstorming/SKILL.md 의 `## Visual Companion` 섹션 23줄 삭제. 나머지 보존 문자열 (`--no-ask` 섹션 제목 / 모호 응답 처리 / 진입 라우터 안내 / auto 체인 호출) 은 그대로 유효
+- **영향범위**: skills/brainstorming/SKILL.md (섹션 삭제), H17-socratic-single-track fixture 의 보존 문자열 목록 1줄. `skills/brainstorming/visual-companion.md` 파일 자체는 유지 — commands/og-brainstorm.md 가 upstream 원본 흐름의 정본 위치로 참조하기 때문

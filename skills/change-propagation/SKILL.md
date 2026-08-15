@@ -93,7 +93,7 @@ digraph propagation {
 변경 요청 감지: <change level> 변경 ("<short summary of the change>")
 
 영향 매트릭스 적용 결과 — 함께 갱신될 항목:
-1. <slug>-requirements.md §3 FR-3 (직접 변경)
+1. <slug>-requirements.md 요구 항목 FR-3 (직접 변경)
 2. <slug>-tech-design.md §6 위험 (한도 증가에 따른 잔액 검증 강도 재평가)
 3. <slug>-implementation-plan.md Task 4 (한도 검증 로직)
 4. 코드 src/wallet/service.py:withdraw() (한도 상수)
