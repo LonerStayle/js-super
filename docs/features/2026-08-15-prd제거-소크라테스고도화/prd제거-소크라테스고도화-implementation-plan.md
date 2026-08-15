@@ -33,7 +33,7 @@ commit_policy: per-task
 
 **검증**: 착수 시점의 보존 대상 문자열 개수와 PRD 문자열 분포를 파일로 남긴다. 성공 기준은 6종 보존 문자열과 7개 파일의 PRD 건수가 모두 숫자로 기록되어 있고, Task 18 에서 같은 명령으로 재현 가능한 형태인 것.
 
-- [ ] **Step 1: 기준선 수집 명령 실행**
+- [x] **Step 1: 기준선 수집 명령 실행**
 
 ```bash
 cd "$(git rev-parse --show-toplevel)"
@@ -54,7 +54,7 @@ cat docs/features/2026-08-15-prd제거-소크라테스고도화/baseline-grep.tx
 
 Expected: 보존 대상 6줄과 PRD 분포 9줄이 출력된다. 착수 시점 실측은 `brainstorming` 59, `tech-design` 11, `README.md` 7, `og-brainstorm` 3, `writing-plans` 2, `auto-brainstorming` 1, `js-super-sub-driven` 1, `brainstorm` 커맨드 1, `CLAUDE.md` 1.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add docs/features/2026-08-15-prd제거-소크라테스고도화/baseline-grep.txt
@@ -72,15 +72,15 @@ git commit -m "chore: PRD 제거 착수 전 보존 문자열 기준선 기록"
 
 **검증**: PRD 전용 블록 세 덩어리가 사라지고 그 자리에 아무것도 남지 않는다. 성공 기준은 `Mode Selection` · `PRD Adaptive Planning` · `Step P1` · `Step P2` · `Step P3` 문자열이 각각 0건이고, 파일이 마크다운으로 정상 파싱되며 인접 섹션 제목이 붙어버리지 않은 것.
 
-- [ ] **Step 1: `## Mode Selection` 섹션 삭제**
+- [x] **Step 1: `## Mode Selection` 섹션 삭제**
 
 시작 앵커 `## Mode Selection` 부터 끝 앵커 `Once chosen, the mode is fixed for this brainstorming run.` 까지(끝 앵커 포함) 삭제한다. 바로 다음 줄인 `## PRD Adaptive Planning (PRD mode only)` 는 Step 2 에서 지운다.
 
-- [ ] **Step 2: `## PRD Adaptive Planning (PRD mode only)` 섹션 삭제**
+- [x] **Step 2: `## PRD Adaptive Planning (PRD mode only)` 섹션 삭제**
 
 시작 앵커 `## PRD Adaptive Planning (PRD mode only)` 부터 끝 앵커 `The 범위 밖 (Out of Scope) consolidation rule still applies — track exclusions through the dialogue and offer them back. Do NOT ask from a blank prompt.` 까지(끝 앵커 포함) 삭제한다. 이 구간에는 카테고리 미니질문, Visual Companion 엄격 트리거, 질문 계획 루브릭 표, 질문 실행 규정이 모두 들어 있다.
 
-- [ ] **Step 3: 자체 점검의 PRD 전용 6항목 삭제**
+- [x] **Step 3: 자체 점검의 PRD 전용 6항목 삭제**
 
 **원본**:
 ```markdown
@@ -102,7 +102,7 @@ git commit -m "chore: PRD 제거 착수 전 보존 문자열 기준선 기록"
 
 Task 7 에서 이 자리에 단일 점검 목록을 다시 쓴다. 지금은 지우기만 한다.
 
-- [ ] **Step 4: 삭제 확인**
+- [x] **Step 4: 삭제 확인**
 
 ```bash
 grep -c "Mode Selection\|PRD Adaptive Planning\|Step P1\|Step P2\|Step P3" skills/brainstorming/SKILL.md
@@ -110,7 +110,7 @@ grep -c "Mode Selection\|PRD Adaptive Planning\|Step P1\|Step P2\|Step P3" skill
 
 Expected: `0`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add skills/brainstorming/SKILL.md
@@ -128,7 +128,7 @@ git commit -m "refactor(brainstorming): PRD 모드 선택 게이트와 적응형
 
 **검증**: 스킬 설명문과 제목, 소개 문단, 진입 가드에서 두 모드 언급이 사라지고 소크라테스 단일 경로로 읽힌다. 성공 기준은 frontmatter description 에 `two modes` 와 `PRD` 가 없고, 자동 발동 조건("피처를 만들기 전에 반드시")은 그대로 남은 것.
 
-- [ ] **Step 1: frontmatter description 교체**
+- [x] **Step 1: frontmatter description 교체**
 
 **원본**:
 ```markdown
@@ -140,7 +140,7 @@ description: You MUST use this before creating any feature, component, or behavi
 description: You MUST use this before creating any feature, component, or behavior change. Runs a Socratic dialogue — one question at a time, alternatives with tradeoffs, then a free-form requirements doc whose only fixed parts are the title, a `## 요구 항목` section with FR-N anchors, and the change-log footer. Writes <slug>-requirements.md to docs/features/YYYY-MM-DD-<slug>/. Does NOT cover technical design — that belongs to tech-design.
 ```
 
-- [ ] **Step 2: H1 제목 교체**
+- [x] **Step 2: H1 제목 교체**
 
 **원본**:
 ```markdown
@@ -152,7 +152,7 @@ description: You MUST use this before creating any feature, component, or behavi
 # Brainstorming → <slug>-requirements.md (Socratic)
 ```
 
-- [ ] **Step 3: 모드 소개 문단 교체**
+- [x] **Step 3: 모드 소개 문단 교체**
 
 **원본**:
 ```markdown
@@ -169,7 +169,7 @@ The dialogue is Socratic: one question at a time, alternatives with tradeoffs be
 The output is free-form prose. Only three things are fixed: the H1 title, a `## 요구 항목` section whose items carry `FR-N` anchors, and the `## 변경이력` footer. Everything else takes whatever shape the dialogue produced. Downstream skills (`tech-design`, `verifying-spec`, `writing-plans`, `change-propagation`) read the `FR-N` anchors, so that section is the one contract this doc must honour.
 ```
 
-- [ ] **Step 4: 진입 가드 첫 문장 교체**
+- [x] **Step 4: 진입 가드 첫 문장 교체**
 
 **원본**:
 ```markdown
@@ -181,7 +181,7 @@ This skill is for PRD only — NOT writing <slug>-tech-design.md, NOT touching c
 This skill produces requirements only — NOT <slug>-tech-design.md, NOT code, NOT implementation plans. Technical decisions belong to the next step.
 ```
 
-- [ ] **Step 5: 확인**
+- [x] **Step 5: 확인**
 
 ```bash
 head -6 skills/brainstorming/SKILL.md
@@ -190,7 +190,7 @@ grep -c "two modes\|PRD mode\|Socratic mode" skills/brainstorming/SKILL.md
 
 Expected: description 에 `Socratic dialogue` 가 보이고 두 번째 명령은 `0`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add skills/brainstorming/SKILL.md
@@ -208,7 +208,7 @@ git commit -m "refactor(brainstorming): 스킬 소개와 진입 가드를 단일
 
 **검증**: 진행 항목에서 모드 선택과 모드별 분기가 사라지고 단일 흐름이 된다. 성공 기준은 항목 번호가 0~7로 연속하고, 각 항목이 사용자에게 보일 한국어 표현이며(영어 식별자 미노출), Entry Router 항목(0번)은 표현이 바뀌지 않은 것.
 
-- [ ] **Step 1: Checklist 항목 3~6 교체**
+- [x] **Step 1: Checklist 항목 3~6 교체**
 
 **원본**:
 ```markdown
@@ -229,7 +229,7 @@ git commit -m "refactor(brainstorming): 스킬 소개와 진입 가드를 단일
 7. **사용자 검토** — 초안 전체를 한 번에 보여주고 승인받는다. 수정 요청이 오면 고쳐서 다시 보여준다.
 ```
 
-- [ ] **Step 2: 뒤따르는 항목 번호 조정**
+- [x] **Step 2: 뒤따르는 항목 번호 조정**
 
 **원본**:
 ```markdown
@@ -243,7 +243,7 @@ git commit -m "refactor(brainstorming): 스킬 소개와 진입 가드를 단일
 9. **개발방향 단계 자동 진행** — Right after the change-history entry is logged, auto-invoke `tech-design` via the Skill tool with a one-line interrupt-notice. On user "stop"/"멈춰"/"잠깐" → exit cleanly with notice telling the user to run /tech-design later.
 ```
 
-- [ ] **Step 3: "너무 단순해서" 안티 패턴 제목과 본문 교체**
+- [x] **Step 3: "너무 단순해서" 안티 패턴 제목과 본문 교체**
 
 **원본**:
 ```markdown
@@ -259,7 +259,7 @@ Every project goes through this process. A single-function utility, a config cha
 Every project goes through this process. A single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The doc can be short (a few sentences and one 요구 항목), but you MUST write it and get user approval.
 ```
 
-- [ ] **Step 4: 확인**
+- [x] **Step 4: 확인**
 
 ```bash
 grep -n "^[0-9]\." skills/brainstorming/SKILL.md | head -12
@@ -267,7 +267,7 @@ grep -n "^[0-9]\." skills/brainstorming/SKILL.md | head -12
 
 Expected: 0부터 9까지 번호가 연속하고 중복이 없다
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add skills/brainstorming/SKILL.md
@@ -285,7 +285,7 @@ git commit -m "refactor(brainstorming): 진행 항목을 단일 흐름으로 재
 
 **검증**: 6섹션 템플릿이 사라지고 자유 산문 형식이 자리를 잡는다. 성공 기준은 새 형식에 `## 요구 항목` 과 `FR-N` 예시가 있고, 다음 단계 안내 배너가 유지되며, 모드 표기 줄이 없는 것.
 
-- [ ] **Step 1: 문서 형식 블록 교체**
+- [x] **Step 1: 문서 형식 블록 교체**
 
 **원본**:
 ````markdown
@@ -346,7 +346,7 @@ git commit -m "refactor(brainstorming): 진행 항목을 단일 흐름으로 재
 모드를 표기하는 줄은 쓰지 않는다. 경로가 하나뿐이라 표기할 모드가 없다.
 ````
 
-- [ ] **Step 2: 확인**
+- [x] **Step 2: 확인**
 
 ```bash
 grep -c "## 요구 항목" skills/brainstorming/SKILL.md
@@ -355,7 +355,7 @@ grep -c "사용자 스토리 / 시나리오\|비기능 요구사항 (NFR)" skill
 
 Expected: 첫 명령은 `2` 이상, 두 번째는 `0`
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add skills/brainstorming/SKILL.md
@@ -373,7 +373,7 @@ git commit -m "refactor(brainstorming): 6섹션 템플릿을 자유 산문 + 요
 
 **검증**: 5줄짜리 절차가 네 블록의 실행 가능한 지시로 바뀐다. 성공 기준은 커버 목록 다섯 가지, 종료 판정, 비교축 세 가지, 3단 사다리, 제외 항목 취합 룰이 각각 본문에 존재하고, 각 블록이 "무엇을 하라"는 명령형으로 쓰인 것.
 
-- [ ] **Step 1: `## Socratic Mode` 섹션 전체 교체**
+- [x] **Step 1: `## Socratic Mode` 섹션 전체 교체**
 
 시작 앵커 `## Socratic Mode` 부터 끝 앵커 `If, mid-dialogue, the conversation reveals that the work IS user-facing/productisation in nature, suggest switching to PRD mode once: "ℹ️ 이 피처는 외부 사용자향처럼 보이는데 PRD 모드가 더 안전합니다. 전환할까요?" — if the user agrees, restart with the PRD planning step (step P1). Otherwise stay in Socratic.` 까지(끝 앵커 포함)를 아래 내용으로 교체한다.
 
@@ -448,7 +448,7 @@ git commit -m "refactor(brainstorming): 6섹션 템플릿을 자유 산문 + 요
 주고받다 보니 요청이 독립된 여러 덩어리로 드러나면, 계속 진행하기 전에 나누자고 제안한다. 한 문서에 여러 피처를 담으면 다음 단계가 전부 엉킨다.
 ````
 
-- [ ] **Step 2: 확인**
+- [x] **Step 2: 확인**
 
 ```bash
 grep -c "블록 1 — 질문\|블록 2 — 대안\|블록 3 — 문서 작성\|블록 4 — 승인" skills/brainstorming/SKILL.md
@@ -457,7 +457,7 @@ grep -c "되돌리는 비용\|커버 목록\|종료 판정" skills/brainstorming
 
 Expected: 첫 명령 `4`, 두 번째 `3` 이상
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add skills/brainstorming/SKILL.md
@@ -475,7 +475,7 @@ git commit -m "feat(brainstorming): 소크라테스 절차를 질문/대안/문�
 
 **검증**: 두 곳에 나뉘어 있던 점검이 여섯 항목 단일 목록이 된다. 성공 기준은 `mode-specific` · `Socratic mode runs only` 같은 분기 표현이 0건이고, 제외 항목 취합과 기술 세부 누출 점검이 목록에 포함된 것.
 
-- [ ] **Step 1: 소크라테스 축약 점검 삭제**
+- [x] **Step 1: 소크라테스 축약 점검 삭제**
 
 **원본**:
 ```markdown
@@ -494,7 +494,7 @@ The 6-item PRD-specific scan does NOT apply (no FR-N/NFR template to check).
 ```markdown
 ```
 
-- [ ] **Step 2: 정본 점검 목록 교체**
+- [x] **Step 2: 정본 점검 목록 교체**
 
 **원본**:
 ```markdown
@@ -528,7 +528,7 @@ Fix any issues inline. No need to re-review — just fix and move on.
 
 `## Self-Review` 앞에 남아 있던 `**Abstract scan (4 items, both modes, fresh-eyes pass):**` 줄은 Task 2 Step 3 에서 이미 지워졌다. 위 원본 블록에 그 줄이 보이면 함께 지운다.
 
-- [ ] **Step 3: 확인**
+- [x] **Step 3: 확인**
 
 ```bash
 grep -c "mode-specific\|Mode-aware\|PRD-specific" skills/brainstorming/SKILL.md
@@ -537,7 +537,7 @@ grep -c "제외 항목 취합\|기술 세부 누출" skills/brainstorming/SKILL.
 
 Expected: 첫 명령 `0`, 두 번째 `2` 이상
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add skills/brainstorming/SKILL.md
@@ -555,7 +555,7 @@ git commit -m "refactor(brainstorming): 자체 점검을 여섯 항목 단일 �
 
 **검증**: 흐름도가 단일 경로를 그리고 끊긴 연결선이 없다. 성공 기준은 `[PRD]` · `[Socratic]` 접두 노드가 0건이고, 모든 연결선의 양끝 노드가 선언부에 존재하며, 그래프가 진입부터 다음 단계까지 하나로 이어지는 것.
 
-- [ ] **Step 1: 흐름도 블록 통째 교체**
+- [x] **Step 1: 흐름도 블록 통째 교체**
 
 시작 앵커 `## Process Flow (two modes)` 부터 끝 앵커까지 — 즉 `digraph brainstorm_flow {` 로 시작해 `}` 로 닫히는 코드 블록 전체와 그 제목 줄을 아래로 교체한다. 부분 수정하지 않는다. 노드만 지우면 그 노드를 가리키는 연결선이 남아 그래프가 깨진다.
 
@@ -608,7 +608,7 @@ digraph brainstorm_flow {
 ```
 ````
 
-- [ ] **Step 2: 연결선 양끝 노드 존재 확인**
+- [x] **Step 2: 연결선 양끝 노드 존재 확인**
 
 ```bash
 python3 - <<'PY'
@@ -625,7 +625,7 @@ PY
 
 Expected: `미선언 노드: 없음`
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add skills/brainstorming/SKILL.md
@@ -643,7 +643,7 @@ git commit -m "refactor(brainstorming): 흐름도를 단일 경로로 재작성"
 
 **검증**: 절차 상세와 각종 표에서 모드 분기와 PRD 표현이 사라진다. 성공 기준은 `Process (detail)` 안에 모드 관련 단계가 없고, 안티 패턴과 경고 표에 삭제된 섹션을 가리키는 행이 없으며, Visual Companion 제안 기준이 하나로 남은 것.
 
-- [ ] **Step 1: 절차 상세 3~4단계와 제외 항목 룰 교체**
+- [x] **Step 1: 절차 상세 3~4단계와 제외 항목 룰 교체**
 
 **원본**:
 ```markdown
@@ -690,7 +690,7 @@ If the user says "없음" or equivalent, §5 = the consolidated list as-is. If t
 **7. Show the RAW doc + user review gate**
 ```
 
-- [ ] **Step 2: 절차 상세 뒤쪽 번호 조정**
+- [x] **Step 2: 절차 상세 뒤쪽 번호 조정**
 
 **원본**:
 ```markdown
@@ -714,7 +714,7 @@ If the user says "없음" or equivalent, §5 = the consolidated list as-is. If t
 **9. Auto-proceed to tech-design (v1.1.9+ — no gate)**
 ```
 
-- [ ] **Step 3: 프로젝트 탐색 단계의 표현 교체**
+- [x] **Step 3: 프로젝트 탐색 단계의 표현 교체**
 
 **원본**:
 ```markdown
@@ -726,7 +726,7 @@ If the user says "없음" or equivalent, §5 = the consolidated list as-is. If t
 - Scope check: if the request bundles multiple independent subsystems, propose decomposition before continuing — never bundle multiple features into one requirements doc.
 ```
 
-- [ ] **Step 4: 안티 패턴 표 정리**
+- [x] **Step 4: 안티 패턴 표 정리**
 
 **원본**:
 ```markdown
@@ -743,7 +743,7 @@ If the user says "없음" or equivalent, §5 = the consolidated list as-is. If t
 | Renaming the `## 요구 항목` section or dropping FR numbers | Downstream skills look for that exact heading and those anchors. Keep both. |
 ```
 
-- [ ] **Step 5: 안티 패턴 표 마지막 행 교체**
+- [x] **Step 5: 안티 패턴 표 마지막 행 교체**
 
 **원본**:
 ```markdown
@@ -755,7 +755,7 @@ If the user says "없음" or equivalent, §5 = the consolidated list as-is. If t
 | "Skip the doc because it's simple" | Simple cases just produce a shorter doc, never a missing one. |
 ```
 
-- [ ] **Step 6: 경고 표 행 교체**
+- [x] **Step 6: 경고 표 행 교체**
 
 **원본**:
 ```markdown
@@ -770,7 +770,7 @@ If the user says "없음" or equivalent, §5 = the consolidated list as-is. If t
 | "The user said 모르겠다, so I'll just pick something" | Walk the 3단 사다리 instead. Rephrase, then offer choices, then propose a default and say what it assumes. |
 ```
 
-- [ ] **Step 7: 저장 후 안내 문구 교체**
+- [x] **Step 7: 저장 후 안내 문구 교체**
 
 **원본**:
 ```markdown
@@ -784,7 +784,7 @@ If the user says "없음" or equivalent, §5 = the consolidated list as-is. If t
 - 영향범위: 없음 (최초 생성)
 ```
 
-- [ ] **Step 8: Visual Companion 제안 기준 교체**
+- [x] **Step 8: Visual Companion 제안 기준 교체**
 
 **원본**:
 ```markdown
@@ -796,7 +796,7 @@ If the user says "없음" or equivalent, §5 = the consolidated list as-is. If t
 **Trigger:** Requirements work is mostly textual. Do NOT offer the companion by default. Offer ONLY when the feature explicitly involves UI/layout/visual artifacts (e.g., "대시보드 화면", "폼 디자인", "리포트 레이아웃"). For pure backend/API/data-flow work, skip the offer entirely.
 ```
 
-- [ ] **Step 9: 핵심 원칙에 항목 추가**
+- [x] **Step 9: 핵심 원칙에 항목 추가**
 
 **원본**:
 ```markdown
@@ -811,7 +811,7 @@ If the user says "없음" or equivalent, §5 = the consolidated list as-is. If t
 - **Incremental validation** — confirm each piece as it lands instead of saving every check for the end
 ```
 
-- [ ] **Step 10: 관련 스킬 표현 교체**
+- [x] **Step 10: 관련 스킬 표현 교체**
 
 **원본**:
 ```markdown
@@ -825,7 +825,7 @@ If the user says "없음" or equivalent, §5 = the consolidated list as-is. If t
 - `change-propagation` — when the requirements doc is later edited, cascades to downstream MDs
 ```
 
-- [ ] **Step 11: 확인**
+- [x] **Step 11: 확인**
 
 ```bash
 grep -n "PRD" skills/brainstorming/SKILL.md
@@ -833,7 +833,7 @@ grep -n "PRD" skills/brainstorming/SKILL.md
 
 Expected: 남는 것은 v2.3.6 공용 문구 2건뿐 (Task 10 에서 처리)
 
-- [ ] **Step 12: Commit**
+- [x] **Step 12: Commit**
 
 ```bash
 git add skills/brainstorming/SKILL.md
@@ -855,7 +855,7 @@ git commit -m "refactor(brainstorming): 절차 상세와 표에서 모드 분기
 
 같은 문장이 세 파일에 그대로 복제돼 있다. 한 곳만 고치면 문구가 갈린다.
 
-- [ ] **Step 1: 세 파일에 같은 교체 두 건 적용**
+- [x] **Step 1: 세 파일에 같은 교체 두 건 적용**
 
 각 파일에서 아래 두 문자열을 찾아 바꾼다.
 
@@ -879,7 +879,7 @@ git commit -m "refactor(brainstorming): 절차 상세와 표에서 모드 분기
 기존 v2.0.3+ Socratic clarifying Q boilerplate + v2.1.1+ Other / 모호 응답 처리 룰 보존 (변경 X). 본 룰은 그 위에 multi-choice 결정 게이트 시점 명시 보강. CLAUDE.md "AskUserQuestion 도구 우선 (v2.3.5+)" 글로벌 룰의 요구사항 흐름 측 boilerplate.
 ```
 
-- [ ] **Step 2: 확인**
+- [x] **Step 2: 확인**
 
 ```bash
 grep -c "산출물 (요구사항 /" skills/brainstorming/SKILL.md skills/tech-design/SKILL.md skills/writing-plans/SKILL.md
@@ -888,7 +888,7 @@ grep -c "PRD" skills/brainstorming/SKILL.md skills/writing-plans/SKILL.md
 
 Expected: 첫 명령은 세 파일 모두 `1`, 두 번째는 `brainstorming` 과 `writing-plans` 모두 `0`
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add skills/brainstorming/SKILL.md skills/tech-design/SKILL.md skills/writing-plans/SKILL.md
@@ -906,7 +906,7 @@ git commit -m "refactor: 승인 게이트 공용 문구의 PRD 표현을 요구�
 
 **검증**: 입력 형식을 둘로 나눠 처리하던 분기가 사라지고 단일 경로가 된다. 성공 기준은 `PRD mode` · `Socratic mode` · `Detect input mode` 가 0건이고, 요구 항목을 읽는 경로는 남아 있으며, 옛 6섹션 문서를 넣어도 `FR-N` 을 찾을 수 있는 서술인 것.
 
-- [ ] **Step 1: 입력 확인 단계의 감지 분기 교체**
+- [x] **Step 1: 입력 확인 단계의 감지 분기 교체**
 
 **원본**:
 ```markdown
@@ -922,7 +922,7 @@ git commit -m "refactor: 승인 게이트 공용 문구의 PRD 표현을 요구�
 - If a doc has no `FR-N` anchors at all, treat every sentence describing a behavior the system must have as one requirement, and say so in a one-line notice. Never reject a doc as "missing FRs".
 ```
 
-- [ ] **Step 2: 코드베이스 조사 단계 교체**
+- [x] **Step 2: 코드베이스 조사 단계 교체**
 
 **원본**:
 ```markdown
@@ -935,7 +935,7 @@ git commit -m "refactor: 승인 게이트 공용 문구의 PRD 표현을 요구�
 - For each `FR-N`, Grep/Read to identify likely impacted code areas
 ```
 
-- [ ] **Step 3: 자체 점검 항목 교체**
+- [x] **Step 3: 자체 점검 항목 교체**
 
 **원본**:
 ```markdown
@@ -947,7 +947,7 @@ git commit -m "refactor: 승인 게이트 공용 문구의 PRD 표현을 요구�
 - Every `FR-N` in <slug>-requirements.md is mapped to either §2 (impacted components) or §4 (external IF)
 ```
 
-- [ ] **Step 4: 진행 항목 2번의 섹션 번호 참조 교체**
+- [x] **Step 4: 진행 항목 2번의 섹션 번호 참조 교체**
 
 **원본**:
 ```markdown
@@ -959,13 +959,13 @@ git commit -m "refactor: 승인 게이트 공용 문구의 PRD 표현을 요구�
 2. **기존 코드 둘러보기** — `<slug>-requirements.md` 의 `## 요구 항목` 을 먼저 Read. 추가 grep/Read 는 tech-design 결정 (아키텍처 / data flow / pattern) 깊이 부족할 때만. (v1.1.15+ slim)
 ```
 
-- [ ] **Step 5: 흐름도 노드 라벨 교체 (3줄 동시)**
+- [x] **Step 5: 흐름도 노드 라벨 교체 (3줄 동시)**
 
 `PRD §2 재활용 v1.1.15+` 문자열이 노드 선언 1줄과 연결선 2줄, 총 3곳에 같은 형태로 있다. 세 곳을 한 번에 바꿔야 한다. 한 곳만 바꾸면 그래프가 노드 두 개로 쪼개진다.
 
 `"Survey existing code\n(PRD §2 재활용 v1.1.15+)"` → `"Survey existing code\n(요구 항목 재활용 v1.1.15+)"` 로 전체 치환한다.
 
-- [ ] **Step 6: 나머지 PRD 단어 교체**
+- [x] **Step 6: 나머지 PRD 단어 교체**
 
 **원본**:
 ```markdown
@@ -997,7 +997,7 @@ Take <slug>-requirements.md as input and produce <slug>-tech-design.md, a techni
 | Missing FR mapping | Every `FR-N` from `## 요구 항목` must appear in §2 or §4. |
 ```
 
-- [ ] **Step 7: 테스트 전략 주제 신호 확인 및 보강**
+- [x] **Step 7: 테스트 전략 주제 신호 확인 및 보강**
 
 **원본**:
 ```markdown
@@ -1009,7 +1009,7 @@ Take <slug>-requirements.md as input and produce <slug>-tech-design.md, a techni
 - **7 테스트 전략** — 요구 항목 수가 많거나 (≥3), 위험 카테고리 다수, 다중 파일 영향이면 활성. trivial 변경 / 단일 함수면 비활성.
 ```
 
-- [ ] **Step 8: 확인**
+- [x] **Step 8: 확인**
 
 ```bash
 grep -c "PRD mode\|Socratic mode\|Detect input mode" skills/tech-design/SKILL.md
@@ -1019,7 +1019,7 @@ grep -c "PRD §2 재활용" skills/tech-design/SKILL.md
 
 Expected: 첫 명령 `0`, 두 번째 `4` 이상, 세 번째 `0`
 
-- [ ] **Step 9: 흐름도 연결선 검사**
+- [x] **Step 9: 흐름도 연결선 검사**
 
 ```bash
 python3 - <<'PY'
@@ -1035,7 +1035,7 @@ PY
 
 Expected: `미선언 노드: 없음`
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add skills/tech-design/SKILL.md
@@ -1053,7 +1053,7 @@ git commit -m "refactor(tech-design): 입력 형식 감지 분기 제거, 요구
 
 **검증**: auto 흐름의 산출물 뼈대가 새 형식과 맞는다. 성공 기준은 모드 표기 줄이 사라지고 요구 항목 섹션이 들어갔으며, 체인 호출 문자열과 `--no-ask` 섹션 참조는 그대로인 것.
 
-- [ ] **Step 1: 산출물 뼈대 교체**
+- [x] **Step 1: 산출물 뼈대 교체**
 
 **원본**:
 ```markdown
@@ -1070,7 +1070,7 @@ git commit -m "refactor(tech-design): 입력 형식 감지 분기 제거, 요구
 - RAW 본문 그대로.
 ```
 
-- [ ] **Step 2: 스킬 설명의 옛 명칭 정리**
+- [x] **Step 2: 스킬 설명의 옛 명칭 정리**
 
 **원본**:
 ```markdown
@@ -1082,7 +1082,7 @@ js-super:auto-brainstorming 은 명시적 사용자 invoke (`/auto-brainstorm <�
 js-super:auto-brainstorming 은 명시적 사용자 invoke (`/auto-brainstorm <피처명>`) 시에만 작동. `auto-flow-requirements.md` D1~D12 (D9 amend) + tech-design D-T1~D-T12 의 자동 흐름 본문.
 ```
 
-- [ ] **Step 3: 보존 문자열 확인**
+- [x] **Step 3: 보존 문자열 확인**
 
 ```bash
 grep -c "js-super:auto-tech-design" skills/auto-brainstorming/SKILL.md
@@ -1093,7 +1093,7 @@ grep -c "## 요구 항목" skills/auto-brainstorming/SKILL.md
 
 Expected: 순서대로 `1` 이상, `1`, `0`, `1` 이상
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add skills/auto-brainstorming/SKILL.md
@@ -1112,7 +1112,7 @@ git commit -m "refactor(auto-brainstorming): 산출물 뼈대를 요구 항목 �
 
 **검증**: 커맨드 설명과 비교표가 새 흐름을 반영한다. 성공 기준은 `/brainstorm` 설명에 PRD가 없고, og 비교표에서 "PRD 6-섹션 대 자유 대화" 라는 대비가 사라지며, `disable-model-invocation` 과 `visual-companion.md` 참조는 그대로인 것.
 
-- [ ] **Step 1: `/brainstorm` 설명 교체**
+- [x] **Step 1: `/brainstorm` 설명 교체**
 
 **원본** (`commands/brainstorm.md:2`):
 ```markdown
@@ -1124,11 +1124,11 @@ description: 새 피처의 <slug>-requirements.md(PRD)를 작성합니다. 기�
 description: 새 피처의 <slug>-requirements.md 를 소크라테스 대화로 작성합니다. 기획 레벨 합의 후 /tech-design으로 넘어갑니다.
 ```
 
-- [ ] **Step 2: og 커맨드 설명에서 PRD 표현 교체**
+- [x] **Step 2: og 커맨드 설명에서 PRD 표현 교체**
 
 `commands/og-brainstorm.md` 의 frontmatter description 과 본문 앞부분에서 "js-super 확장(PRD/변경이력/위험주석)" 형태로 쓰인 표현을 "js-super 확장(변경이력/위험주석)" 으로 바꾼다. PRD가 더 이상 js-super 확장의 특징이 아니다.
 
-- [ ] **Step 3: 정식 흐름 비교표 재작성**
+- [x] **Step 3: 정식 흐름 비교표 재작성**
 
 **원본**:
 ```markdown
@@ -1150,7 +1150,7 @@ description: 새 피처의 <slug>-requirements.md 를 소크라테스 대화로 
 | 적합한 경우 | 단발성 가벼운 작업, 부가 산출물이 부담될 때 | 이어지는 작업, 추적이 필요할 때 |
 ```
 
-- [ ] **Step 4: 확인**
+- [x] **Step 4: 확인**
 
 ```bash
 grep -c "PRD" commands/brainstorm.md commands/og-brainstorm.md
@@ -1160,7 +1160,7 @@ grep -c "visual-companion.md" commands/og-brainstorm.md
 
 Expected: 첫 명령은 두 파일 모두 `0`, 나머지는 각 `1` 이상
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add commands/brainstorm.md commands/og-brainstorm.md
@@ -1178,23 +1178,23 @@ git commit -m "docs(commands): 브레인스토밍 커맨드 안내문을 단일 
 
 **검증**: 사용자 문서에서 모드 선택이 사라지고 게이트 개수가 실제와 맞는다. 성공 기준은 슬래시 명령 표와 확인 게이트 표에 모드 관련 서술이 없고, 게이트 개수 표기가 실제 표의 행 수와 일치하며, 버전 이력의 과거 기록은 그대로인 것.
 
-- [ ] **Step 1: 확인 게이트 표에서 모드 게이트 행 삭제**
+- [x] **Step 1: 확인 게이트 표에서 모드 게이트 행 삭제**
 
 `| brainstorm 진입 | PRD / 소크라테스식 |` 로 시작하는 행을 지운다.
 
-- [ ] **Step 2: 게이트 개수 표기 조정**
+- [x] **Step 2: 게이트 개수 표기 조정**
 
 행을 지웠으므로 바로 위 문장의 "8 곳에서 멈춥니다" 를 "7 곳에서 멈춥니다" 로 바꾼다. 실제 행 수를 세어 확인한다.
 
-- [ ] **Step 3: 슬래시 명령 표의 PRD 표현 교체**
+- [x] **Step 3: 슬래시 명령 표의 PRD 표현 교체**
 
 `/brainstorm` 행의 "PRD 또는 자유 모드 선택" 을 "소크라테스 대화로 요구사항 작성" 으로, `/og-brainstorm` 행의 "PRD 없이" 를 "변경이력·위험주석 없이" 로 바꾼다.
 
-- [ ] **Step 4: 나머지 PRD 단어 교체**
+- [x] **Step 4: 나머지 PRD 단어 교체**
 
 auto-flow 소개와 `/fast-tasks` 인용문에 남은 PRD 표현을 "요구사항" 으로 바꾼다. 버전 이력의 `v1.1.0 | PRD / 자유 모드 선택` 은 **바꾸지 않는다** — 그 시점의 사실 기록이다.
 
-- [ ] **Step 5: 확인**
+- [x] **Step 5: 확인**
 
 ```bash
 grep -n "PRD" README.md
@@ -1203,7 +1203,7 @@ awk '/확인 게이트/,/^$/' README.md | grep -c "^|"
 
 Expected: 첫 명령은 버전 이력 1건만 남는다. 두 번째는 표 헤더 2줄 + 데이터 7줄 = `9`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add README.md
@@ -1221,7 +1221,7 @@ git commit -m "docs(README): 모드 선택 게이트 제거 반영, 게이트 �
 
 **검증**: 이번 변경의 결합 관계와 회귀 확인 방법이 기록된다. 성공 기준은 새 섹션에 적용 범위·회귀 패턴 표·확인 명령이 있고, 모드 게이트를 전제하던 기존 서술 두 곳이 갱신되며, 회귀 확인 계약(`Advise: run /og-brainstorm`)은 그대로인 것.
 
-- [ ] **Step 1: 결합 메모 신규 섹션 추가**
+- [x] **Step 1: 결합 메모 신규 섹션 추가**
 
 파일 끝에 아래 섹션을 추가한다.
 
@@ -1282,13 +1282,13 @@ grep -rlF '`--no-ask` 플래그 (v2.5+)' skills/ commands/ | wc -l
 - 버전 bump 는 main 전용 룰에 따라 main 에서
 ```
 
-- [ ] **Step 2: 모드 게이트를 전제하던 기존 서술 갱신**
+- [x] **Step 2: 모드 게이트를 전제하던 기존 서술 갱신**
 
 `AskUserQuestion 도구 우선` 섹션의 적용 대상 목록에서 `- 모드 선택 게이트 진입 시점` 을 `- 실행 모드 선택 게이트 진입 시점` 으로 바꾼다. 이 항목은 `execute-plan` 의 인라인/보조 에이전트 선택도 포함하므로 통째로 지우지 않는다.
 
 auto-flow mirror 메모의 `Visual Companion / 카테고리 미니질문 / question plan 동의 등 PRD-mode 분기 부재` 를 `Visual Companion 호출 부재 (정식 흐름의 PRD-mode 분기는 v2.9+ 에서 폐지됨)` 으로 바꾼다.
 
-- [ ] **Step 3: 확인**
+- [x] **Step 3: 확인**
 
 ```bash
 grep -c "PRD 제거 + 소크라테스 단일화 결합" CLAUDE.md
@@ -1297,7 +1297,7 @@ grep -c "모드 선택 게이트 진입 시점" CLAUDE.md
 
 Expected: 첫 명령 `1`, 두 번째 `0`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add CLAUDE.md
@@ -1315,13 +1315,13 @@ git commit -m "docs(CLAUDE): PRD 제거 + 소크라테스 단일화 결합 메�
 
 **검증**: 소크라테스 단일 경로를 확인하는 시나리오 문서가 생긴다. 성공 기준은 네 시나리오(모드 질문 없음 / 요구 항목과 번호 / 제외 항목 취합 / 3단 사다리)가 각각 입력·기대 동작·판정 기준을 갖추고, 기존 예제 문서의 형식을 따르는 것.
 
-- [ ] **Step 1: 기존 예제 형식 확인**
+- [x] **Step 1: 기존 예제 형식 확인**
 
 ```bash
 cat skills/js-super-sub-driven/tests/H14-depth-select/README.md
 ```
 
-- [ ] **Step 2: H16 문서 작성**
+- [x] **Step 2: H16 문서 작성**
 
 **수정 후** (new file: `skills/js-super-sub-driven/tests/H16-socratic-single-track/README.md`):
 ```markdown
@@ -1384,11 +1384,11 @@ grep -c "^> \*\*모드\*\*:" docs/features/*/알림-배지-requirements.md # 0
 **판정**: "PRD 모드 입력으로 감지했습니다" 류 발화가 없고, 요구 항목이 §2 또는 §4 에 매핑되면 통과.
 ```
 
-- [ ] **Step 3: 예제 인덱스에 추가**
+- [x] **Step 3: 예제 인덱스에 추가**
 
 `skills/js-super-sub-driven/tests/README.md` 에 H16 행을 추가한다. 기존 행 형식을 그대로 따른다.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add skills/js-super-sub-driven/tests/H16-socratic-single-track/ skills/js-super-sub-driven/tests/README.md
@@ -1406,7 +1406,7 @@ git commit -m "test: 소크라테스 단일 경로 검증 예제 H16 추가"
 
 **검증**: 수용 기준 8개가 모두 확인된다. 성공 기준은 보존 문자열 6종이 착수 시점과 같은 개수이고, PRD 문자열이 허용 예외 3건만 남으며, 옛 형식 문서와 새 형식 문서가 모두 읽히는 것.
 
-- [ ] **Step 1: 보존 문자열 대조**
+- [x] **Step 1: 보존 문자열 대조**
 
 ```bash
 {
@@ -1425,7 +1425,7 @@ diff <(grep -A7 "^## 보존 대상" docs/features/2026-08-15-prd제거-소크라
 
 Expected: diff 출력 없음 (6종 모두 동일)
 
-- [ ] **Step 2: PRD 잔존 확인**
+- [x] **Step 2: PRD 잔존 확인**
 
 ```bash
 grep -rn "PRD" skills/*/SKILL.md commands/*.md README.md CLAUDE.md 2>/dev/null | grep -v "^README.md.*v1.1.0"
@@ -1433,7 +1433,7 @@ grep -rn "PRD" skills/*/SKILL.md commands/*.md README.md CLAUDE.md 2>/dev/null |
 
 Expected: 3줄만 남는다 — `auto-brainstorming` 의 `auto-flow-requirements.md` 참조 흔적이 정리됐다면 2줄(`js-super-sub-driven` 181행, `CLAUDE.md` 결합 메모의 역사 서술). 그 외 줄이 보이면 해당 파일을 다시 확인한다.
 
-- [ ] **Step 3: 소크라테스 규정 존재 확인**
+- [x] **Step 3: 소크라테스 규정 존재 확인**
 
 ```bash
 for s in "커버 목록" "종료 판정" "되돌리는 비용" "모르겠다" "## 요구 항목"; do
@@ -1443,7 +1443,7 @@ done
 
 Expected: 다섯 항목 모두 1 이상
 
-- [ ] **Step 4: 옛 형식 문서 읽기 확인**
+- [x] **Step 4: 옛 형식 문서 읽기 확인**
 
 `docs/features/2026-08-09-워크트리-재분기/워크트리-재분기-requirements.md` 를 열어 `FR-` 앵커가 있는지 확인하고, 새로 쓴 `skills/tech-design/SKILL.md` 의 입력 확인 단계 서술이 그 문서를 읽어낼 수 있는지 대조한다. 옛 문서는 `## 3. 기능 요구사항 (FR)` 아래에 `FR-N` 을 갖고 있어야 한다.
 
@@ -1453,7 +1453,7 @@ grep -c "FR-" docs/features/2026-08-09-워크트리-재분기/워크트리-재�
 
 Expected: 1 이상
 
-- [ ] **Step 5: 이번 피처 문서로 새 형식 확인**
+- [x] **Step 5: 이번 피처 문서로 새 형식 확인**
 
 ```bash
 grep -c "^## 요구 항목$" docs/features/2026-08-15-prd제거-소크라테스고도화/prd제거-소크라테스고도화-requirements.md
@@ -1462,7 +1462,7 @@ grep -c "^> \*\*모드\*\*:" docs/features/2026-08-15-prd제거-소크라테스�
 
 Expected: 첫 명령 `1`, 두 번째 `0`
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add docs/features/2026-08-15-prd제거-소크라테스고도화/baseline-grep.txt
@@ -1500,3 +1500,41 @@ git commit -m "chore: PRD 제거 완료 검증 — 보존 문자열 대조 + 수
 - **무엇이**: prd제거-소크라테스고도화-implementation-plan.md 전체 (§1 Task 1~17 / §2 위험 코드 지점 8건 / §3 롤백 전략)
 - **영향범위**: 없음 (최초 생성). 편집 위치는 라인 번호 대신 문자열 앵커로 지정했고 35개 앵커의 실재를 착수 전 확인함. `plan_byte_check` 통과
 - **연관 항목**: CH-20260815-001, CH-20260815-002, CH-20260815-003
+
+### [2026-08-15 14:40] [코드-수정] (batch: tasks 1..17)
+- **id**: CH-20260815-005
+- **이유**: PRD 모드 제거 + 소크라테스 절차 재작성 전체 실행. 두 갈래를 한 줄기로 통합하고 요구 항목 계약(`## 요구 항목` + `FR-N`)을 신설
+- **무엇이**: skills/brainstorming/SKILL.md, skills/tech-design/SKILL.md, skills/auto-brainstorming/SKILL.md, skills/writing-plans/SKILL.md, commands/brainstorm.md, commands/og-brainstorm.md, README.md, CLAUDE.md, skills/js-super-sub-driven/tests/H16-socratic-single-track/README.md (신규), skills/js-super-sub-driven/tests/README.md, baseline-grep.txt (신규)
+- **영향범위**: 11 파일 297 추가 / 295 삭제. `brainstorming` 629 → 495줄. `verifying-spec` / `change-propagation` / `scripts/` / `hooks/` 변경 0 — `FR-N` 앵커 유지로 기존 동작 보존
+- **위험 카테고리**: breaking, side-effect
+- **task별 세부 (17건)**:
+  - Task 1: `baseline-grep.txt` — 보존 문자열 6종 + PRD 분포 9건 기록 (none) — commit `c8cf991`
+  - Task 2: `skills/brainstorming/SKILL.md` — Mode Selection / PRD Adaptive Planning / PRD 점검 6항목 삭제, 126줄 감소 (none) — commit `3b535ef`
+  - Task 3: `skills/brainstorming/SKILL.md` — frontmatter description · H1 · 소개 문단 · 진입 가드 교체 (`side-effect`: description 은 자동 발동 판정 근거) — commit `87eee8f`
+  - Task 4: `skills/brainstorming/SKILL.md` — 진행 항목 3~9 재작성, 번호 0~9 연속 확인 (none) — commit `38be2aa`
+  - Task 5: `skills/brainstorming/SKILL.md` — 6섹션 틀 → 자유 산문 + 요구 항목 계약 4규칙 (`breaking`: 산출물 형식 변경) — commit `61f2327`
+  - Task 6: `skills/brainstorming/SKILL.md` — 소크라테스 4블록 신규 작성 (none) — commit `ff2ea1d`
+  - Task 7: `skills/brainstorming/SKILL.md` — 자체 점검 6항목 단일화 (none) — commit `d7868a7`
+  - Task 8: `skills/brainstorming/SKILL.md` — 흐름도 통째 재작성, 노드 16 / 연결선 18 / 미선언 0 (`breaking`: 부분 수정 시 그래프 손상) — commit `7cbbafd`
+  - Task 9: `skills/brainstorming/SKILL.md` — 절차 상세 · 안티 패턴 · 경고 표 · 핵심 원칙 정리 (none) — commit `3042f7d`
+  - Task 10: `brainstorming` / `tech-design` / `writing-plans` — 공용 문구 3곳 동시 교체 (`side-effect`: 한 곳만 고치면 갈림) — commit `50e00b0`
+  - Task 11: `skills/tech-design/SKILL.md` — 입력 형식 감지 제거, 흐름도 라벨 3줄 동시 치환, PRD 11 → 0 (`breaking`: 옛 문서 읽기) — commit `bcc59f5`
+  - Task 12: `skills/auto-brainstorming/SKILL.md` — Mode line 제거 + 요구 항목 필수 명시 (`side-effect`: 별도 사본이라 짝 수정 필요) — commit `de912a2`
+  - Task 13: `commands/brainstorm.md`, `commands/og-brainstorm.md` — description 2건 + 비교표 재작성 (none) — commit `513fa61`
+  - Task 14: `README.md` — 게이트 행 삭제 + 개수 8 → 7 동기화 + 표현 4곳 (`side-effect`: 행과 숫자 불일치 위험) — commit `0a70756`
+  - Task 15: `CLAUDE.md` — 결합 메모 신규 (E-1~E-6 + 회귀 6건 + 확인 명령) + 기존 서술 2곳 갱신 (none) — commit `98bc17f`
+  - Task 16: `H16-socratic-single-track/README.md` (신규), `tests/README.md` — 시나리오 5개 (none) — commit `0207241`
+  - Task 17: `baseline-grep.txt` — 착수/완료 대조 + 수용 기준 확인 (none) — commit `78b6053`
+- **연관 commits**: `5172a1c..78b6053` (17건)
+- **변경 전/후 코드**: 생략 — `git show <SHA>` 로 조회
+- **연관 항목**: CH-20260815-004
+
+### [2026-08-15 14:40] [검증] (실행 중 발견 사항)
+- **id**: CH-20260815-005 보조 기록
+- **이유**: 계획서의 중간 확인 기대값과 실제가 어긋난 지점, 그리고 계획 범위 밖에서 발견한 기존 문제를 남김
+- **무엇이**: Task 2 / Task 3 의 중간 grep 기대값, Task 13 의 비교표 구조 가정, `tech-design` 흐름도 노드 이름 불일치
+- **결과**: PARTIAL — 아래 3건
+  1. **계획서 중간 기대값이 이름** (Task 2 Step 4, Task 3 Step 5). 섹션 본체를 지운 시점에도 다른 곳의 참조가 남아 있어 기대값 `0` 이 그 시점에는 맞지 않았다. 최종적으로는 Task 9 · Task 10 까지 끝난 뒤 0 이 됐다. 계획서 본문은 실행 중 수정하지 않는 규칙이라 그대로 두고 여기 기록한다
+  2. **Task 13 비교표 구조가 계획서 가정과 달랐다**. 계획서는 og 커맨드가 왼쪽 열이라고 봤지만 실제는 `/brainstorm` 이 왼쪽이고 산출물 경로도 달랐다(og 는 `docs/superpowers/specs/`). 실제 구조에 맞춰 반영했고, "적응형 질문" 행을 지우고 "대화 방식" 행을 넣었다
+  3. **`tech-design` 흐름도의 기존 문제** — 조건부 주제 노드 3개(`Q: data model changes?` / `Q: external interfaces?` / `Q: test strategy?`)가 노드 선언과 연결선에서 이름이 다르다 (`\n[활성 시만]` 접미사 유무). `git stash` 로 착수 이전 상태를 확인한 결과 이번 작업 이전부터 있던 문제다. 범위 밖이라 손대지 않고 `CLAUDE.md` 미해결 항목으로 남겼다
+- **연관 commit**: `78b6053`
