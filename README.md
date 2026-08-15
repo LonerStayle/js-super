@@ -760,7 +760,7 @@ flowchart LR
 
 **upstream 원본 (커맨드 전용, v2.8.1+)** — `/og-brainstorm` / `/og-write-plan` / `/og-execute-plan` (스킬 → 커맨드 본문 인라인, 컨텍스트 미상주)
 
-**문서·시각화 (3)** — generating-html *(명시 호출 전용, v2.8.2+)* / code-pretty / change-history
+**문서·시각화 (4)** — generating-html *(명시 호출 전용, v2.8.2+)* / code-pretty / glossary *(구현계획서 용어집)* / change-history
 
 **검증·거버넌스 (4)** — verifying-spec / verification-before-completion / change-propagation / risk-annotation
 

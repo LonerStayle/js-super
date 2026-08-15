@@ -65,3 +65,9 @@
 ## v2.0.2+ — og-flow rename + 핸드오프 강화 fixtures
 
 - `H13-og-flow-subagent-routing/` — og-flow Subagent path 매칭 검증 (upstream 원본 매칭 / js-super-sub-driven 미매칭)
+
+## 구현계획서 용어집 + 정리/검증 순서 교체 fixtures
+
+- `H16-glossary-parallel-order/` — code-pretty ‖ glossary 병렬 dispatch → verifying-spec → 사용자 검토 순서 검증. 용어집 실패 non-blocking / 코드 블록 0개 계획서에서 두 helper 조건 차이 / live doc 차단 / auto-flow 미적용 5 시나리오
+
+> 인덱스 부채: `H14-depth-select` / `H15-natural-lang-verify` 는 디렉토리만 있고 본 인덱스에 미등록 상태입니다.
