@@ -17,6 +17,9 @@ __pycache__/
 # v1.1.7 — subagent changelog buffer (interrupt recovery)
 .js-super/
 
+# 과거 .html 사본 잔류분 (생성 기능은 제거됨 — 남은 파일만 계속 무시)
+docs/features/**/*.html
+
 # v2.3.0 — /audit-risk 보고서 폴더 (개인 도구 산출물, repo 노이즈 방지)
 docs/audit/
 
