@@ -1440,3 +1440,32 @@ git commit -m "feat(eval): 명령줄 진입점 + 첫 기준선"
 - **무엇이**: skill-eval-harness-implementation-plan.md 전체 (§1 Task 1~12 / §2 위험 코드 지점 7건 / §3 롤백 전략)
 - **영향범위**: 없음 (최초 생성). `plan_byte_check` 통과 — 원본 블록 4개가 실제 파일과 바이트 일치. 검증 단계에서 `evals/tests/__init__.py` 와 `evals/conftest.py` 누락을 발견해 Task 6 에 추가함 (Task 3 이 고치는 것과 같은 종류의 경로 의존 버그를 새로 만들 뻔함)
 - **연관 항목**: CH-20260815-003, CH-20260815-004
+
+### [2026-08-15 15:02] [코드-수정] (batch: tasks 1..12)
+- **id**: CH-20260815-007
+- **이유**: 1차 범위 전체 실행 — 비용 0 층위 검증 환경 완성
+- **무엇이**: evals/ 신규 (run.py + runner 6모듈 + 케이스 2 + 기준선 + 라벨), commands/audit-risk-tests → tests/eval-fixtures/H23-e2e 이동, scripts/tests/test_changelog_buffer.py 경로 수정, .gitignore, requirements-dev.txt, docs/testing.md, CLAUDE.md 결합 메모, 사전실측-노트.md
+- **영향범위**: 스킬·커맨드 본문 변경 0 (검증 대상이지 수정 대상 아님). 기존 pytest 64함수 그대로 통과. 신규 테스트 116함수 추가
+- **위험 카테고리**: side-effect, breaking
+- **task별 세부 (12건)**:
+  - Task 1: 사전 실측 — 세그먼트 35.3초 (설계 추정 120초의 3분의 1), 보조 에이전트 관측 필드 확정, `--plugin-dir` 이 설치본을 대체하지 않는다는 발견
+  - Task 2: `commands/audit-risk-tests/` → `tests/eval-fixtures/H23-e2e/` 이동 (수용 기준 11 해소)
+  - Task 3: fixture 경로를 실행 위치 비의존으로 (`breaking` 예방)
+  - Task 4: `.gitignore` + `requirements-dev.txt`
+  - Task 5: `docs/testing.md` 낡은 제약 2건 + 문제 해결 절 갱신
+  - Task 6: 결합 룰 파서 — CLAUDE.md 86건 + fixture README 28건 = 114건
+  - Task 7: 읽기 전용 관문 + 단언 실행기 (`side-effect` 방어 핵심)
+  - Task 8: 케이스 로더 + 자산 미노출 케이스
+  - Task 9: 검사 단계 — 모순 / 미등록 / 게이트 결손
+  - Task 10~11: 기준선 대조 + 상태 분류 + 보고
+  - Task 12: 명령줄 진입점 + 첫 기준선 + 이름 충돌 케이스 + CLAUDE.md 파싱 계약
+- **연관 commits**: c0cd630..HEAD (5b69e5c cbaf0cc 9297df3 f8c8f56 436ca3e 40f90b3 c615526 1e11cf6 74ea9c0 46d70e2 e64c45f c631452 )
+- **변경 전/후 코드**: 생략 — `git show <SHA>` 로 조회
+- **연관 항목**: CH-20260815-005, CH-20260815-006
+
+### [2026-08-15 15:02] [검증] (task: 1차 전체)
+- **id**: CH-20260815-008
+- **이유**: 1차 수용 기준 충족 확인 + 회귀 검출 능력 실증
+- **무엇이**: 기존 pytest 64함수 / 신규 테스트 116함수 / 결합 룰 114건 / 정적 케이스 2건 / 회귀 주입 실험 1회
+- **결과**: PASS — 전체 실행 3초, 종료 코드 0. 회귀 주입(커맨드 이름 충돌 재현) 시 "새로 깨짐 1" 검출 후 복구 확인. 수용 기준 2(30분 이내) 는 3초로 크게 충족, 기준 3(결합+pytest 항상 전수) 충족, 기준 5(건너뛴 항목 명시) 충족, 기준 6(회귀 구분) 실증, 기준 8·11 충족. 기준 1·4·9 는 2차 대상
+- **연관 commit**: 5b69e5c
