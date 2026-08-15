@@ -1505,6 +1505,7 @@ python3 -c "from scripts.preflight import feature_depth; print('OK')"
 - **`status: "clean"` 반환 시 `checked` 배열 필수** — 점검했지만 없음과 점검하지 않음을 구분하기 위한 안전장치다
 - **비밀값은 값 자체를 남기지 않는다** — `redact_secret` 표시와 파일·줄 번호만 적고, raw 값은 어떤 필드에도 넣지 않는다 (기존 안전장치 그대로 유지)
 - **커맨드 본문과 H23 fixture 는 함께 고칠 것** — `commands/audit-risk.md` 와 `commands/audit-risk-tests/H23-e2e/` 는 한 쌍이다. 한쪽만 고치면 사람이 돌리는 시나리오와 실제 동작이 어긋난다
+- **보고서 본문은 한국어로 쓴다** — 사람이 읽는 값(`checked` / `title` / `evidence` / `impact` / `recommendation` / `summary` / `why_unverified` / `how_to_check`)은 한국어 문장. 파일 경로·함수 이름·명령어·라이브러리 이름처럼 그대로 검색해야 찾을 수 있는 것만 영어로 둔다. 영어 약어는 처음 나올 때 한국어 설명을 함께 적는다. 이 규칙은 공통 지시문과 Step 4 보고서 작성 지침 **양쪽**에 있어야 한다 (한쪽만 있으면 보조 에이전트가 영어로 돌려준 문장이 그대로 보고서에 실린다)
 
 ### 회귀 패턴 (한쪽만 변경 시)
 
