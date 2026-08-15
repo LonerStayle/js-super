@@ -184,9 +184,10 @@ ls -lt "$SESSION_DIR"/*.jsonl | head -5
 **Problem**: Skill not found when running headless tests
 
 **Solutions**:
-1. Ensure you're running FROM the superpowers directory: `cd /path/to/superpowers && tests/...`
-2. Check `~/.claude/settings.json` has `"superpowers@superpowers-dev": true` in `enabledPlugins`
-3. Verify skill exists in `skills/` directory
+1. Verify the skill exists in `skills/<name>/SKILL.md` in the copy you passed to `--plugin-dir`
+2. Read the `init` event from `--output-format stream-json` and check the `skills` array — it lists exactly what loaded
+3. Check for a name collision: a command file `commands/<name>.md` shadows a skill directory `skills/<name>/`, making that skill unreachable by any name. Run `for c in commands/*.md; do n=$(basename "$c" .md); [ -d "skills/$n" ] && echo "collision: /$n"; done`
+4. Remember `--plugin-dir` is additive — if the plugin is also installed, both versions load and the installed one may answer instead
 
 ### Permission Errors
 
