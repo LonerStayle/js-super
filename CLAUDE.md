@@ -1491,3 +1491,66 @@ python3 -c "from scripts.preflight import feature_depth; print('OK')"
 - skill 본문 9 + commands 4 + `scripts/preflight.py` + fixture H14 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서. og-* / fast-tasks / worktree 계열 / generating-html 구조 영향 0
 - executing-plans / js-super-sub-driven skill 본문 변경 0 — plan 부재 안내 보강은 preflight `human_reason` 안에서
 - writing-plans `**Model**:` ↔ js-super-sub-driven 결합 — 3-doc 트랙 전용이라 영향 0
+
+## 기술설계 서술 수준 룰 결합 (tech-design ↔ auto-tech-design)
+
+기술설계 문서의 서술 문단에서 코드 식별자 노출을 줄이는 룰. 기본은 역할 풀어쓰기, 예외는 "그 이름이 바뀌면 문서 밖이 깨지는 경우". spec: `docs/features/2026-08-15-변수명-노출-줄이기/`.
+
+### 적용 범위 (4 본문)
+
+- `skills/tech-design/SKILL.md` — "서술 수준 — 이름보다 역할" 섹션 신설 + Self-Review 항목 1개 + Anti-Patterns 2행
+- `skills/auto-tech-design/SKILL.md` — 같은 섹션 압축본 + Step 4 제목·본문 확장 + Checklist 항목 4 문구 + Anti-Patterns 1행
+- `skills/js-super-sub-driven/tests/H16-tech-design-abstraction/README.md` — 통과/위반 대조 사례
+- `CLAUDE.md` — 본 섹션
+
+### 핵심 룰
+
+- 적용 부위는 **서술 문단만**. §2 영향 파일 표 / 코드 블록 / 도식은 대상 아님 (이름을 보여주는 것이 그 자리의 목적)
+- 예외 판정은 한 문장 — "그 이름이 바뀌면 문서 밖의 무언가가 깨지는가"
+- 예시 표 4행 (쓰는 경우 / 풀어쓰는 경우) 이 경계 사례를 잡는다 — 표를 지우면 룰이 흔들린다
+- 두 스킬 **동시 수정**. 한쪽만 고치면 수동 경로와 자동 경로의 문서 문체가 갈리는데, 이 어긋남은 검색으로 잘 안 잡힌다
+- 요구사항 문서 / 구현계획서 / verifying-spec 은 범위 밖 (요구사항 문서는 산출물 존치 미정, 구현계획서는 코드가 목적)
+- 기존 문서 소급 수정 X — 새로 쓰는 문서부터 적용
+
+### 회귀 패턴 (한쪽만 변경 시)
+
+| 누락 | 증상 |
+|---|---|
+| 수동 경로만 변경 | 자동 흐름 문서에 식별자 노출 잔존 — 두 경로 문체 불일치 |
+| 자동 경로만 변경 | 반대 |
+| 예시 표 삭제 | 판별 문장만 남아 경계 사례에서 흔들림 (요구사항 "판별 질문 + 예시 표" 결정 위반) |
+| "서술 문단만" 한정 문구 삭제 | 표·코드 블록까지 이름이 지워져 설계 근거 손실 |
+| Self-Review 항목 / Step 4 점검 문장 삭제 | 작성 중 놓친 노출이 걸러지지 않음 |
+
+### 회귀 catch grep
+
+```bash
+# 두 스킬 모두 룰 섹션 보유
+grep -lF "서술 수준 — 이름보다 역할" skills/tech-design/SKILL.md skills/auto-tech-design/SKILL.md
+# expected: 2 lines
+
+# 판별 문장 (양쪽)
+grep -cF "문서 밖의 무언가가 깨지는" skills/tech-design/SKILL.md skills/auto-tech-design/SKILL.md
+# expected: 각 >= 1
+
+# 적용 부위 한정 문구 (양쪽)
+grep -cF "적용 부위는 서술 문단" skills/tech-design/SKILL.md skills/auto-tech-design/SKILL.md
+# expected: 각 >= 1
+
+# 점검 장치 — 수동은 Self-Review, 자동은 Step 4
+grep -cF "서술 문단에 남은 코드 식별자" skills/tech-design/SKILL.md
+# expected: 1
+grep -cF "산출물 자동 작성 + 서술 수준 점검" skills/auto-tech-design/SKILL.md
+# expected: 2
+
+# 대조 사례 문서 존재
+test -f skills/js-super-sub-driven/tests/H16-tech-design-abstraction/README.md && echo OK
+# expected: OK
+```
+
+### 영향 범위
+
+- 스킬 본문 2 + 대조 사례 1 + CLAUDE.md. commands / scripts / hooks 변경 0 (두 커맨드 안내문은 진입·산출물·다음 단계만 다루고 문체는 다루지 않음)
+- 두 스킬의 절차 / 게이트 / 다음 단계 연결 변경 0 — 추가되는 것은 문체 지침과 점검뿐
+- `brainstorming` / `writing-plans` / `verifying-spec` / og-* / worktree 계열 영향 0
+- 버전 bump 는 main 전용 룰에 따라 main 에서
