@@ -5,7 +5,7 @@
 # Usage: run_claude "prompt text" [timeout_seconds] [allowed_tools]
 run_claude() {
     local prompt="$1"
-    local timeout="${2:-60}"
+    local timeout="${2:-120}"
     local allowed_tools="${3:-}"
     local output_file=$(mktemp)
 
