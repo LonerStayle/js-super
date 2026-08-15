@@ -15,7 +15,7 @@ Load plan, review critically, execute all tasks, report when complete.
 
 **시작 안내:** "og 원본 executing-plans 흐름으로 이 plan 을 구현하겠습니다."
 
-**Note:** Tell your human partner that Superpowers works much better with access to subagents. The quality of its work will be significantly higher if run on a platform with subagent support (such as Claude Code or Codex). If subagents are available, use superpowers:subagent-driven-development instead of this flow (untouched-upstream, no og- variant needed — js-super did not modify it).
+**Note:** Tell your human partner that Superpowers works much better with access to subagents. The quality of its work will be significantly higher if run on a platform with subagent support (such as Claude Code or Codex). If subagents are available, use js-super:subagent-driven-development instead of this flow (untouched-upstream, no og- variant needed — js-super did not modify it).
 
 ## Checklist
 
@@ -43,7 +43,7 @@ For each task:
 
 After all tasks complete and verified:
 - Announce: "I'm using the finishing-a-development-branch skill to complete this work."
-- **REQUIRED SUB-SKILL:** Use superpowers:finishing-a-development-branch
+- **REQUIRED SUB-SKILL:** Use js-super:finishing-a-development-branch
 - Follow that skill to verify tests, present options, execute choice
 
 ## When to Stop and Ask for Help
@@ -75,9 +75,9 @@ After all tasks complete and verified:
 ## Integration
 
 **Required workflow skills:**
-- **superpowers:using-git-worktrees** - REQUIRED: Set up isolated workspace before starting
+- **js-super:setting-up-worktrees** - REQUIRED: Set up isolated workspace before starting
 - **`/og-write-plan`** - Creates the plan this flow executes
-- **superpowers:finishing-a-development-branch** - Complete development after all tasks
+- **js-super:finishing-a-development-branch** - Complete development after all tasks
 
 ---
 

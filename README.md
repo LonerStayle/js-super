@@ -41,11 +41,9 @@
 
 뭘 만들었는지, 왜 이렇게 했는지 따라가기 어려울 때.
 
-**js-super 는** 단계마다 문서를 자동으로 정리해요:
-- `.md` — AI 가 읽기 좋은 형식 (요구사항 / 기술설계 / 구현계획)
-- `.html` — 사람이 보기 좋은 다크 모드 시각화 (`/sync-html` 한 줄로 생성)
+**js-super 는** 단계마다 문서를 자동으로 정리해요. 요구사항 / 기술설계 / 구현계획이 각각 `.md` 로 쌓이고, 문서 하단에는 무엇이 왜 바뀌었는지가 자동으로 기록됩니다.
 
-사람은 `.html` 을 훑으면서 검토하고, AI 는 `.md` 만 읽어요. **검토 부담이 확 줄어요.**
+사람도 AI 도 같은 `.md` 를 봅니다. **검토 부담이 확 줄어요.**
 
 </td>
 <td width="33%" valign="top">
@@ -123,7 +121,7 @@ flowchart LR
 
 각 단계가 끝날 때마다 AI 가 한 번씩 물어봐요. 답변에 따라 다음 단계로.
 
-<sub>산출물은 <code>docs/features/2026-05-23-사용자-잔액-출금/</code> 폴더에 2~3 개 <code>.md</code> 로 쌓입니다 (기술설계 게이트에서 구현계획까지 갈지 선택 — v2.9.0). 보기 좋은 <code>.html</code> 사본이 필요하면 <code>/sync-html</code> 한 줄로 만들 수 있어요.</sub>
+<sub>산출물은 <code>docs/features/2026-05-23-사용자-잔액-출금/</code> 폴더에 2~3 개 <code>.md</code> 로 쌓입니다 (기술설계 게이트에서 구현계획까지 갈지 선택 — v2.9.0).</sub>
 
 <br/>
 
@@ -239,7 +237,7 @@ flowchart LR
     F --> I[사용자 확인]:::sub
     G --> I
     H --> I
-    I --> J["3 개 md 동기화 + .html 재생성"]:::out
+    I --> J["3 개 md 동기화"]:::out
 ```
 
 <table>
@@ -251,7 +249,6 @@ flowchart LR
 - 요구사항 수정 → 기술설계 / 구현계획 **둘 다** 영향 분석
 - 이미 작성된 코드가 있다면 **어디서 깨질지** 위치 표시
 - 사용자 확인 후 3 개 md 가 **한 번에 정렬**
-- `.html` 사본도 stale 표시 → `/sync-html` 로 재생성
 - 각 문서 footer 에 **"왜, 언제, 무엇이 바뀌었는지"** 자동 기록
 
 </td>
@@ -521,17 +518,16 @@ flowchart TD
 | `/list-skills` | js-super 가 만든 skill 만 조회 (프로젝트 + 전체) |
 | `/remove-skill <이름>` | js-super 가 만든 skill 안전 정리 |
 | `/pretty-md` | `.md` 본문 다듬기 (의미는 안 바꿈) |
-| `/sync-html` | `.html` 보기 좋은 사본 다시 생성 |
 
 <br/>
 
 ---
 
-## 한 가지 작업, 세 가지 얼굴
+## 한 가지 작업, 두 가지 얼굴
 
 <table>
 <tr>
-<td width="33%" valign="top" align="center">
+<td width="50%" valign="top" align="center">
 
 #### `.md` — 진짜 문서
 
@@ -539,21 +535,10 @@ flowchart TD
 
 문서 하단에 **누가 / 언제 / 왜 바꿨는지** 자동으로 쌓여요.
 
-AI 는 항상 이 `.md` 만 봐요.
+사람도 AI 도 이 `.md` 를 봐요.
 
 </td>
-<td width="33%" valign="top" align="center">
-
-#### `.html` — 사람용 사본
-
-같은 내용을 다크 모드로 보기 좋게. `/sync-html` 로 생성해요.
-
-차트 / 다이어그램 / 카드를 알아서 골라 넣어요.
-
-**구현계획에서 코드 변경은 초록(+) / 빨강(−)** 으로 한눈에.
-
-</td>
-<td width="33%" valign="top" align="center">
+<td width="50%" valign="top" align="center">
 
 #### 코드 — 위험 주석
 
@@ -647,22 +632,6 @@ def withdraw(user_id, amount):
 </details>
 
 <details>
-<summary><b><code>.html</code> 사본은 어떻게 만들어지나요?</b></summary>
-
-<br/>
-
-`/sync-html` 을 실행하면 **백그라운드에서** `.html` 이 만들어집니다. 메인 작업은 멈추지 않아요. *(v2.8.2+ — 기본 플로우의 자동 생성은 제거됐고, 원할 때 명시 호출로 만듭니다. 간헐적으로 생성이 누락되던 문제 해결.)*
-
-- **다크 모드 기본** *(v2.3.4+)* — 깊은 어두운 배경 + 보라/시안 악센트
-- **상황에 맞게**: 차트 / 인터랙티브 / 다이어그램 / 카드 (필요하면 사용)
-- **구현계획의 코드 변경**: 초록(+) / 빨강(−) 한눈에 비교
-- **중요 내용은 펼친 채로** *(v2.3.3+)* — FR / AC 본문은 접지 않음
-- `.gitignore` 처리되어 있어요. AI 는 항상 `.md` 만 읽습니다
-- 내용이 바뀌면 `/sync-html` 로 다시 맞추면 됩니다 (기존 디자인 보존)
-
-</details>
-
-<details>
 <summary><b>확인 게이트 — 어디서 멈추나요?</b></summary>
 
 <br/>
@@ -709,10 +678,10 @@ flowchart LR
     F --> I[사용자 확인]
     G --> I
     H --> I
-    I --> J["/sync-html 안내"]
+    I --> J[문서 일괄 갱신]
 ```
 
-`.html` 사본은 자동으로 stale 표시 → `/sync-html` 한 줄로 재생성.
+승인한 문서만 갱신되고, 각 문서 footer 에 변경 사유가 함께 기록됩니다.
 
 </details>
 
@@ -750,7 +719,7 @@ flowchart LR
 </details>
 
 <details>
-<summary><b>전체 Skill 29 개</b></summary>
+<summary><b>전체 Skill 26 개</b></summary>
 
 <br/>
 
@@ -760,19 +729,19 @@ flowchart LR
 
 **upstream 원본 (커맨드 전용, v2.8.1+)** — `/og-brainstorm` / `/og-write-plan` / `/og-execute-plan` (스킬 → 커맨드 본문 인라인, 컨텍스트 미상주)
 
-**문서·시각화 (3)** — generating-html *(명시 호출 전용, v2.8.2+)* / code-pretty / change-history
+**문서 (2)** — code-pretty / change-history
 
 **검증·거버넌스 (4)** — verifying-spec / verification-before-completion / change-propagation / risk-annotation
 
 **서브에이전트 (3)** — js-super-sub-driven / subagent-driven-development / dispatching-parallel-agents
 
-**워크트리 (4)** — setting-up-worktrees / using-git-worktrees / worktree-merge-back / worktree-remove
+**워크트리 (3)** — setting-up-worktrees / worktree-merge-back / worktree-remove
 
 **테스트·디버깅 (2)** — test-driven-development / systematic-debugging
 
 **리뷰·마무리 (3)** — requesting-code-review / receiving-code-review / finishing-a-development-branch
 
-**메타 (2)** — using-superpowers / writing-skills
+**메타 (1)** — using-superpowers
 
 </details>
 
@@ -805,7 +774,7 @@ flowchart LR
 | `/og-write-plan` | `docs/superpowers/plans/...` |
 | `/og-execute-plan` | (코드만) |
 
-og-* 흐름은 변경이력 / 위험 주석 / `.html` 사본 / 검증 게이트가 **안 따라옵니다**. upstream 그대로의 가벼운 흐름.
+og-* 흐름은 변경이력 / 위험 주석 / 검증 게이트가 **안 따라옵니다**. upstream 그대로의 가벼운 흐름.
 
 > **중요** — `/og-*` 와 정식 `/brainstorm` ... 흐름을 **한 피처 안에서 섞지 마세요**. 산출물 경로가 다르게 분리됩니다.
 
@@ -823,20 +792,18 @@ og-* 흐름은 변경이력 / 위험 주석 / `.html` 사본 / 검증 게이트�
 | 버전 | 무엇이 바뀌었나요 |
 |---|---|
 | **v2.9.0** | 산출물 깊이 선택 (2~3 문서) + 구현계획서 테스트 자연어 축약 + `/goodmorning` 단일화 (goodnight 통합) + 워크트리 재분기·심링크 훅 안정화 |
-| **v2.8.2** | `.html` 자동 생성 제거 — 원할 때 `/sync-html` 등 명시 호출로만 (간헐적 누락 문제 해결) |
 | **v2.8** | `/goodnight` · `/goodmorning` 세션 핸드오프 + og 흐름 커맨드 전용화 |
 | **v2.7** | skill 빌더 3종 고도화 — 생성 스코프(프로젝트 / 전체) + 출처 표식 + `/list-skills` 조회 |
 | **v2.6** | `/new-skill` · `/remove-skill` — skill 만들고 정리하기 |
 | **v2.5** | `--no-ask` 모드 + `/worktree-remove` 워크트리 정리 |
-| **v2.4** | 한국어 친화 안내 톤 + `.html` 백그라운드 생성 신뢰성 |
+| **v2.4** | 한국어 친화 안내 톤 |
 | **v2.3.5** | 실행 중 자잘한 재질문 줄임, 질문할 땐 알람 보장 |
-| **v2.3.4** | `.html` 다크 모드 기본 + 코드 diff 초록/빨강 표시 |
-| **v2.3.3** | `.html` 의 핵심 내용 (FR / AC) 펼친 채로 |
 | **v2.3.0** | `/audit-risk` 보안·거버넌스 1 회 감사 |
-| **v2.2.x** | `.html` 사본을 백그라운드에서 자동 생성 |
 | **v2.1.0** | `/fast-tasks` 잡일 묶어 처리 |
 | **v2.0.4** | `/worktree-merge-back` 안전한 머지 |
 | **v2.0.0** | 서브에이전트 병렬 모드 |
+
+<sub>v2.2 ~ v2.8.2 에 걸쳐 있던 <code>.html</code> 사람용 사본 기능 (<code>generating-html</code> 스킬 · <code>/sync-html</code> 명령) 은 이후 제거됐습니다. 산출물은 <code>.md</code> 로 통일됩니다.</sub>
 
 </details>
 

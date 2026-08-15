@@ -3,7 +3,6 @@ from pathlib import Path
 
 from scripts.preflight import (
     code_pretty_check,
-    docs_pretty_check,
     execute_plan_mode_check,
     subagent_task_entry_check,
 )
@@ -12,33 +11,6 @@ from scripts.preflight import (
 def _write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
-
-
-def test_docs_pretty_check_file_not_found(tmp_path):
-    result = docs_pretty_check(tmp_path / "missing-requirements.md")
-    assert result.ok is False
-    assert "not found" in result.reason
-
-
-def test_docs_pretty_check_footer_not_empty(tmp_path):
-    f = tmp_path / "foo-requirements.md"
-    _write(f, "# x\n## 변경이력\n### [2026-05-10] [요구사항-수정]\n- id: CH-1\n")
-    result = docs_pretty_check(f)
-    assert result.ok is False
-    assert "변경이력" in result.reason
-
-
-def test_docs_pretty_check_wrong_filename(tmp_path):
-    f = tmp_path / "random.md"
-    _write(f, "# x\n## 변경이력\n")
-    result = docs_pretty_check(f)
-    assert result.ok is False
-
-
-def test_docs_pretty_check_ok_requirements(tmp_path):
-    f = tmp_path / "foo-requirements.md"
-    _write(f, "# x\n## 변경이력\n<!-- empty -->\n")
-    assert docs_pretty_check(f).ok is True
 
 
 def test_code_pretty_check_only_implementation_plan(tmp_path):
@@ -83,14 +55,6 @@ def test_preflight_result_has_human_reason_field():
     r = PreflightResult(False, "file_not_found")
     assert hasattr(r, "human_reason")
     assert r.human_reason == ""  # default empty string
-
-
-def test_docs_pretty_check_returns_human_reason_korean():
-    from pathlib import Path
-    from scripts.preflight import docs_pretty_check
-    r = docs_pretty_check(Path("/tmp/__nonexistent__-requirements.md"))
-    assert r.ok is False
-    assert "대상 파일이 존재하지 않습니다" in r.human_reason
 
 
 def test_code_pretty_check_human_reason_for_wrong_filename(tmp_path):

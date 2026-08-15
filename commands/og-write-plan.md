@@ -63,7 +63,7 @@ This structure informs the task decomposition. Each task should produce self-con
 ```markdown
 # [Feature Name] Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended), or run js-super `/og-execute-plan` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use js-super:subagent-driven-development (recommended), or run js-super `/og-execute-plan` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** [One sentence describing what this builds]
 
@@ -158,7 +158,7 @@ After saving the plan, offer execution choice:
 **Which approach?"**
 
 **If Subagent-Driven chosen:**
-- **REQUIRED SUB-SKILL:** Use **`superpowers:subagent-driven-development`** (upstream-untouched). ⚠️ NOT `js-super-sub-driven` — that's the js-super extended variant with wave-parallel + RISK + 변경이력. og 흐름은 upstream 원본만 사용.
+- **REQUIRED SUB-SKILL:** Use **`js-super:subagent-driven-development`** (upstream-untouched). ⚠️ NOT `js-super-sub-driven` — that's the js-super extended variant with wave-parallel + RISK + 변경이력. og 흐름은 upstream 원본만 사용.
 - Fresh subagent per task + two-stage review
 
 **If Inline Execution chosen:**
@@ -169,7 +169,7 @@ After saving the plan, offer execution choice:
 
 | Wrong | Right |
 |---|---|
-| `js-super-sub-driven` 매치 — js-super 확장 wave-parallel 발화 | `superpowers:subagent-driven-development` upstream 원본만 사용. og 흐름은 단순 fresh subagent + 2-stage review 유지. |
+| `js-super-sub-driven` 매치 — js-super 확장 wave-parallel 발화 | `js-super:subagent-driven-development` upstream 원본만 사용. og 흐름은 단순 fresh subagent + 2-stage review 유지. |
 
 ---
 
@@ -183,7 +183,6 @@ After saving the plan, offer execution choice:
 | 위험 코드 지점 §2 섹션 | 있음 | 없음 |
 | 변경이력 footer | 자동 누적 | 없음 |
 | verifying-spec 게이트 | 자동 실행 | 없음 |
-| .html 시각화 (generating-html) | `/sync-html` 명시 호출 | 없음 |
 | Execution Handoff | Inline / Subagent (js-super-sub-driven) 양자택일 | Subagent-Driven (subagent-driven-development) / Inline (/og-execute-plan) 양자택일 |
 
 ## 다음 단계

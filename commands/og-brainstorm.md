@@ -178,7 +178,6 @@ If they agree to the companion, read the detailed guide before proceeding:
 | 산출물 경로 | `docs/features/<date>-<slug>/<slug>-requirements.md` | `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` |
 | 산출물 형식 | PRD 6-섹션 또는 Socratic 자유 형식 (모드 선택) | upstream 자유 형식 단일 |
 | 변경이력 footer | 자동 누적 | 없음 |
-| .html 시각화 (generating-html) | `/sync-html` 명시 호출 | 없음 |
 | 적응형 질문 (카테고리별 스킵) | 있음 | 없음 — 자유 대화 |
 | 다음 단계 | `/tech-design` | `/og-write-plan` |
 
