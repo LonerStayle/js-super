@@ -86,7 +86,8 @@ def test_consolidate_two_tasks_into_single_entry(tmp_path: Path):
 
 
 def test_F1_basic_batch_fixture():
-    fixtures = Path("skills/js-super-sub-driven/tests/F1-basic-batch")
+    repo_root = Path(__file__).resolve().parents[2]
+    fixtures = repo_root / "skills/js-super-sub-driven/tests/F1-basic-batch"
     out = consolidate_to_entry(
         manifests_dir=fixtures / "manifests",
         ch_id="CH-FIXTURE-100",
