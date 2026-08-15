@@ -271,5 +271,5 @@ After running this skill:
 
 ## Related Skills
 
-- `using-git-worktrees` (upstream, broader) — general guidance on worktree workflows
 - `executing-plans` — often run inside a freshly-created worktree
+- `worktree-merge-back` / `worktree-remove` — 작업 완료 후 머지와 정리

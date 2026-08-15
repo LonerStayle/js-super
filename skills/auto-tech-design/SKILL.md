@@ -1,6 +1,6 @@
 ---
 name: auto-tech-design
-description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계 auto-brainstorming 의 명시 invoke 로만 진입, 사용자 자유 요청에서 자동 선택 금지. requirements.md 읽기 + adaptive 7-topic 자동 판정 + design decision 자동 alternatives 비교 → recommendation 자동 선택 + verifying-spec 4축 보고서 transition 직전 노출 + auto-writing-plans 자동 invoke. AskUserQuestion / generating-html 호출 X.
+description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계 auto-brainstorming 의 명시 invoke 로만 진입, 사용자 자유 요청에서 자동 선택 금지. requirements.md 읽기 + adaptive 7-topic 자동 판정 + design decision 자동 alternatives 비교 → recommendation 자동 선택 + verifying-spec 4축 보고서 transition 직전 노출 + auto-writing-plans 자동 invoke. AskUserQuestion 호출 X.
 ---
 
 # Auto Designing Direction → <slug>-tech-design.md (auto)
@@ -75,7 +75,6 @@ description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계
 | Wrong | Right |
 |---|---|
 | AskUserQuestion 호출 | NEVER. |
-| generating-html 호출 (모든 형태) | NEVER. v2.8.2+ 커맨드 강등 — 자동 발동 폐지 (v2.3.2 의 Step 4.5 dispatch 제거). `.html` 필요 시 사용자가 명시 호출. |
 | 일반 tech-design skill body 호출 | NEVER. self-contained mirror (D-T1). |
 | transition notice 후 wait sleep | NEVER. |
 

@@ -89,7 +89,6 @@ If you are not sure whether your integration loads the bootstrap at session star
 
 Skills are not prose — they are code that shapes agent behavior. If you modify skill content:
 
-- Use `superpowers:writing-skills` to develop and test changes
 - Run adversarial pressure testing across multiple sessions
 - Show before/after eval results in your PR
 - Do not modify carefully-tuned content (Red Flags tables, rationalization lists, "human partner" language) without evidence the change is an improvement
@@ -142,23 +141,6 @@ Before proposing changes to skill design, workflow philosophy, or architecture, 
 
 ---
 
-## generating-html ↔ change-history 결합
-
-`generating-html` skill은 "doc이 still 초안 단계인지" 판정하는 신호로 **`## 변경이력` footer가 비어 있는지 여부**를 직접 사용한다 (`skills/generating-html/SKILL.md` 의 HARD-GATE / When-to-Use 표 / preflight 검사 / dot 다이어그램 4개 판정 지점). 즉:
-
-- footer entry 0건 → 초안 → generating-html 발동
-- footer entry 1건 이상 → live doc → generating-html skip
-
-이 결합 때문에 `change-history` skill의 "doc 최초 생성 시 자동으로 boilerplate entry를 logging하는 룰"을 제거하려면 **반드시 generating-html의 발동/중단 신호도 동시에 교체**해야 한다 (예: frontmatter `status` 플래그 / 첫 git commit 존재 여부 / 자동 발동 자체 폐지). 한쪽만 건드리면 다음 회귀가 발생한다:
-
-- footer가 영구적으로 빈 채로 남음 → 이후 사용자가 부분 수정을 요청할 때마다 generating-html가 재발동 (의도와 반대)
-
-요약: 이 두 skill의 룰 변경은 atomic하게 묶어 처리할 것.
-
-### v2.8.2+ 분기 — 자동 발동 폐지로 결합 해소
-
-v2.8.2 에서 위 옵션 중 "자동 발동 자체 폐지" 를 채택. generating-html 은 커맨드 전용 (`disable-model-invocation: true`) 이 됐고 어떤 skill 흐름도 자동 invoke 하지 않는다. footer empty 신호는 이제 "발동 트리거" 가 아니라 명시 호출 시 preflight 의 draft/live 경계 검사 (draft → 본 skill / live → `/sync-html` 안내) 로만 쓰인다. change-history 의 boilerplate entry 룰은 그대로 — 향후 그 룰을 바꿔도 generating-html 재발동 회귀는 더 이상 발생하지 않는다 (자동 발동 경로 부재). 자세한 내용은 "generating-html 커맨드 강등 (v2.8.2+)" 섹션.
-
 ## writing-plans `**Model**:` 필드 ↔ js-super-sub-driven 결합
 
 `writing-plans` 의 task block 신규 `**Model**:` 필드 (v1.1.14+) 는 `js-super-sub-driven` 의 implementer dispatch model 결정에 직접 사용된다 (`skills/js-super-sub-driven/SKILL.md` Plan Analysis & Wave Build 단계). 즉:
@@ -168,29 +150,29 @@ v2.8.2 에서 위 옵션 중 "자동 발동 자체 폐지" 를 채택. generatin
 
 요약: 이 두 skill 의 `**Model**:` 룰 변경은 atomic 하게 묶어 처리할 것.
 
-## scripts/preflight.py ↔ 4 skill Pre-flight 결합
+## scripts/preflight.py ↔ 3 skill Pre-flight 결합
 
-v1.1.14+ 에서 `scripts/preflight.py` 가 generating-html / code-pretty / executing-plans / js-super-sub-driven 4 skill 의 Pre-flight 검사를 deterministic 코드로 통합. 즉:
+v1.1.14+ 에서 `scripts/preflight.py` 가 code-pretty / executing-plans / js-super-sub-driven 3 skill 의 Pre-flight 검사를 deterministic 코드로 통합 (generating-html 은 스킬 삭제로 제외 — `docs_pretty_check` helper 도 함께 제거됨). 즉:
 
-- `scripts/preflight.py` 의 함수 시그니처 (반환값 형식 / exit code 룰) 변경 시 4 skill 본문의 bash one-liner 도 동시 수정
+- `scripts/preflight.py` 의 함수 시그니처 (반환값 형식 / exit code 룰) 변경 시 3 skill 본문의 bash one-liner 도 동시 수정
 - helper 의 매개변수 추가 시 모든 caller 의 호출 라인 동기화 필요
 
-요약: 이 helper 와 4 skill 의 Pre-flight 섹션 변경은 atomic 하게 묶어 처리할 것.
+요약: 이 helper 와 3 skill 의 Pre-flight 섹션 변경은 atomic 하게 묶어 처리할 것.
 
 ### v1.1.15+ — `human_reason` 필드 + 사용자 게이트 결합
 
-`scripts/preflight.py` 의 `PreflightResult.human_reason` 필드 추가 (v1.1.15+) 와 4 skill 의 user-gate boilerplate (FR-4) 는 결합되어 있다:
+`scripts/preflight.py` 의 `PreflightResult.human_reason` 필드 추가 (v1.1.15+) 와 3 skill 의 user-gate boilerplate (FR-4) 는 결합되어 있다:
 
-- helper 의 `human_reason` 필드 시그니처 변경 시 4 skill bash one-liner 의 `result.human_reason` 출력 표현식도 동시 수정
-- user-gate boilerplate 의 AskUserQuestion choices 변경 시 4 skill 동시 적용 (한 군데만 누락 시 사용자 마찰 일관성 깨짐)
+- helper 의 `human_reason` 필드 시그니처 변경 시 3 skill bash one-liner 의 `result.human_reason` 출력 표현식도 동시 수정
+- user-gate boilerplate 의 AskUserQuestion choices 변경 시 3 skill 동시 적용 (한 군데만 누락 시 사용자 마찰 일관성 깨짐)
 
-요약: helper schema + user-gate boilerplate 변경은 atomic 하게 묶어 처리할 것. 5 파일 (preflight.py + 4 skill SKILL.md) 동시 push.
+요약: helper schema + user-gate boilerplate 변경은 atomic 하게 묶어 처리할 것. 4 파일 (preflight.py + 3 skill SKILL.md) 동시 push.
 
 ## TaskCreate 명칭 룰 (v1.1.15+, FR-6)
 
 js-super 자체 skill 의 Checklist 본문에 박힌 task 명칭은 **사용자 시야 (TaskCreate UI) 에 직접 노출**됨. 다음 룰 적용:
 
-- **사용자 친화 한국어 표현 사용** — 내부 용어 (`Invoke ... skill`, `Gate #N`, `CH-id`, `verifying-spec`, `generating-html` 등 영어 식별자) 미노출
+- **사용자 친화 한국어 표현 사용** — 내부 용어 (`Invoke ... skill`, `Gate #N`, `CH-id`, `verifying-spec` 등 영어 식별자) 미노출
 - **본문의 다른 부분 (Process Flow, Detailed Step) 의 영어 식별자는 유지** — 메인 에이전트가 정확한 skill 호출에 필요
 - **upstream og-* skill 들 (verbatim)** — 손대지 않음
 - **변경이력 footer 의 entry tag** (`[요구사항-수정]` 등) — schema 매직 키워드라 유지
@@ -203,7 +185,6 @@ js-super 자체 skill 의 Checklist 본문에 박힌 task 명칭은 **사용자 
 
 - **기존 4 skill body 변경 0** — auto-* 본문은 self-contained mirror. 본 4 skill 어떤 라인도 손대지 않음. 회귀 catch: `git diff HEAD~1 HEAD -- skills/{brainstorming,tech-design,writing-plans,executing-plans}/SKILL.md` empty 보장.
 - **Gate #14 (실행 모드 선택) override 명시** — v1.1.12+ "자동승인 절대 X" 룰을 auto-executing-plans 가 명시 override. 일반 `/execute-plan` 영향 0 (게이트 그대로). auto-* 명시적 invoke 시에만 작동.
-- **generating-html fire-and-forget dispatch — v2.8.2 에서 폐지** (v2.3.2+ 도입 → v2.8.2 반전) — auto-brainstorming Step 4.5 / auto-tech-design Step 4.5 / auto-writing-plans Step 4.6 의 `run_in_background: true` dispatch 는 v2.8.2 커맨드 강등에서 제거됨. 회귀 catch 반전: 3 skill 본문에 `generating-html` dispatch 매치 0 이어야 함 (`grep -n "generating-html.*dispatch" skills/auto-{brainstorming,tech-design,writing-plans}/SKILL.md` → 안티 패턴 표의 금지 라인 외 0). 자세한 내용은 "generating-html 커맨드 강등 (v2.8.2+)" 섹션.
 - **AskUserQuestion 호출 부재** — auto-* 본문 어디에도 AskUserQuestion 호출 X. clarifying Q 는 메인 turn 의 일반 prose 질의로 처리.
 - **Visual Companion / 카테고리 미니질문 / question plan 동의 등 PRD-mode 분기 부재** — Socratic only (D3).
 
@@ -467,112 +448,6 @@ grep -c "Other / 모호 응답 처리 (v2.1.1+)" \
 
 요약: 8 skill body + CLAUDE.md 결합 메모 변경은 묶어서 처리. 5+ 파일 atomic patch.
 
-## generating-html `.html` companion 결합 (v2.2.0 → v2.2.2+)
-
-**v2.2.0**: `generating-html` 가 두 subagent 병렬 dispatch (A `.md` format-only + B `.html` 시각화).
-**v2.2.1+**: A 제거 + B fire-and-forget — 메인 latency 거의 0 + 비용 절반. 신규 `/sync-html` slash command + `change-propagation` 자동 호출 + 디바운스 3초 + silent log.
-
-AI 흐름 영향 0 (v2.2.0 답습 — 모든 skill `.md` 만 읽음).
-
-다음 5 파일 결합 변경 atomic patch 룰 (v2.2.1+):
-
-1. `skills/generating-html/SKILL.md` — Procedure Step 2 (병렬 두 dispatch → 단일 fire-and-forget) + Step 3 (A+B reconcile 제거 → 즉시 return + silent log) + Anti-Patterns 갱신
-2. `skills/generating-html/html-companion-prompt.md` — Subagent B prompt 그대로 보존 (v2.2.0 룰)
-3. `skills/change-propagation/SKILL.md` — Acceptance 5번 + Related Skills 끝에 `/sync-html` 라인 추가
-4. `commands/sync-html.md` — 신규 slash command (fire-and-forget B dispatch 명시 호출)
-5. CLAUDE.md — 본 섹션
-
-`.gitignore` 변경 X (v2.2.0 의 `docs/features/**/*.html` 그대로 + `.js-super/html-regen.log` 는 기존 `.js-super/` glob 흡수).
-
-### 회귀 패턴 (안전성 손상 시)
-
-| 안티 패턴 | 증상 |
-|---|---|
-| 외부 CDN 참조 (`https://cdn.jsdelivr.net/...`) | `.html` offline 깨짐, D4 self-contained 위반 |
-| AI 가 `.html` 읽기 (`Read *.html` / `read_file *.html`) | 의미 drift 흐름 진입 위험, `.md` source-of-truth 손상 |
-| `.html` git commit | `.gitignore` 차단 — repo 무게 ↑, 변경이력 polution |
-| B 의 `.md` 의역 / 요약 / 재구조화 | D3 semantic 1:1 룰 위반, `.html` 가 source-of-truth 와 diverge |
-| live doc 진입 후 `.html` 강제 재생성 (`/sync-html` 우회) | `change-propagation` 마지막 단계 또는 사용자 수동만 허용 |
-| 메인이 fire-and-forget 결과 대기 (v2.2.1+) | latency 의도 무화 — `run_in_background=true` 강제 |
-| A (`.md` format-only) 부활 시도 (v2.2.1+) | v2.2.1 의 단순화 무화 — RAW `.md` 가 사용자 리뷰 surface |
-| 디바운스 skip (연속 fix 매번 dispatch) (v2.2.1+) | 비용 누적 — 3초 디바운스 + 이전 cancel 강제 |
-| `change-propagation` 마지막 단계 `/sync-html` 누락 (v2.2.1+) | live doc `.html` 영구 stale — Acceptance 5번 룰 위반 |
-
-### 영향 범위
-
-- `generating-html` Procedure + `change-propagation` Acceptance + 신규 `/sync-html` command 만 영향
-- `code-pretty` / 4 워크플로 skill (brainstorming/tech-design/writing-plans/executing-plans) / `change-history` / `auto-*` / `og-*` 영향 0
-- AI 흐름 모든 skill `.md` 만 읽음 (영향 0 보장)
-- `.html` 은 사람 전용 derived view, gitignored
-- silent log (`.js-super/html-regen.log`) — gitignored, debug 용
-
-### Regression catch grep
-
-```bash
-# Anti-Pattern: 외부 CDN / .html 의존성
-grep -nE "https?://.*\.(css|js)|read_file.*\.html|Read.*\.html" \
-  skills/generating-html/SKILL.md skills/generating-html/html-companion-prompt.md
-# expected: 0 (Anti-Pattern catch 라인만 허용)
-
-# Anti-Pattern: 다른 skill 본문에 .html 참조
-grep -rn "\.html" \
-  skills/{brainstorming,tech-design,writing-plans,executing-plans,auto-*}/SKILL.md
-# expected: auto-* 3 skill 의 안티 패턴 NEVER 행 3건만 (v2.8.2 강등 catch 라인) — 그 외 hit = 회귀
-
-# v2.2.1+ Anti-Pattern: 메인이 결과 대기 (fire-and-forget 위반)
-grep -nE "await.*Task|sync.*dispatch.*\.html" skills/generating-html/SKILL.md
-# expected: 0
-
-# v2.2.1+ Anti-Pattern: A (.md format-only) 부활
-grep -nE "format-only pass on .*\.md|Subagent A" skills/generating-html/SKILL.md
-# expected: 0
-
-# v2.2.1+ change-propagation 자동 호출 보장
-grep -c "/sync-html" skills/change-propagation/SKILL.md
-# expected: ≥ 1
-```
-
-요약: 5 파일 (generating-html/SKILL.md + html-companion-prompt.md 보존 + change-propagation/SKILL.md + commands/sync-html.md + CLAUDE.md) + H17 patch + H18 신규 + 6 manifest 변경은 atomic patch.
-
-## generating-html 디자인 톤 자유 + 인터랙션 허용 (v2.2.4+)
-
-v2.2.4+ 에서 `skills/generating-html/html-companion-prompt.md` 본문 재작성 — "사무 / 회의록 / 보고서 톤 금지" 명시 + 톤 inspiration 6종 (docs portal / dashboard / editorial / playful / brutalist / experimental) 매 호출 자유 선택 + 인터랙션 허용 (기존 "정적 페이지만" 룰 해제). 적극 시각 요소 (hero / glassmorphism / aurora bg / card grid / animated typography) + 인터랙션 (`<details>` / tab / sticky TOC / copy 버튼 / smooth scroll / scroll-spy) 명시.
-
-핵심: **고정 톤 없음, 매번 다르게 = variety as feature**.
-
-보존 룰: self-contained (inline only) / 의미 1:1 / offline 렌더 / 헤더·코드 블록 count 검증. AI 흐름 / skill schema / fire-and-forget 모드 변경 0.
-
-회귀 catch grep:
-```bash
-grep -c "Wow first\|variety = feature\|사무 / 회의록 / 보고서 톤" skills/generating-html/html-companion-prompt.md
-# expected: ≥ 3
-```
-
-요약: html-companion-prompt.md 만 변경. atomic patch 1 파일 + CLAUDE.md 결합 메모 + 6 manifest bump.
-
-## generating-html Visual heuristics 적극 시각화 (v2.2.3+)
-
-v2.2.3+ 에서 `skills/generating-html/html-companion-prompt.md` 의 Visual heuristics 룰 강화 — 보수적 (typography + color) → 적극 시각화 (비교 카드 / 콘셉트 도식 / 위험 카테고리 색깔 / stepper / 체크박스). `.md` 본문 패턴 ↔ `.html` 시각 표현 매핑 12 항목 표 + Anti-Patterns "typography + color 만 = 회귀" 명시.
-
-영향: html-companion-prompt.md 본문만. AI 흐름 + skill schema / 발동 boundary / fire-and-forget 모드 모두 변경 X.
-
-회귀 catch grep:
-```bash
-grep -c "적극 시각화 v2.2.3" skills/generating-html/html-companion-prompt.md
-# expected: ≥ 1
-```
-
-요약: html-companion-prompt.md 만 변경. atomic patch 1 파일 + CLAUDE.md 결합 메모 + 6 manifest bump.
-
-## generating-html naming 일관성 결합 (v2.2.2+)
-
-v2.2.2+ 에서 `docs-pretty` → `generating-html` skill 명칭 + `/regen-html` → `/sync-html` slash command 명칭 일괄 교체. 다음 룰 atomic patch:
-
-- **5 항목 atomic** — skill 디렉토리 rename + slash command rename + 13 파일 단어 swap + CLAUDE.md 결합 메모 + manifest 항목
-- **단어 grep 검증** — `grep -rn "docs-pretty\|regen-html" skills/ commands/ CLAUDE.md README.md --exclude-dir=og-* --exclude-dir=H4-preflight-fail --exclude-dir=H5-docs-pretty-pre-review --exclude-dir=H6-task-name-friendly` → 역사 메타 참조만 허용 (tests/ fixture 인덱스·H19 회고 라인·본 섹션 자기 참조). live skill/command 본문 hit = 회귀 (H22 fixture 참조)
-- **Acceptance 5번 자동→안내** — `change-propagation` 마지막 단계의 `/sync-html` 자동 호출 → 사용자 안내로 완화 (auto-fire X). 사용자가 명시 호출
-- **commands/regen-html.md 삭제** — old slash command 제거 (sync-html.md 신규 생성으로 대체)
-
 ## AskUserQuestion 도구 우선 (v2.3.5+)
 
 메인 에이전트가 사용자에게 **결정 / 선택 / 동의** 를 요청하는 모든 경우 → **AskUserQuestion 도구 호출** default. skill body 외 ad-hoc 결정에도 동일 적용.
@@ -730,33 +605,6 @@ grep -c "한국어 친화 안내 톤 (v2.4+)" CLAUDE.md
 # expected: ≥ 1
 ```
 
-## 비동기 .html 신뢰성 룰 (v2.4+)
-
-`generating-html` 백그라운드 호출이 처음 .md 생성 시 가끔 실패하던 회귀를 해결한 4 룰입니다.
-
-- **B-1 dispatch 결과 verify**: 호출 직후 메인이 id 를 받았는지 확인하고, 시간 경과 후 `.html` 파일 존재를 확인.
-- **B-2 race condition 해결**: dispatch 후 5초 delay 를 두고 그 다음 change-history footer 를 추가. background subagent 가 footer 0건 시점에 .md 를 읽도록 보장.
-- **B-3 silent log monitor**: `.js-super/html-regen.log` 에 호출 / 성공 / 실패 entry 를 자동 append. `/sync-html --check` 으로 사용자 조회 가능.
-- **B-4 메인 응답에 dispatch 결과 명시**: transition notice 시점에 "백그라운드 호출 완료 (N KB)" 또는 "실패 — 사용자가 `/sync-html` 으로 재시도 필요" 를 함께 알림.
-
-자동 retry 는 도입하지 않습니다 (사용자 의도 외 비용 누적 위험). 사용자가 명시 호출 (`/sync-html`) 으로 재시도. 자동 retry 는 v2.4.x 후속 후보.
-
-회귀 catch grep:
-
-```bash
-grep -c "silent log monitor (v2.4+)" skills/generating-html/SKILL.md
-# expected: ≥ 1
-```
-
-요약: v2.4 메이저 — A 광범위 (10+ skill + 10+ commands + README + CLAUDE.md) + B 4 룰 (generating-html + auto-* 3 race delay + `/sync-html --check`). atomic 처리.
-
-### v2.8.2+ 분기 — B-2 폐지 + B-1/B-4 적용 범위 축소
-
-v2.8.2 커맨드 강등으로 auto-* 3 skill 의 자동 dispatch 가 사라지면서:
-
-- **B-2 (5초 race delay) 폐지** — race 자체가 자동 발동 (dispatch 직후 change-history 가 footer 를 채우던 시점) 전용이었음. 옛 grep (`grep -c "5초 delay" skills/auto-*/SKILL.md` 각 ≥ 1) 은 반전 — 이제 0 이어야 함.
-- **B-1 / B-4 는 명시 호출 경로만** — `/sync-html` 등. B-3 silent log 는 그대로. (`/audit-risk` 는 이후 마크다운 단일 산출물로 재작성되어 HTML 생성 경로 자체가 사라졌다 — "audit-risk 구성 결합" 섹션 참고.)
-
 ## --no-ask 플래그 ↔ 8 skill body 결합 (v2.5+)
 
 `--no-ask` 플래그는 8 skill body 의 분기 sub-section 으로 구현. 사용자가 슬래시 명령에 `--no-ask` 토큰 명시 시에만 진입. 메인 자체 판단 활성화 X.
@@ -887,7 +735,7 @@ v2.5.2+ 에서 9 skill body 에 `## Checklist` 섹션 신규 추가 — `using-s
 - `og-brainstorming` — 이미 Checklist 보유 (upstream 그대로 답습)
 - 워크트리 2 (`worktree-merge-back`, `worktree-remove`) — Step 수 적음, 사용자 catch 우선순위 낮음
 - `finishing-a-development-branch`, `subagent-driven-development` — 사용자 의사 미선택
-- 1회성 / 메타 skill — `change-history`, `risk-annotation`, `generating-html`, `verifying-spec`, `using-superpowers`, `writing-skills` 등 (task 분해 의미 없음)
+- 1회성 / 메타 skill — `change-history`, `risk-annotation`, `verifying-spec`, `using-superpowers` 등 (task 분해 의미 없음)
 
 ### og-* mirror 룰 예외 (D-4)
 
@@ -1296,7 +1144,7 @@ grep -F "Advise: run /og-brainstorm" skills/brainstorming/SKILL.md
 
 - 커맨드 3 인라인 + 스킬 3 삭제 + `brainstorming` router 전환 + README + CLAUDE.md.
 - js-super 정식 흐름(`brainstorming` 진입/게이트)은 그대로 — small 신호 시 auto-invoke 대신 안내로만 바뀜.
-- `subagent-driven-development`/`finishing-a-development-branch`/`using-git-worktrees` (upstream untouched) 는 og 커맨드가 그대로 참조 — 영향 0.
+- `subagent-driven-development`/`finishing-a-development-branch` (upstream untouched) 는 og 커맨드가 그대로 참조 — 영향 0.
 - tests fixture (`skills/js-super-sub-driven/tests/H1/H2/H13`) 는 옛 라우팅 명칭 참조 — 실행 무관 문서, 후속 정리 대상.
 - 실행 기록: `docs/og-커맨드전용화-실행기록.md`
 
@@ -1308,7 +1156,7 @@ grep -F "Advise: run /og-brainstorm" skills/brainstorming/SKILL.md
 - **커맨드 4종** → `disable-model-invocation: true`. auto-flow 는 승인 게이트 자동 통과 + subagent 강제 실행이라, 모델 자동 발동 차단이 og-* 보다 더 중요.
 - **스킬 4종 description** → 진입 제약 문구. **체인 스킬(2~4단계)은 반드시 "커맨드 또는 앞 단계의 명시 invoke 로만 진입, 자유 요청에서 자동 선택 금지"** 로 써야 한다. 그냥 "do NOT auto-select" 만 쓰면 체인 invoke 시 모델이 주저할 수 있음.
 - **auto-* 는 upstream mirror 아님** (js-super 자작 self-contained mirror, v1.1.17+). og-* 의 mirror 룰 예외 논리 불필요 — description 자유 수정 OK.
-- **본문 룰 보존**: auto-* 의 "AskUserQuestion 호출 X / Socratic prose-default" 등 기존 결합 룰은 description 만 바꿨으니 영향 0. (당시 함께 보존된 Step 4.5·4.6 fire-and-forget 은 이후 v2.8.2 generating-html 강등에서 삭제됨 — v2.8.2 섹션 참조.)
+- **본문 룰 보존**: auto-* 의 "AskUserQuestion 호출 X / Socratic prose-default" 등 기존 결합 룰은 description 만 바꿨으니 영향 0.
 
 #### auto-* 회귀 catch grep
 
@@ -1329,67 +1177,6 @@ grep -cF "js-super:auto-executing-plans" skills/auto-writing-plans/SKILL.md
 ```
 
 파일럿 누적: og-* 3 + auto-* 4 = **7 커맨드** 전환. 나머지 17개는 후속.
-
-## generating-html 커맨드 강등 (v2.8.2+)
-
-v2.8.2 에서 `generating-html` 을 기본 플로우에서 완전히 제거하고 명시 호출 전용으로 강등. 배경: 백그라운드 자동 발동이 간헐적으로 누락되던 문제 (사용자 catch) + og/auto 커맨드 전용화 (v2.8.1) 와 같은 컨텍스트 절감 원리.
-
-### og-* (v2.8.1) 와 다른 점 — 스킬 삭제가 아니라 플래그 강등
-
-og-* 는 스킬을 삭제하고 커맨드에 인라인했지만, generating-html 은 **스킬 유지 + frontmatter `disable-model-invocation: true`**. 이유: (1) `html-companion-prompt.md` 자산을 `/sync-html` 이 그대로 공유 — 스킬 디렉토리가 자산의 집, (2) preflight user-gate / 디바운스 / silent log 등 절차가 커맨드 인라인엔 과함, (3) `disable-model-invocation: true` 만으로 description 컨텍스트 상주 제거 + 모델 자동 발동 차단이 동시에 해결됨.
-
-### 실제 변경 (10 본문 + 6 manifest)
-
-1. `skills/generating-html/SKILL.md` — frontmatter 플래그 + description 재작성 + HARD-GATE / When-to-Use / dot / Related Skills / B-2 를 명시 호출 전용으로 정리
-2. `skills/brainstorming/SKILL.md` — Checklist 항목 6 삭제 + dot 노드 + Process detail step 6 + Gate #8 문구
-3. `skills/tech-design/SKILL.md` — Checklist 항목 6 삭제 + dot + Process detail step 6 + Gate #11 문구 + After Save 재구성
-4. `skills/writing-plans/SKILL.md` — Checklist 항목 8 삭제 + dot + After Save step 3 삭제 (code-pretty 는 유지)
-5. `skills/code-pretty/SKILL.md` — "BEFORE generating-html" 타이밍 표현을 "before user review" 로 교체 (플로우 위치 불변)
-6. auto-* 3 (`auto-brainstorming`/`auto-tech-design`/`auto-writing-plans`) — Step 4.5/4.6 섹션 + Checklist 항목 + description 문구 삭제, 안티 패턴 표를 "호출 (모든 형태) NEVER" 로 강화
-7. `README.md` — 스킬 분류에 명시 호출 전용 표기
-8. `CLAUDE.md` — 본 섹션 + 기존 3 섹션 (change-history 결합 / auto-flow mirror / 비동기 신뢰성) 분기 노트
-
-### 유지된 것 (변경 0)
-
-- `/sync-html` 커맨드 — live doc `.html` sync 의 정본 경로. `html-companion-prompt.md` 직접 사용 (스킬 안 거침 → 플래그 영향 0)
-- `html-companion-prompt.md` — 그대로 보존 (v2.2.4 디자인 톤 자유 룰 포함)
-- `scripts/preflight.py:docs_pretty_check` — 명시 호출 시 여전히 사용
-- `change-propagation` 의 `/sync-html` 안내 / `fast-tasks` 의 금지 목록 / `auto-executing-plans` 의 "호출 X" — 이미 미호출이라 그대로
-- AI 흐름은 `.md` 만 읽음 / `.html` gitignore — 모두 유지
-
-### 회귀 패턴
-
-| 안티 패턴 | 증상 |
-|---|---|
-| 기본 플로우 skill 이 generating-html 을 다시 invoke | 간헐적 미발동 문제 재발 + 컨텍스트 낭비 |
-| frontmatter `disable-model-invocation: true` 제거 | description 상주 부활 + 모델 자동 발동 부활 |
-| auto-* 에 Step 4.5/4.6 dispatch 부활 | v2.8.2 강등 무화 |
-| 5초 race delay 재도입 | 폐지된 B-2 부활 — 자동 발동 없인 무의미 |
-
-### 회귀 catch grep
-
-```bash
-# 스킬 플래그 유지
-grep -F "disable-model-invocation: true" skills/generating-html/SKILL.md
-# expected: 1
-
-# 기본 플로우 + auto-* 본문에 generating-html 발화 잔존 X (안티 패턴 표의 금지 라인 제외)
-grep -rn "generating-html" skills/{brainstorming,tech-design,writing-plans}/SKILL.md
-# expected: 0
-grep -n "generating-html" skills/auto-{brainstorming,tech-design,writing-plans,executing-plans}/SKILL.md | grep -v "NEVER\|호출 X"
-# expected: 0
-
-# 5초 delay 폐지 확인
-grep -c "5초 delay" skills/auto-brainstorming/SKILL.md skills/auto-tech-design/SKILL.md skills/auto-writing-plans/SKILL.md
-# expected: 각 0
-```
-
-### 영향 범위
-
-- 스킬 8 본문 + README + CLAUDE.md + 6 manifest. commands / scripts / hooks 변경 0.
-- 기본 플로우의 사용자 리뷰는 이제 RAW `.md` 만 (`.html` 은 사용자가 원할 때 명시 생성).
-- `/sync-html` / `/audit-risk` 명시 호출 경로 영향 0. og-* / worktree 계열 영향 0.
-- tests fixture 의 옛 발화 시나리오 (H5 등) 는 실행 무관 문서 — 후속 정리 대상.
 
 ## 워크트리-재분기 결합 (v2.9.0+)
 
@@ -1436,7 +1223,7 @@ awk '/\*\*Step 4/,/\*\*Step 5/' skills/setting-up-worktrees/SKILL.md | grep -c "
 
 ### 영향 범위
 
-- 3 본문 + 6 manifest. `setup-memory-symlinks.sh` / `worktree-merge-back` / `worktree-remove` / `using-git-worktrees` (upstream) / og-* / auto-* 영향 0
+- 3 본문 + 6 manifest. `setup-memory-symlinks.sh` / `worktree-merge-back` / `worktree-remove` / og-* / auto-* 영향 0
 - 훅은 기존처럼 `.worktrees/` 아래 경로만 처리 — 다른 위치 워크트리는 무시 (동작 동일)
 - E2E: `docs/features/2026-08-09-워크트리-재분기/` 의 plan Task 9 시나리오 (a)~(e) — scratchpad 임시 저장소 검증 (저장소 커밋 X)
 
@@ -1488,7 +1275,7 @@ python3 -c "from scripts.preflight import feature_depth; print('OK')"
 
 ### 영향 범위
 
-- skill 본문 9 + commands 4 + `scripts/preflight.py` + fixture H14 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서. og-* / fast-tasks / worktree 계열 / generating-html 구조 영향 0
+- skill 본문 9 + commands 4 + `scripts/preflight.py` + fixture H14 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서. og-* / fast-tasks / worktree 계열 영향 0
 - executing-plans / js-super-sub-driven skill 본문 변경 0 — plan 부재 안내 보강은 preflight `human_reason` 안에서
 - writing-plans `**Model**:` ↔ js-super-sub-driven 결합 — 3-doc 트랙 전용이라 영향 0
 
@@ -1539,8 +1326,8 @@ grep -c "disable-model-invocation: true" commands/audit-risk.md
 
 ### 영향 범위
 
-- `commands/audit-risk.md` 전면 재작성 + `commands/audit-report-prompt.md` 삭제 + `commands/audit-risk-tests/H23-e2e/` 2 파일 + README 4곳 + `skills/generating-html/SKILL.md` 호출자 예시 정리 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
-- `generating-html` skill 본체 / `/sync-html` 변경 0 — audit-risk 는 애초에 그 skill 을 거치지 않고 자체 보조 에이전트로 HTML 을 만들던 구조였고, 이번에 그 구조 자체를 걷어냈다
+- `commands/audit-risk.md` 전면 재작성 + `commands/audit-report-prompt.md` 삭제 + `commands/audit-risk-tests/H23-e2e/` 2 파일 + README 4곳 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
+- audit-risk 는 애초에 HTML 생성 skill 을 거치지 않고 자체 보조 에이전트로 HTML 을 만들던 구조였고, 이번에 그 구조 자체를 걷어냈다 (이후 별도 작업에서 `generating-html` skill 과 `/sync-html` 커맨드도 저장소에서 제거됨)
 - og-* / auto-* / 워크트리 계열 영향 0 — 명시 호출 커맨드 1개 재작성 범위 밖
 
 ## /tech-teach-me 결합 메모

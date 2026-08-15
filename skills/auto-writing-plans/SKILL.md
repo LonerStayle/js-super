@@ -1,6 +1,6 @@
 ---
 name: auto-writing-plans
-description: auto-flow 3단계 — /auto-write-plan 커맨드 또는 앞 단계 auto-tech-design 의 명시 invoke 로만 진입, 사용자 자유 요청에서 자동 선택 금지. requirements + tech-design 읽기 + AI 자동 task 분해 (TDD bite-sized + Model hint 자동) + RISK 코드 지점 §2 자동 + verifying-spec 자동 + code-pretty 호출 X (D-T12 와 일관) + change-history 자동 + auto-executing-plans 자동 invoke. AskUserQuestion / generating-html 호출 X.
+description: auto-flow 3단계 — /auto-write-plan 커맨드 또는 앞 단계 auto-tech-design 의 명시 invoke 로만 진입, 사용자 자유 요청에서 자동 선택 금지. requirements + tech-design 읽기 + AI 자동 task 분해 (TDD bite-sized + Model hint 자동) + RISK 코드 지점 §2 자동 + verifying-spec 자동 + code-pretty 호출 X (D-T12 와 일관) + change-history 자동 + auto-executing-plans 자동 invoke. AskUserQuestion 호출 X.
 ---
 
 # Auto Writing Plans → <slug>-implementation-plan.md (auto)
@@ -100,7 +100,6 @@ sys.exit(0)
 | Wrong | Right |
 |---|---|
 | AskUserQuestion 호출 | NEVER. |
-| generating-html 호출 (모든 형태) | NEVER. v2.8.2+ 커맨드 강등 — 자동 발동 폐지 (v2.3.2 의 Step 4.6 dispatch 제거). `.html` 필요 시 사용자가 명시 호출. |
 | code-pretty 호출 | NEVER. D-T12 일관. |
 | 일반 writing-plans skill body 호출 | NEVER. self-contained mirror (D-T1). |
 

@@ -17,9 +17,6 @@ __pycache__/
 # v1.1.7 — subagent changelog buffer (interrupt recovery)
 .js-super/
 
-# v2.2.0 — docs-pretty .html companion (사람 전용 derived view)
-docs/features/**/*.html
-
 # v2.3.0 — /audit-risk 보고서 폴더 (개인 도구 산출물, repo 노이즈 방지)
 docs/audit/
 
