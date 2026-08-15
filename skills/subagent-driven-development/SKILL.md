@@ -265,7 +265,7 @@ Done!
 ## Integration
 
 **Required workflow skills:**
-- **js-super:using-git-worktrees** - REQUIRED: Set up isolated workspace before starting
+- **js-super:setting-up-worktrees** - REQUIRED: Set up isolated workspace before starting
 - **js-super:writing-plans** - Creates the plan this skill executes
 - **js-super:requesting-code-review** - Code review template for reviewer subagents
 - **js-super:finishing-a-development-branch** - Complete development after all tasks

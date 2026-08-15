@@ -206,15 +206,13 @@ The dispatched subagent receives this exact prompt (filled in with target paths)
 
 이렇게 쓰지 마세요:
 
-> `-requirements.md`/`-tech-design.md`/`-implementation-plan.md` 세 종류 파일에 대해
-> 존재 여부·파일명 패턴·변경이력 유무를 확인하는 게이트. `generating-html` skill 의
-> 명시 호출 전 검사로 쓰인다
+> `sessionId`/`userToken` 을 받아 `TTL` 만료 여부·서명 유효성·`revoked` 플래그를
+> 확인하는 게이트. `AuthMiddleware` 의 요청 전처리 단계에서 호출됨
 
 이렇게 쓰세요:
 
-> 요구사항서와 설계서, 구현계획서 세 종류를 대상으로 파일이 실제로 있는지, 이름이 정해진
-> 형식에 맞는지, 변경이력이 아직 비어 있는지를 차례로 확인한다. 세 가지를 모두 통과해야
-> 다음 단계로 넘어간다.
+> 세션 아이디와 토큰을 받아 유효시간이 지났는지, 서명이 맞는지, 강제 만료된 세션은
+> 아닌지를 차례로 확인한다. 셋 중 하나라도 걸리면 요청을 거절한다.
 
 # 절대 하지 않는 것
 
