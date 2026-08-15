@@ -2,8 +2,9 @@
 
 두 경로가 있다 (설계서 D5).
 
-- run_argv: 우리가 케이스에 직접 쓰는 단언. 인자 배열만 받고 셸을 안 거친다.
-  케이스 약 150개 중 오타 하나가 원본 저장소를 파괴하는 경로를 없앤다.
+- run_argv: 우리가 케이스에 직접 쓰는 단언. 인자 배열로 받되, 셸 호출이면
+  -c 뒤의 명령을 읽기 전용 관문에 태운다. 케이스 약 150개 중 오타 하나가
+  원본 저장소를 파괴하는 경로를 없앤다.
 - run_shell_rule: CLAUDE.md 에서 가져온 결합 룰. 파이프라인이라 셸이 필요하다.
   대신 읽기 전용 관문을 먼저 통과해야 한다.
 """
@@ -27,7 +28,30 @@ class Outcome:
 
 
 def run_argv(argv: list[str], cwd: Path) -> tuple[int, str]:
-    """인자 배열을 셸 없이 실행한다."""
+    """인자 배열을 셸 없이 실행한다. 관문은 여기서도 거친다.
+
+    처음 설계는 "배열이라 셸을 안 거치니 안전하다" 였는데, 실제로 출하된
+    케이스가 전부 ["bash", "-c", "..."] 형태였다 (2026-08-15 검증에서 실측).
+    배열이라는 형식만으로는 아무것도 막지 못한다 — 그래서 셸 호출이면
+    -c 뒤의 명령을, 아니면 실행 파일 이름을 관문에 태운다.
+    """
+    if not argv:
+        return 1, "빈 명령"
+
+    head = Path(argv[0]).name
+    if head in {"bash", "sh", "zsh", "dash"}:
+        try:
+            command = argv[argv.index("-c") + 1]
+        except (ValueError, IndexError):
+            return 1, f"차단: {head} 호출에 -c 명령이 없음"
+        verdict = check_read_only(command)
+        if not verdict.allowed:
+            return 1, f"차단: {verdict.reason}"
+    else:
+        verdict = check_read_only(" ".join(argv))
+        if not verdict.allowed:
+            return 1, f"차단: {verdict.reason}"
+
     proc = subprocess.run(
         argv, cwd=str(cwd), capture_output=True, text=True,
         timeout=TIMEOUT_S, shell=False,

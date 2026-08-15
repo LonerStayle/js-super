@@ -1541,7 +1541,7 @@ grep -cF "## 구현계획서 용어집 + 정리/검증 순서 교체 결합" CLA
 
 - `skills/verifying-spec/SKILL.md` — HARD-GATE EXCEPTION 2 / Procedure dot / Clean-Context Verifiers 섹션 / Report Format 확장 / Anti-Patterns / Acceptance 4~6
 - `skills/verifying-spec/clean-solo-prompt.md`, `clean-cross-prompt.md` — 신규
-- `commands/{tech-design,write-plan,auto-tech-design,auto-write-plan}.md` — `--no-clean-verify` 안내
+- `commands/{design-tech,write-plan,auto-design-tech,auto-write-plan}.md` — `--no-clean-verify` 안내
 - fixture `skills/js-super-sub-driven/tests/H19-clean-verify/README.md`
 
 ### 변경하지 않는 것 (의도)
@@ -1644,8 +1644,9 @@ grep -c "## 요구 항목" skills/brainstorming/SKILL.md skills/auto-brainstormi
 # expected: 각 1 이상
 
 # 소크라테스 4블록
+# 흐름도 노드 라벨과 산문 언급은 제외하고 절차 헤더만 센다
 grep -cE '^### 블록 [1-4] — ' skills/brainstorming/SKILL.md
-# expected: 4  (흐름도 노드 라벨과 산문 언급을 제외한 절차 헤더만)
+# expected: 4
 
 # 보존 계약 (건드리면 안 되는 것)
 grep -c "Advise: run /og-brainstorm" skills/brainstorming/SKILL.md
@@ -1705,11 +1706,17 @@ grep -c "js-super:worktree-merge-back" commands/merge-back-worktree.md
 grep -c "js-super:worktree-remove" commands/remove-worktree.md
 # expected: 각 >= 1
 
-# 옛 슬래시 표기 잔존 (skills/ 경로와 스킬 목록 나열은 제외)
-grep -rn '/tech-design\|/auto-tech-design\|/worktree-merge-back\|/worktree-remove' skills/ commands/ README.md CLAUDE.md \
+# 옛 슬래시 표기 잔존.
+# 대상에서 CLAUDE.md 를 뺀다 — 바로 위 매핑 표와 이 검사 명령 자신이 매치돼
+# 저장소가 정상일 때도 상시 5줄이 나오던 문제가 있었다 (2026-08-15 실측).
+# HANDOFF.md / PROMPT_KO.md 도 사용자가 읽는 표면이라 범위에 넣는다.
+grep -rn '/tech-design\|/auto-tech-design\|/worktree-merge-back\|/worktree-remove' \
+  skills/ commands/ README.md HANDOFF.md PROMPT_KO.md \
   | grep -v 'skills/tech-design\|skills/auto-tech-design\|skills/worktree-merge-back\|skills/worktree-remove' \
-  | grep -v '<slug>-tech-design' | grep -v 'brainstorming/tech-design'
-# expected: 출력 없음
+  | grep -v 'commands/tech-design\|commands/auto-tech-design\|commands/worktree-merge-back\|commands/worktree-remove' \
+  | grep -v '<slug>-tech-design' | grep -v 'brainstorming/tech-design' \
+  | grep -c . || true
+# expected: 0
 ```
 
 ### 신규 커맨드/스킬 추가 시 룰
@@ -1728,12 +1735,13 @@ grep -rn '/tech-design\|/auto-tech-design\|/worktree-merge-back\|/worktree-remov
 
 ### 파서가 기대하는 형식
 
-```
-```bash
-<검사 명령 (여러 줄 가능, 줄 끝 역슬래시 이음 지원)>
-# expected: <기대값>
-```
-```
+아래 형식이다 (펜스는 예시라 들여쓰기로 적는다 — 그대로 펜스를 쓰면 이 예시
+자신이 룰로 수집돼 매 실행마다 차단 1건이 뜬다):
+
+    ```bash
+    <검사 명령 (여러 줄 가능, 줄 끝 역슬래시 이음 지원)>
+    # expected: <기대값>
+    ```
 
 - 코드 펜스 언어는 `bash` / `sh` / `shell` 중 하나여야 한다. `text` 나 언어 없음은 안 읽힌다
 - `# expected:` 주석이 명령 바로 뒤에 와야 한다. 한 블록에 여러 룰을 넣으려면 각각 뒤에 붙인다

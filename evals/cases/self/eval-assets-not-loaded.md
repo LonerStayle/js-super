@@ -38,15 +38,16 @@ traceability: [수용기준-8, 수용기준-11]
 `commands/` 아래 하위 디렉토리가 재귀로 스캔되고 디렉토리명이 콜론으로 이어지기
 때문이다. 2026-08-15 에 `tests/eval-fixtures/H23-e2e/` 로 옮겨 해소했다.
 
-**아직 안 고친 같은 종류 (2026-08-15 발견)**: `commands/audit-report-prompt.md` 는
-`/audit-risk` 가 보조 에이전트에 넣는 프롬프트 자산인데, `commands/` 에 있어서
-`js-super:audit-report-prompt` 슬래시로 등록된다 (실측 확인). 설명도 없이 목록에만 뜬다.
+**같은 종류로 걸렸던 것 (2026-08-15 해소)**: `commands/audit-report-prompt.md` 도
+`/audit-risk` 의 프롬프트 자산인데 `commands/` 에 있어 슬래시로 등록되고 있었다.
+같은 날 audit-risk 가 마크다운 단일 산출물로 재작성되면서 이 파일 자체가 삭제돼
+문제도 함께 사라졌다.
 
-다른 프롬프트 자산은 전부 소유 스킬 옆에 있다
-(`skills/generating-html/html-companion-prompt.md`,
-`skills/js-super-sub-driven/implementer-prompt.md` 등).
-`/audit-risk` 는 스킬이 없는 커맨드라 옮길 자리가 정해지지 않았다.
-옮기면 `commands/audit-risk.md` 의 참조 3곳(264, 271, 297행)도 같이 고쳐야 한다.
+프롬프트 자산의 제자리는 소유 스킬 옆이다
+(`skills/js-super-sub-driven/implementer-prompt.md`,
+`skills/verifying-spec/clean-solo-prompt.md` 등).
+스킬 없이 커맨드만 있는 흐름에서 프롬프트 자산이 새로 필요해지면 둘 곳부터 정할 것 —
+`commands/` 아래에 두면 같은 문제가 반복된다.
 
 **검증 방법**: `commands/` 아래에 하위 디렉토리가 하나도 없어야 하고,
 `skills/` 와 `agents/` 아래에 eval 관련 디렉토리가 없어야 하며,

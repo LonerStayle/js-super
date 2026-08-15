@@ -43,9 +43,13 @@ FORBIDDEN_HEADS = {
 
 PY_WRITE = re.compile(
     r"open\s*\([^)]*['\"][wax]"
-    r"|os\.(remove|unlink|rmdir|rename|makedirs|mkdir)"
-    r"|shutil\.(rmtree|move|copy)"
-    r"|\.(write_text|write_bytes|unlink|mkdir|touch)\s*\("
+    r"|os\.(remove|unlink|rmdir|rename|replace|makedirs|mkdir|truncate)"
+    r"|shutil\.(rmtree|move|copy|copytree|copy2)"
+    r"|\.(write_text|write_bytes|unlink|mkdir|touch|rename|replace)\s*\("
+    # 아래 셋은 파이썬 안에서 셸/프로세스를 다시 여는 경로다. 이걸 막지 않으면
+    # ALLOWED 에 python3 이 있는 한 관문 전체가 우회된다 (2026-08-15 검증에서 실측).
+    r"|os\.(system|popen|exec[lv]?[ep]*|spawn\w*)"
+    r"|subprocess\.|__import__|\beval\s*\(|\bexec\s*\("
 )
 
 SEPARATORS = ("&&", "||", "|", ";", "\n")

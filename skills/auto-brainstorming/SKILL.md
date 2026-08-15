@@ -75,10 +75,10 @@ mkdir -p docs/features/$(date +%Y-%m-%d)-<slug>/
 ### Step 6 — Transition notice + auto-tech-design invoke
 
 ```
-ℹ️ /design-tech 단계로 자동 넘어갑니다. 멈추려면 "stop" 입력해주세요.
+ℹ️ 기술설계 단계로 자동 넘어갑니다. 멈추려면 "stop" 입력해주세요.
 ```
 
-다음 사용자 turn 의 입력에 `parse_interrupt` (scripts/auto_flow.py) 매치 시 cleanly exit + `ℹ️ 알겠습니다. /design-tech 은 나중에 직접 실행해주세요.` 안내. 매치 X 시 즉시 `js-super:auto-tech-design` skill invoke.
+다음 사용자 turn 의 입력에 `parse_interrupt` (scripts/auto_flow.py) 매치 시 cleanly exit + `ℹ️ 알겠습니다. 기술설계는 나중에 /auto-design-tech (자동) 또는 /design-tech (단계별 확인) 으로 실행해주세요.` 안내. 매치 X 시 즉시 `js-super:auto-tech-design` skill invoke.
 
 ## Anti-Patterns
 

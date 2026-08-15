@@ -23,6 +23,6 @@ docs/features/**/*.html
 # v2.3.0 — /audit-risk 보고서 폴더 (개인 도구 산출물, repo 노이즈 방지)
 docs/audit/
 
-# 2026-08-15 — eval harness 실행 기록 (매 실행마다 생성, 커밋 대상 아님)
+# 2026-08-15 — eval harness 가 실행 기록을 남기게 될 경우 대비 (현재 러너는 미사용)
 evals/runs/
 

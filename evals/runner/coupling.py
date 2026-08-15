@@ -134,8 +134,17 @@ def collect_rules(repo_root: Path) -> list[Rule]:
     if claude_md.exists():
         rules.extend(parse_claude_md(claude_md))
 
-    for readme in sorted(repo_root.glob("skills/*/tests/**/*.md")):
-        rules.extend(parse_claude_md(readme, label=str(readme.relative_to(repo_root))))
+    # 두 곳을 본다. fixture 가 스킬 옆에 있기도 하고 (skills/*/tests/),
+    # 슬래시 커맨드로 잘못 등록되는 걸 피해 저장소 루트로 옮겨진 것도 있다
+    # (tests/eval-fixtures/). 한쪽만 보면 조용히 빠진다 — 실제로 audit fixture
+    # 11 룰이 이 이유로 수집 밖에 있었다 (2026-08-15 검증에서 실측).
+    seen: set[Path] = set()
+    for pattern in ("skills/*/tests/**/*.md", "tests/eval-fixtures/**/*.md"):
+        for readme in sorted(repo_root.glob(pattern)):
+            if readme in seen:
+                continue
+            seen.add(readme)
+            rules.extend(parse_claude_md(readme, label=str(readme.relative_to(repo_root))))
 
     return rules
 

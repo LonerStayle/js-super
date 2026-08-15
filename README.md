@@ -765,7 +765,7 @@ flowchart LR
 
 ## upstream superpowers 와의 관계
 
-이 저장소는 [superpowers](https://github.com/obra/superpowers) v5.0.7 에서 갈라져 나온 포크에 **프로덕션 안전성 확장** 을 얹은 형태입니다 (v2.8.1 부터 og 스킬을 커맨드로 인라인하며 upstream 과 완전 분리). 단계별 확인 게이트 / 변경이력 자동 footer / 위험 주석 / 서브에이전트 wave-parallel 실행 / `.html` 다크 모드 사본 / 보안·거버넌스 감사 — 실무에서 발생하는 검토 부담 / AI 자동승인 폭주 / 문서·코드 정합 문제를 풀기 위한 확장입니다. 게이트 UI 는 한국어로 노출됩니다. upstream 업데이트는 수동 머지로 따라갑니다.
+이 저장소는 [superpowers](https://github.com/obra/superpowers) v5.0.7 에서 갈라져 나온 포크에 **프로덕션 안전성 확장** 을 얹은 형태입니다 (v2.8.1 부터 og 스킬을 커맨드로 인라인하며 upstream 과 완전 분리). 단계별 확인 게이트 / 변경이력 자동 footer / 위험 주석 / 서브에이전트 wave-parallel 실행 / 보안·거버넌스 감사 — 실무에서 발생하는 검토 부담 / AI 자동승인 폭주 / 문서·코드 정합 문제를 풀기 위한 확장입니다. 게이트 UI 는 한국어로 노출됩니다. upstream 업데이트는 수동 머지로 따라갑니다.
 
 **`/og-*` — upstream 원본 흐름이 필요할 때**:
 
