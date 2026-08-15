@@ -6,7 +6,7 @@ main 워크트리 (또는 git 저장소 아닌 디렉토리) 에서 invoke → H
 
 ## Setup (variant A: main 워크트리)
 
-main 워크트리에서 `/worktree-merge-back` 호출.
+main 워크트리에서 `/merge-back-worktree` 호출.
 
 ## Setup (variant B: non-git directory)
 

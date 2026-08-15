@@ -11,7 +11,7 @@ Feature 워크트리 안 + working tree 에 커밋 안 된 변경 존재 → Ste
 
 ## Trigger
 
-feature-y 워크트리에서 `/worktree-merge-back` 호출.
+feature-y 워크트리에서 `/merge-back-worktree` 호출.
 
 ## Expected
 

@@ -180,8 +180,8 @@ If they agree to the companion, read the detailed guide before proceeding:
 | 변경이력 footer | 자동 누적 | 없음 |
 | .html 시각화 (generating-html) | `/sync-html` 명시 호출 | 없음 |
 | 적응형 질문 (카테고리별 스킵) | 있음 | 없음 — 자유 대화 |
-| 다음 단계 | `/tech-design` | `/og-write-plan` |
+| 다음 단계 | `/design-tech` | `/og-write-plan` |
 
 ## 주의
 
-`/og-*` 흐름과 `/brainstorm`, `/tech-design`, `/write-plan`, `/execute-plan` 흐름을 **하나의 피처 안에서 섞지 마세요**. 한 피처는 한 흐름으로 일관되게.
+`/og-*` 흐름과 `/brainstorm`, `/design-tech`, `/write-plan`, `/execute-plan` 흐름을 **하나의 피처 안에서 섞지 마세요**. 한 피처는 한 흐름으로 일관되게.

@@ -30,7 +30,7 @@ disable-model-invocation: true
 
 각 보조 에이전트가 조사할 것:
 - git 상태: 현재 브랜치, 최근 커밋 5개, `git status` 로 본 미커밋 변경, 최상위 브랜치 대비 ahead/behind
-- 진행 문서: 담당 워크트리의 `docs/features/` 아래 최신 폴더의 requirements/tech-design/implementation-plan 존재 여부와 각 문서 `## 변경이력` 의 최신 항목
+- 진행 문서: 담당 워크트리의 `docs/features/` 아래 최신 폴더의 requirements/design-tech/implementation-plan 존재 여부와 각 문서 `## 변경이력` 의 최신 항목
 - 세션 기록: `~/.claude/projects/` 아래에서 담당 워크트리에 해당하는 세션 폴더의 세션 파일(`.jsonl`)을 분석해 최근 작업 내용·결정·미완료 사항을 파악. **최근 48시간 안에 수정된 세션 파일만 깊게 분석하고, 그보다 오래된 세션은 건너뜁니다** (아침 대기 시간 단축). 폴더 이름은 워크트리 경로가 `-` 로 치환돼 있어 한글 워크트리는 폴더명만으로 구분이 어렵습니다. 세션 파일 안의 실제 작업 경로(cwd) 정보로 담당 워크트리와 매칭하세요.
 
 메인 에이전트는 세션 원문을 직접 읽지 말고 각 보조 에이전트의 요약만 취합합니다.

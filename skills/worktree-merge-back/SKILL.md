@@ -1,11 +1,11 @@
 ---
 name: worktree-merge-back
-description: 커맨드 /worktree-merge-back 명시 호출로만 진입 — 자유 요청에서 자동 선택 금지. feature 워크트리 안에서 parent 브랜치를 먼저 흡수해 충돌을 sandbox 에서 해소한 뒤 parent 로 안전 머지 + env 동기화. worktree-only (main 에서 호출 시 차단).
+description: 커맨드 /merge-back-worktree 명시 호출로만 진입 — 자유 요청에서 자동 선택 금지. feature 워크트리 안에서 parent 브랜치를 먼저 흡수해 충돌을 sandbox 에서 해소한 뒤 parent 로 안전 머지 + env 동기화. worktree-only (main 에서 호출 시 차단).
 ---
 
 # Worktree Merge-Back (v2.5.2 — auto)
 
-워크트리에서 진행한 feature 작업을 parent (main) 워크트리로 안전하게 머지 + 환경 파일 동기화. "Merge down before merging up" 패턴 — 충돌 해결은 feature sandbox 에서만, parent 워크트리는 항상 깨끗. v2.5.1+ 에서 자동화 강화 (parent 로컬 흡수 + 재귀 머지 자동 + env LLM 판단 + `/worktree-remove` 안내). v2.5.2+ 에서 dirty working tree 자동 커밋 추가 (커밋 안 된 변경이 있으면 묻지 않고 자동 커밋 후 진행 — 사용자 명시 요청).
+워크트리에서 진행한 feature 작업을 parent (main) 워크트리로 안전하게 머지 + 환경 파일 동기화. "Merge down before merging up" 패턴 — 충돌 해결은 feature sandbox 에서만, parent 워크트리는 항상 깨끗. v2.5.1+ 에서 자동화 강화 (parent 로컬 흡수 + 재귀 머지 자동 + env LLM 판단 + `/remove-worktree` 안내). v2.5.2+ 에서 dirty working tree 자동 커밋 추가 (커밋 안 된 변경이 있으면 묻지 않고 자동 커밋 후 진행 — 사용자 명시 요청).
 
 **Announce at start:** "I'm using the worktree-merge-back skill — feature → parent merge with sandbox conflict resolution + env sync."
 
@@ -15,7 +15,7 @@ description: 커맨드 /worktree-merge-back 명시 호출로만 진입 — 자�
 
 ## When to Use
 
-- 사용자가 명시적으로 `/worktree-merge-back` 또는 본 skill 호출 시에만
+- 사용자가 명시적으로 `/merge-back-worktree` 또는 본 skill 호출 시에만
 - 자동 발동 경로 없음 — `finishing-a-development-branch` 등 다른 skill 의 자동 호출 X
 - 의도 명확 분기점 (사용자가 머지 의사 결정 완료한 시점)
 
@@ -207,12 +207,12 @@ symlink 발견 시 별도 prose 보고 후 사용자 선택. silent cp 절대 X.
 ✅ Merge 완료. Feature 워크트리: <FEATURE_BRANCH> → <MAIN_BRANCH> (commit: <merge-sha>)
 
 다음 단계 (필요 시 직접 실행):
-  - 워크트리 + 브랜치 정리: /worktree-remove   (v2.5.1+ 신규 슬래시 명령, 단독 호출)
+  - 워크트리 + 브랜치 정리: /remove-worktree   (v2.5.1+ 신규 슬래시 명령, 단독 호출)
   - Remote 동기화:         git -C <main-path> pull   (parent 로컬 stale 시)
   - Remote push:           git -C <main-path> push origin <main-branch>
 ```
 
-→ 사용자가 의도에 맞게 직접 선택. `setting-up-worktrees` 의 "keep worktree" / "discard" 자유 결정 보존. v2.5.1+ 에서 `/worktree-remove` 가 워크트리 + 브랜치 정리를 한 슬래시로 묶음 (chain X — 명시 호출만).
+→ 사용자가 의도에 맞게 직접 선택. `setting-up-worktrees` 의 "keep worktree" / "discard" 자유 결정 보존. v2.5.1+ 에서 `/remove-worktree` 가 워크트리 + 브랜치 정리를 한 슬래시로 묶음 (chain X — 명시 호출만).
 
 ## Anti-Patterns
 
@@ -228,7 +228,7 @@ symlink 발견 시 별도 prose 보고 후 사용자 선택. silent cp 절대 X.
 | Step 4.5 symlink 를 `cp -L` (dereference) 로 따라가서 복사 | `-P` (보존) default. symlink 발견 시 별도 prose 보고. |
 | `git push --force` 사용 | NEVER. push 자체를 skill 이 하지 않음 (Step 5 안내만). |
 | `cd <parent-path> && git ...` 패턴 | `git -C <parent-path>` 사용. cwd 변경 X. |
-| 사후 처리 자동 실행 (worktree 제거 / push) | 모두 안내만. 사용자가 직접 (v2.5.1+ 에서 `/worktree-remove` 단독 슬래시 명령). |
+| 사후 처리 자동 실행 (worktree 제거 / push) | 모두 안내만. 사용자가 직접 (v2.5.1+ 에서 `/remove-worktree` 단독 슬래시 명령). |
 | Step 1 dirty 시 즉시 종료 + 사용자 재호출 요구 | (v2.5.2+ 폐기) 자동 커밋 후 진행. 사용자 명시 요청 — 묻지 않고 알아서 커밋. |
 | Step 1 자동 커밋을 silent (파일 목록·메시지 안 알림) 로 실행 | NEVER. 커밋 전 파일 목록 + 생성 메시지 prose 알림 필수 (원치 않는 파일 섞임 catch). |
 | Step 1 커밋 메시지를 고정 문구로 생성 | 변경 내용 요약해서 의미 있는 한 줄 메시지 (사용자 이력 추적 가능하게). |
@@ -251,7 +251,7 @@ symlink 발견 시 별도 prose 보고 후 사용자 선택. silent cp 절대 X.
   1. **D-1** Step 3 머지 대상 `origin/$MAIN_BRANCH` → 로컬 `$MAIN_BRANCH` (사용자 의도 그대로)
   2. **D-2** 충돌 처리 = git default 재귀 머지 자동 + semantic conflict 만 prose 안내 (자동화 ↑, 안전성 유지)
   3. **D-3** Step 4.5 신규 — env 파일 LLM 판단 + 선택적 cp (silent 절대 X)
-  4. **D-4** `/worktree-remove` 신규 슬래시 명령 (독립, chain X) — Step 5 안내에 호출 추가
+  4. **D-4** `/remove-worktree` 신규 슬래시 명령 (독립, chain X) — Step 5 안내에 호출 추가
 - 안전성 핵심 (HARD-GATE worktree-only / `--strategy ours/theirs` 자동 차단) 모두 유지.
 
 ## Why v2.5.2

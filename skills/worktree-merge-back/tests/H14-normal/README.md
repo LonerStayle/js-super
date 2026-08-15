@@ -12,7 +12,7 @@ Feature 워크트리 안 + working tree clean + Step 3 충돌 없음 → 1회 �
 
 ## Trigger
 
-feature-x 워크트리에서 `/worktree-merge-back` 호출.
+feature-x 워크트리에서 `/merge-back-worktree` 호출.
 
 ## Expected
 
