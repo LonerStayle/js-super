@@ -1013,3 +1013,32 @@ git commit -m "test: 무맥락 검증자 병렬 E2E 자기 검증 기록"
 - **무엇이**: 무맥락-검증자-병렬-implementation-plan.md 전체 (§1 Task 1~10, §2 위험 코드 지점 8건, §3 롤백 전략). `**원본**` 블록 13개 전부 byte-equal 검사 통과
 - **영향범위**: 없음 (최초 생성). 검증 중 보완 2건 — 두 프롬프트에 코드 영향 분석 배제 지시 추가 (D4 명시화), 수용 기준 1·3·6 을 덮는 Task 10 (E2E 자기 검증) 신설
 - **연관 항목**: CH-20260815-001, CH-20260815-002, CH-20260815-003
+
+### [2026-08-15 10:04] [코드-수정] (batch: tasks 1..10)
+- **id**: CH-20260815-005
+- **이유**: 무맥락 검증자 병렬 피처 구현 — `verifying-spec` 이 메인 자체 검증과 동시에 맥락 없는 보조 에이전트 둘(단독 / 대조)을 백그라운드로 띄우고, 결과를 메인이 중재해 보고서 하나로 낸다
+- **무엇이**: skills/verifying-spec/SKILL.md, skills/verifying-spec/clean-solo-prompt.md, skills/verifying-spec/clean-cross-prompt.md, commands/tech-design.md, commands/write-plan.md, commands/auto-tech-design.md, commands/auto-write-plan.md, skills/js-super-sub-driven/tests/H16-clean-verify/README.md, CLAUDE.md, 그리고 상위 문서 2종(requirements FR-5 / 본 계획서)
+- **영향범위**: `verifying-spec` 을 부르는 4곳(tech-design / writing-plans / auto-tech-design / auto-writing-plans)에 절차가 자동 전파된다. 이 4개 스킬 본문 변경은 0 이며, Task 9 의 회귀 grep 이 그 불변식을 고정한다. 코드 실행 단계(spec-reviewer-prompt.md)와 `/sync-html` / og-* / worktree 계열은 영향 0
+- **위험 카테고리**: breaking
+- **task별 세부 (10건)**:
+  - Task 1: `skills/verifying-spec/clean-solo-prompt.md:1-77` — 단독 검증자 프롬프트 신규. 상위 문서 경로를 받지 않는 것이 핵심 (none) — commits: `8bd4d8c`
+  - Task 2: `skills/verifying-spec/clean-cross-prompt.md:1-75` — 대조 검증자 프롬프트 신규 (none) — commits: `9bb3010`
+  - Task 3: `skills/verifying-spec/SKILL.md` — HARD-GATE 를 대체 금지로 좁히고 EXCEPTION 2 신설, Clean-Context Verifiers 섹션 + 보고서 형식 확장 + Acceptance 4~6 (`breaking`) — commits: `2d62e17`
+  - Task 4: `commands/tech-design.md` — `--no-clean-verify` 안내 (none) — commits: `60bae54`
+  - Task 5: `commands/write-plan.md` — 동일 (none) — commits: `8fbbe12`
+  - Task 6: `commands/auto-tech-design.md` — 동일 (none) — commits: `9686e7b`
+  - Task 7: `commands/auto-write-plan.md` — 동일 (none) — commits: `c4d2d49`
+  - Task 8: `skills/js-super-sub-driven/tests/H16-clean-verify/README.md:1-49` — 세 시나리오 fixture (none) — commits: `1e3a5ff`
+  - Task 9: `CLAUDE.md` — 결합 메모 + 회귀 탐지 grep 11항목. 검증자가 잡은 따옴표 결함 1건 반영 (none) — commits: `3dceb67`
+  - Task 10: E2E 자기 검증 기록 + 검증자 지적 5건 수정 (`breaking` — 중재 절차 재작성) — commits: `55203df`
+- **연관 commits**: `ad04b42..55203df`
+- **변경 전/후 코드**: 생략 — `git show <SHA>` 로 조회
+- **연관 항목**: CH-20260815-004, CH-20260815-006
+
+### [2026-08-15 10:04] [검증] (task: Task 10 — 실제 흐름 자기 검증)
+- **id**: CH-20260815-006
+- **이유**: 요구사항 수용 기준 1~6 확인. 특히 6번(메인 판단과 무맥락 검증자 보고가 서로 다른 항목을 최소 1건 이상 지적)은 실제로 돌려보지 않으면 확인할 수 없다
+- **무엇이**: `CLAUDE.md` 회귀 탐지 grep 11항목 실행 / H16 fixture S1 기대 항목 7건 대조 / 새 절차로 두 검증자 실제 dispatch
+- **결과**: PASS — 회귀 grep 11/11 기대값 일치(stderr 오류 0). S1 기대 항목 7/7 통과. 수용 기준 6 은 크게 넘겨 충족: 메인 자체 검증이 누락 2건을 잡은 데 비해 무맥락 검증자 둘은 겹치지 않는 지적 10건을 냈고, 그 중 5건이 배포된 산출물의 실제 결함이라 즉시 수정했다(중재 절차의 기각 경로 부재 / 단독 검증자 지적이 문서를 못 고치던 것 / 응답 없음 판단 시점 미정의 / fixture 가 스킬 본문보다 느슨했던 것 / `git diff main` 회귀 검사가 머지 후 무의미했던 것). 미검증 잔여: 슬래시 완주 경로(플래그 인식 → 게이트 노출)는 다음 피처의 `/tech-design` 에서 확인된다
+- **연관 commit**: `55203df`
+- **연관 항목**: CH-20260815-005
