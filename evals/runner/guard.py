@@ -68,7 +68,7 @@ def check_read_only(command: str) -> GuardResult:
     """셸 명령이 읽기 전용이면 허용, 아니면 이유와 함께 차단."""
     command = _join_continuations(command)
 
-    masked = _mask_quoted(command)
+    masked = mask_quoted(command)
     if masked is None:
         return GuardResult(False, "따옴표가 닫히지 않음")
 
@@ -178,7 +178,7 @@ def _join_continuations(command: str) -> str:
     return re.sub(r"\\\s*\n\s*", " ", command)
 
 
-def _mask_quoted(command: str) -> str | None:
+def mask_quoted(command: str) -> str | None:
     """따옴표 안 내용을 같은 길이의 밑줄로 덮는다.
 
     구조 문자(파이프·리다이렉션)를 찾을 때 따옴표 안을 보면 안 된다.

@@ -1,0 +1,27 @@
+# 착수 기준선 2026-08-15 14:25
+## 보존 대상
+no-ask 섹션 제목 보유 파일: 12
+Advise: run /og-brainstorm (brainstorming 내): 3
+visual-companion.md 참조 파일: 2
+체인 invoke auto-tech-design: 1
+체인 invoke auto-writing-plans: 1
+체인 invoke auto-executing-plans: 1
+## PRD 문자열 분포
+skills/auto-brainstorming/SKILL.md:1
+skills/brainstorming/SKILL.md:59
+skills/js-super-sub-driven/SKILL.md:1
+skills/tech-design/SKILL.md:11
+commands/brainstorm.md:1
+skills/writing-plans/SKILL.md:2
+commands/og-brainstorm.md:3
+README.md:7
+CLAUDE.md:1
+
+# 완료 시점 2026-08-15 14:39
+## 보존 대상
+no-ask 섹션 제목 보유 파일: 12
+Advise: run /og-brainstorm (brainstorming 내): 3
+visual-companion.md 참조 파일: 3
+체인 invoke auto-tech-design: 1
+체인 invoke auto-writing-plans: 1
+체인 invoke auto-executing-plans: 1

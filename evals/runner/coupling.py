@@ -12,6 +12,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from evals.runner.guard import mask_quoted
+
 FENCE_OPEN = re.compile(r"^```(bash|sh|shell)\s*$")
 FENCE_CLOSE = re.compile(r"^```\s*$")
 EXPECTED = re.compile(r"^#\s*expected:\s*(?P<value>.+?)\s*$", re.IGNORECASE)
@@ -85,7 +87,7 @@ def infer_check(rule: Rule) -> tuple[str, str]:
     이 구분을 안 하면 목록 명령의 기대값 0 을 숫자 비교로 처리해
     "숫자를 못 읽음" 이 무더기로 난다.
     """
-    last_segment = rule.command.split("|")[-1]
+    last_segment = _last_pipeline_segment(rule.command)
     is_count = bool(
         WC_L.search(last_segment)
         or GREP_COUNT.search(last_segment)
@@ -104,6 +106,20 @@ def infer_check(rule: Rule) -> tuple[str, str]:
     if target == 0:
         return "zero", "lines"
     return ("lines_gte" if rule.wants_at_least else "lines_eq"), "lines"
+
+
+def _last_pipeline_segment(command: str) -> str:
+    """따옴표 밖의 마지막 파이프 뒤 구간을 돌려준다.
+
+    그냥 `command.split("|")[-1]` 을 쓰면 따옴표 안의 정규식 대체 기호까지
+    파이프로 오인한다. `grep -c "a\\|b" file` 이 잘려서 grep 을 못 알아보고
+    개수 명령을 목록 명령으로 잘못 판정한다.
+    """
+    masked = mask_quoted(command)
+    if masked is None:
+        return command
+    index = masked.rfind("|")
+    return command if index == -1 else command[index + 1:]
 
 
 def collect_rules(repo_root: Path) -> list[Rule]:

@@ -1,5 +1,5 @@
 ---
-description: 새 피처의 <slug>-requirements.md(PRD)를 작성합니다. 기획 레벨 합의 후 /design-tech으로 넘어갑니다.
+description: 새 피처의 <slug>-requirements.md 를 소크라테스 대화로 작성합니다. 기획 레벨 합의 후 /design-tech으로 넘어갑니다.
 ---
 
 # /brainstorm

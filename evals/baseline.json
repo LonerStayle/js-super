@@ -1,8 +1,23 @@
 {
  "cases": {
+  "coupling/0136f6e13e7a": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
   "coupling/031e7db4dd05": {
    "label": "blocked",
    "reason": "\"각 N\" 은 파일마다 N 이라는 뜻이라 목록 명령으로는 기계 판정 불가. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
+  },
+  "coupling/0553c61433ed": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
+  "coupling/0555e436f6ca": {
+   "label": "blocked",
+   "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
    "verdict": "PENDING"
   },
   "coupling/079339083f99": {
@@ -35,6 +50,11 @@
    "reason": "",
    "verdict": "PASS"
   },
+  "coupling/140b520284fa": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
   "coupling/151bab66a576": {
    "label": "blocked",
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
@@ -50,6 +70,11 @@
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
    "verdict": "PENDING"
   },
+  "coupling/1abb0bec0f05": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
   "coupling/1b0c6861d478": {
    "label": "confirmed",
    "reason": "",
@@ -64,6 +89,11 @@
    "label": "blocked",
    "reason": "자리표시자가 들어 그대로 실행 불가. fixture 이관 시 실제 경로로 바꾼다 (2차).",
    "verdict": "BLOCKED"
+  },
+  "coupling/1f04a0bac6ff": {
+   "label": "blocked",
+   "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
   },
   "coupling/20228c2a6bf3": {
    "label": "confirmed",
@@ -115,6 +145,16 @@
    "reason": "",
    "verdict": "PASS"
   },
+  "coupling/358522c9af6d": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
+  "coupling/374633f7ecc7": {
+   "label": "blocked",
+   "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
+  },
   "coupling/38678d90d3d6": {
    "label": "confirmed",
    "reason": "",
@@ -155,12 +195,27 @@
    "reason": "H17 fixture 의 기대값 0 은 낡음. CLAUDE.md 가 정본이고 auto-* 3 스킬의 안티 패턴 행 3건은 정상 (2026-08-15 사용자 결정, CH-20260815-003 참조).",
    "verdict": "FAIL"
   },
+  "coupling/446b4b5f3bc1": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
+  "coupling/44a08939b922": {
+   "label": "blocked",
+   "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
+  },
   "coupling/4873231e0f2c": {
    "label": "blocked",
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
    "verdict": "PENDING"
   },
   "coupling/4ae9f9d9a8e8": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
+  "coupling/4fcde152113a": {
    "label": "confirmed",
    "reason": "",
    "verdict": "PASS"
@@ -174,6 +229,11 @@
    "label": "blocked",
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
    "verdict": "PENDING"
+  },
+  "coupling/57cbcf2291b8": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
   },
   "coupling/589b337aeb5e": {
    "label": "confirmed",
@@ -200,6 +260,16 @@
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
    "verdict": "PENDING"
   },
+  "coupling/5f34618df9fe": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
+  "coupling/60ff64b57d47": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
   "coupling/613212be5c3d": {
    "label": "confirmed",
    "reason": "",
@@ -215,10 +285,20 @@
    "reason": "",
    "verdict": "PASS"
   },
+  "coupling/64d98a771c64": {
+   "label": "blocked",
+   "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
+  },
   "coupling/6681f017e1d5": {
    "label": "blocked",
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
    "verdict": "PENDING"
+  },
+  "coupling/66ed20d87704": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
   },
   "coupling/6977d00955e1": {
    "label": "blocked",
@@ -229,6 +309,11 @@
    "label": "blocked",
    "reason": "자리표시자(<slug> 등)가 들어 그대로 실행 불가. fixture 를 케이스로 옮길 때 실제 경로로 바꾼다 (2차).",
    "verdict": "BLOCKED"
+  },
+  "coupling/6df84eac6b0e": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
   },
   "coupling/6e83580e2360": {
    "label": "blocked",
@@ -245,6 +330,11 @@
    "reason": "",
    "verdict": "PASS"
   },
+  "coupling/7236ca45735d": {
+   "label": "blocked",
+   "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
+  },
   "coupling/7274d68c6321": {
    "label": "blocked",
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
@@ -255,10 +345,25 @@
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
    "verdict": "PENDING"
   },
+  "coupling/762193001b3c": {
+   "label": "blocked",
+   "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
+  },
+  "coupling/76559233a3a8": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
   "coupling/7a8ac853667b": {
    "label": "confirmed",
    "reason": "",
    "verdict": "PASS"
+  },
+  "coupling/7b8bb65bae20": {
+   "label": "blocked",
+   "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
   },
   "coupling/7d469dfee13c": {
    "label": "confirmed",
@@ -285,12 +390,37 @@
    "reason": "",
    "verdict": "PASS"
   },
+  "coupling/8bae37875564": {
+   "label": "blocked",
+   "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
+  },
   "coupling/8bfbf30a227d": {
    "label": "confirmed",
    "reason": "",
    "verdict": "PASS"
   },
   "coupling/8e3b9ae309e1": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
+  "coupling/8fe3e97a0f33": {
+   "label": "blocked",
+   "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
+  },
+  "coupling/90feac14383e": {
+   "label": "blocked",
+   "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
+  },
+  "coupling/915ba0a3458e": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
+  "coupling/926aea5ee82f": {
    "label": "confirmed",
    "reason": "",
    "verdict": "PASS"
@@ -304,6 +434,11 @@
    "label": "confirmed",
    "reason": "",
    "verdict": "PASS"
+  },
+  "coupling/99ed563a4a70": {
+   "label": "blocked",
+   "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
   },
   "coupling/9b56c2498fff": {
    "label": "confirmed",
@@ -320,10 +455,20 @@
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
    "verdict": "PENDING"
   },
+  "coupling/a06fbd898517": {
+   "label": "blocked",
+   "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
+  },
   "coupling/a08c4a6f4ea2": {
    "label": "confirmed",
    "reason": "",
    "verdict": "PASS"
+  },
+  "coupling/a286472a696b": {
+   "label": "blocked",
+   "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
   },
   "coupling/a3016d7d7f69": {
    "label": "confirmed",
@@ -336,6 +481,11 @@
    "verdict": "PASS"
   },
   "coupling/a4e6d65a0476": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
+  "coupling/a62a5bf1252d": {
    "label": "confirmed",
    "reason": "",
    "verdict": "PASS"
@@ -354,6 +504,11 @@
    "label": "confirmed",
    "reason": "",
    "verdict": "PASS"
+  },
+  "coupling/ad42622f91a8": {
+   "label": "blocked",
+   "reason": "자연어 또는 파일별 기대값. 모델 판정 대상 (2차).",
+   "verdict": "PENDING"
   },
   "coupling/b040022cff13": {
    "label": "blocked",
@@ -395,6 +550,21 @@
    "reason": "",
    "verdict": "PASS"
   },
+  "coupling/bca27ade0d9a": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
+  "coupling/bf869a299cb9": {
+   "label": "regression-open",
+   "reason": "main 의 룰 자체가 틀림. 흐름도에서 블록 이름이 반복되어 grep -c 가 18을 내는데 기대값은 4. main 원본에서도 같은 결과. 룰 작성자가 기대값을 고치거나 명령을 좁혀야 한다.",
+   "verdict": "FAIL"
+  },
+  "coupling/c1a7ecd2032a": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
   "coupling/c3845d8c4041": {
    "label": "blocked",
    "reason": "기대값 주석이 없어 통과 기준이 정의되지 않음. 룰 작성자가 기대값을 채워야 한다.",
@@ -414,6 +584,16 @@
    "label": "blocked",
    "reason": "자리표시자(<slug> 등)가 들어 그대로 실행 불가. fixture 를 케이스로 옮길 때 실제 경로로 바꾼다 (2차).",
    "verdict": "BLOCKED"
+  },
+  "coupling/c82dc26e39f7": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
+  "coupling/c87a65597862": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
   },
   "coupling/ca9bade00288": {
    "label": "blocked",
@@ -440,7 +620,17 @@
    "reason": "",
    "verdict": "PASS"
   },
+  "coupling/d168fa4404fe": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
   "coupling/d2774b361d76": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
+  "coupling/d69b61a77088": {
    "label": "confirmed",
    "reason": "",
    "verdict": "PASS"
@@ -454,6 +644,11 @@
    "label": "blocked",
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
    "verdict": "PENDING"
+  },
+  "coupling/dae056b62d03": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
   },
   "coupling/daecd937337d": {
    "label": "stale",
@@ -505,12 +700,27 @@
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
    "verdict": "PENDING"
   },
+  "coupling/eed6263bdf89": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
+  "coupling/eedde24711b1": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
   "coupling/f17a18b93179": {
    "label": "confirmed",
    "reason": "",
    "verdict": "PASS"
   },
   "coupling/f230e24f285e": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
+  "coupling/f4d230ddee00": {
    "label": "confirmed",
    "reason": "",
    "verdict": "PASS"
@@ -535,6 +745,11 @@
    "reason": "",
    "verdict": "PASS"
   },
+  "coupling/fcf1fc04b32b": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
   "coupling/fd06b0efef38": {
    "label": "confirmed",
    "reason": "",
@@ -547,7 +762,7 @@
   },
   "pytest/scripts+evals": {
    "label": "confirmed",
-   "reason": "180 passed in 1.63s",
+   "reason": "179 passed in 1.83s",
    "verdict": "PASS"
   },
   "self/command-skill-name-collision": {
@@ -558,7 +773,7 @@
   "self/eval-assets-not-loaded": {
    "label": "regression-open",
    "reason": "commands/audit-report-prompt.md 가 프롬프트 자산인데 js-super:audit-report-prompt 슬래시로 등록됨. 고치려면 자산을 commands/ 밖으로 옮기고 commands/audit-risk.md 참조 3곳을 같이 수정해야 한다. 옮길 위치는 미정 (/audit-risk 는 소유 스킬이 없는 커맨드).",
-   "verdict": "FAIL"
+   "verdict": "PASS"
   }
  },
  "schema_version": 1
