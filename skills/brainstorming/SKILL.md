@@ -392,14 +392,16 @@ AI 가 small/large 분명 판정할 필요 없음. 명시적 small 신호 catch 
 
 ## Self-Review
 
-Mode-aware. PRD mode runs both checks; Socratic mode runs only the abstract scan (the PRD-specific items don't apply to free-form prose).
+초안을 다 쓴 뒤 처음 보는 눈으로 여섯 가지를 훑는다.
 
-7. **Placeholder scan**: Any "TBD", "TODO", incomplete sections, or vague requirements? Fix them.
-8. **Internal consistency**: Do any sections contradict each other?
-9. **Scope check**: Is this focused enough for a single feature, or does it need decomposition? If yes, split.
-10. **Ambiguity check**: Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
+1. **미완성 표현**: "TBD", "TODO", 비어 있는 섹션, 뭉뚱그린 요구가 있는가? 고친다.
+2. **내부 모순**: 서로 어긋나는 서술이 있는가?
+3. **범위**: 한 피처로 묶이는가, 나눠야 하는가? 나눠야 하면 나눈다.
+4. **중의성**: 두 가지로 읽히는 요구가 있는가? 하나로 정하고 명시한다.
+5. **제외 항목 취합**: 대화에서 나온 제외가 문서에 다 들어갔는가? 블록 3 에서 되돌려준 목록과 대조한다.
+6. **기술 세부 누출**: 구현 방법이나 파일 구조가 본문에 섞였는가? 다음 단계 산출물로 넘긴다.
 
-Fix any issues inline. No need to re-review — just fix and move on.
+찾은 문제는 그 자리에서 고친다. 다시 검토할 필요 없이 고치고 넘어간다.
 
 ## Asking the User a Gate Question (v1.1.8+)
 
