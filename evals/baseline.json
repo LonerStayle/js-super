@@ -547,7 +547,7 @@
   },
   "pytest/scripts+evals": {
    "label": "confirmed",
-   "reason": "180 passed in 1.53s",
+   "reason": "180 passed in 1.63s",
    "verdict": "PASS"
   },
   "self/command-skill-name-collision": {
@@ -556,9 +556,9 @@
    "verdict": "PASS"
   },
   "self/eval-assets-not-loaded": {
-   "label": "confirmed",
-   "reason": "",
-   "verdict": "PASS"
+   "label": "regression-open",
+   "reason": "commands/audit-report-prompt.md 가 프롬프트 자산인데 js-super:audit-report-prompt 슬래시로 등록됨. 고치려면 자산을 commands/ 밖으로 옮기고 commands/audit-risk.md 참조 3곳을 같이 수정해야 한다. 옮길 위치는 미정 (/audit-risk 는 소유 스킬이 없는 커맨드).",
+   "verdict": "FAIL"
   }
  },
  "schema_version": 1

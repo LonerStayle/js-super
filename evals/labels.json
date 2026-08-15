@@ -207,6 +207,10 @@
   "coupling/f72f10c9cdbc": {
    "label": "blocked",
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차)."
+  },
+  "self/eval-assets-not-loaded": {
+   "label": "regression-open",
+   "reason": "commands/audit-report-prompt.md 가 프롬프트 자산인데 js-super:audit-report-prompt 슬래시로 등록됨. 고치려면 자산을 commands/ 밖으로 옮기고 commands/audit-risk.md 참조 3곳을 같이 수정해야 한다. 옮길 위치는 미정 (/audit-risk 는 소유 스킬이 없는 커맨드)."
   }
  }
 }

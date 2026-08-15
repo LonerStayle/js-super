@@ -20,6 +20,10 @@ expect:
     argv: ["bash", "-c", "ls -d evals/commands agents/evals 2>/dev/null | wc -l"]
     op: eq
     value: 0
+  - kind: shell
+    argv: ["bash", "-c", "n=0; for f in commands/*.md; do head -1 \"$f\" | grep -q '^---$' || n=$((n+1)); done; echo $n"]
+    op: eq
+    value: 0
 traceability: [수용기준-8, 수용기준-11]
 ---
 
@@ -34,8 +38,20 @@ traceability: [수용기준-8, 수용기준-11]
 `commands/` 아래 하위 디렉토리가 재귀로 스캔되고 디렉토리명이 콜론으로 이어지기
 때문이다. 2026-08-15 에 `tests/eval-fixtures/H23-e2e/` 로 옮겨 해소했다.
 
+**아직 안 고친 같은 종류 (2026-08-15 발견)**: `commands/audit-report-prompt.md` 는
+`/audit-risk` 가 보조 에이전트에 넣는 프롬프트 자산인데, `commands/` 에 있어서
+`js-super:audit-report-prompt` 슬래시로 등록된다 (실측 확인). 설명도 없이 목록에만 뜬다.
+
+다른 프롬프트 자산은 전부 소유 스킬 옆에 있다
+(`skills/generating-html/html-companion-prompt.md`,
+`skills/js-super-sub-driven/implementer-prompt.md` 등).
+`/audit-risk` 는 스킬이 없는 커맨드라 옮길 자리가 정해지지 않았다.
+옮기면 `commands/audit-risk.md` 의 참조 3곳(264, 271, 297행)도 같이 고쳐야 한다.
+
 **검증 방법**: `commands/` 아래에 하위 디렉토리가 하나도 없어야 하고,
-`skills/` 와 `agents/` 아래에 eval 관련 디렉토리가 없어야 한다.
+`skills/` 와 `agents/` 아래에 eval 관련 디렉토리가 없어야 하며,
+`commands/*.md` 가 전부 frontmatter 로 시작해야 한다 (frontmatter 없는 파일은
+커맨드가 아니라 자산인데 커맨드로 등록되고 있다는 뜻).
 
 **놓치는 것**: 플러그인 캐시에 실제로 무엇이 로드되는지는 여기서 안 본다.
 그건 헤드리스 실행이 붙는 2차에서 로드 정보 한 줄을 읽어 확인한다.
