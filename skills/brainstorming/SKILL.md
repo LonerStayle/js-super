@@ -1,9 +1,9 @@
 ---
 name: brainstorming
-description: You MUST use this before creating any feature, component, or behavior change. Offers two modes — PRD (structured, default) for productisation work, or Socratic (free-form, upstream-superpowers style) for exploratory/internal work. Both modes write <slug>-requirements.md to docs/features/YYYY-MM-DD-<slug>/. Does NOT cover technical design — that belongs to tech-design.
+description: You MUST use this before creating any feature, component, or behavior change. Runs a Socratic dialogue — one question at a time, alternatives with tradeoffs, then a free-form requirements doc whose only fixed parts are the title, a `## 요구 항목` section with FR-N anchors, and the change-log footer. Writes <slug>-requirements.md to docs/features/YYYY-MM-DD-<slug>/. Does NOT cover technical design — that belongs to tech-design.
 ---
 
-# Brainstorming → <slug>-requirements.md (PRD or Socratic)
+# Brainstorming → <slug>-requirements.md (Socratic)
 
 ## 사용자 질문 룰 (v2.0.3+) — 항상 AskUserQuestion
 
@@ -29,13 +29,12 @@ Notification 훅 (`elicitation_dialog` 매처) 이 알람을 발화하려면 도
 
 js-superpowers' brainstorming is restricted to **planning-level requirements output**. Technical design and implementation plans are handled by `tech-design` and `writing-plans` skills respectively.
 
-Two modes are offered at the start, both producing the same file path (`<slug>-requirements.md`) so downstream skills work uniformly:
+The dialogue is Socratic: one question at a time, alternatives with tradeoffs before any decision, and a single review of the finished draft. There is no mode gate — every feature goes through the same path.
 
-- **PRD mode (default)** — structured 6-section template (배경/목적 → 사용자 스토리 → FR → NFR → 범위 밖 → 수용 기준), with **adaptive question planning** (skip/minimize sections that don't fit the feature category — no over-asking).
-- **Socratic mode** — free-form upstream-superpowers-style dialogue: one question at a time, propose 2-3 approaches with tradeoffs, section-by-section approval. Output is free-form prose under the same filename. Use this for internal/exploratory work where the PRD template would be over-structure.
+The output is free-form prose. Only three things are fixed: the H1 title, a `## 요구 항목` section whose items carry `FR-N` anchors, and the `## 변경이력` footer. Everything else takes whatever shape the dialogue produced. Downstream skills (`tech-design`, `verifying-spec`, `writing-plans`, `change-propagation`) read the `FR-N` anchors, so that section is the one contract this doc must honour.
 
 <HARD-GATE>
-This skill is for PRD only — NOT writing <slug>-tech-design.md, NOT touching code, NOT writing implementation plans. brainstorming = PRD only.
+This skill produces requirements only — NOT <slug>-tech-design.md, NOT code, NOT implementation plans. Technical decisions belong to the next step.
 
 After <slug>-requirements.md is approved AND change-history is logged, **automatically invoke** the `tech-design` skill via the Skill tool (v1.1.9+ — the separate "proceed?" gate has been removed). Output a one-line interrupt-notice `ℹ️ /tech-design 단계로 자동 넘어갑니다. 멈추려면 "stop" 입력해주세요.` so the user can pause if needed. If they explicitly type "stop"/"멈춰"/"잠깐", exit cleanly with `ℹ️ 알겠습니다. /tech-design 은 나중에 직접 실행해주세요.`. The original combined approval gate (#8) already captured the user's intent; a separate proceed gate just adds friction.
 </HARD-GATE>
@@ -70,22 +69,21 @@ You MUST create a TaskCreate task for each of these items and complete them in o
 0. **Entry Router (v1.1.15+, FR-3 · v2.8.1+ og 커맨드 전용화)** — 사용자 입력에 명시적 small 신호 감지 시 `/og-brainstorm` 실행 안내 한 줄 (자동 invoke 아님 — og 는 커맨드 전용). 그 외 → AskUserQuestion 게이트. 자세한 룰은 "Entry Router" 섹션 참조.
 1. **프로젝트 컨텍스트 탐색** — files, docs, recent commits
 2. **피처 이름/슬러그 확인** — one question, then create `docs/features/YYYY-MM-DD-<slug>/`
-3. **모드 선택** — ask user PRD (default) or Socratic. Parse intent (any language). On ambiguous reply, default to PRD with a one-line note. See "Mode Selection" below.
-4. **모드별 질의응답 진행**:
-   - **[PRD mode]** Feature category mini-question → **Visual Companion offer** (if UI/layout/visual feature based on category — own message, mode-aware trigger) → Question plan agreement → Adaptive PRD questions (only the agreed subset). See "PRD Adaptive Planning" below.
-   - **[Socratic mode]** **Visual Companion offer** (if visual questions ahead — own message) → Free-form upstream-style dialogue: one question at a time, propose 2-3 approaches with tradeoffs, section-by-section approval. See "Socratic Mode" below.
-5. **자체 점검** — mode-specific (PRD: 6-item PRD scan + 4-item abstract scan; Socratic: 4-item abstract scan only)
-6. **사용자 검토 (PRD 초안)** — show the RAW `<slug>-requirements.md`, get approval (loop until OK; on changes → revise → re-show)
-7. **변경이력 기록** — append first `[요구사항-수정]` entry via `change-history` skill
-8. **개발방향 단계 자동 진행** — Right after the change-history entry is logged, auto-invoke `tech-design` via the Skill tool with a one-line interrupt-notice. On user "stop"/"멈춰"/"잠깐" → exit cleanly with notice telling the user to run /tech-design later.
+3. **질문으로 좁히기** — 한 번에 하나씩. 커버 목록 다섯 가지가 채워지면 멈춘다. 자세한 룰은 "Socratic Procedure" 의 블록 1 참조.
+4. **대안 비교와 방향 결정** — 2~3안을 고정 비교축으로 제시하고 추천을 먼저 말한다. 블록 2 참조.
+5. **요구사항 문서 작성** — 자유 산문. `## 요구 항목` 섹션과 `FR-N` 만 필수. 제외 항목 취합 룰 포함. 블록 3 참조.
+6. **자체 점검** — 여섯 항목 단일 목록. "Self-Review" 참조.
+7. **사용자 검토** — 초안 전체를 한 번에 보여주고 승인받는다. 수정 요청이 오면 고쳐서 다시 보여준다.
+8. **변경이력 기록** — append first `[요구사항-수정]` entry via `change-history` skill
+9. **개발방향 단계 자동 진행** — Right after the change-history entry is logged, auto-invoke `tech-design` via the Skill tool with a one-line interrupt-notice. On user "stop"/"멈춰"/"잠깐" → exit cleanly with notice telling the user to run /tech-design later.
 
 If you find yourself skipping ahead, stop and create the missing task.
 
 **Before invoking the next skill via Skill tool, mark ALL checklist TaskCreate items as completed (in_progress → completed). The Skill tool transition does NOT auto-complete prior tasks. (v1.1.15+, FR-2)**
 
-## Anti-Pattern: "This is too simple to need a PRD"
+## Anti-Pattern: "This is too simple to need a requirements doc"
 
-Every project goes through this process. A single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The PRD can be short (a few sentences), but you MUST write it and get user approval.
+Every project goes through this process. A single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The doc can be short (a few sentences and one 요구 항목), but you MUST write it and get user approval.
 
 ## Output
 
@@ -96,26 +94,37 @@ Save path: `docs/features/YYYY-MM-DD-<slug>/<slug>-requirements.md`
 
 ## Document Schema (<slug>-requirements.md)
 
+자유 산문이다. 섹션 이름과 개수는 대화에서 나온 대로 쓴다. 고정된 것은 셋뿐이다 — H1 제목, `## 요구 항목` 섹션, `## 변경이력` footer.
+
 ```markdown
 # 요구사항: <feature-name>
 
-> **다음 단계 안내**: 이 문서는 PRD (기획 단계 요구사항만) 입니다. 다음 단계로 `tech-design` skill (또는 `/tech-design` 슬래시) 을 호출해서 `<slug>-tech-design.md` (기술 설계서) 를 만드세요. 기술 결정이나 구현 세부사항은 여기 박지 마세요 — 그건 다음 산출물 (tech-design, 3개 트랙이면 plan 까지) 에 들어갑니다.
+> **다음 단계 안내**: 이 문서는 요구사항 (기획 단계) 입니다. 다음 단계로 `tech-design` skill (또는 `/tech-design` 슬래시) 을 호출해서 `<slug>-tech-design.md` (기술 설계서) 를 만드세요. 기술 결정이나 구현 세부사항은 여기 박지 마세요 — 그건 다음 산출물 (tech-design, 3개 트랙이면 plan 까지) 에 들어갑니다.
 
-## 1. 배경/목적
-## 2. 사용자 스토리 / 시나리오
-## 3. 기능 요구사항 (FR)
-   - FR-1: ...
-   - FR-2: ...
-## 4. 비기능 요구사항 (NFR)
-## 5. 범위 밖 (Out of Scope)
-## 6. 수용 기준 (Acceptance Criteria)
+<대화에서 나온 섹션들. 예: ## 배경 / ## 핵심 결정 / ## 인터랙션 흐름 / ## 우려와 해결>
+
+## 요구 항목
+
+**FR-1**: <시스템이 무엇을 해야 하는지 한 문장>
+**FR-2**: ...
+
+<필요하면 더: ## 범위 밖 / ## 수용 기준 / ## 다음 단계>
 
 ---
 ## 변경이력
 <!-- change-history skill auto-appends entries here, oldest first -->
 ```
 
-## Process Flow (two modes)
+`## 요구 항목` 규칙:
+
+- 섹션 이름은 `## 요구 항목` 으로 고정한다. 다른 이름을 쓰면 다운스트림이 못 찾는다.
+- 항목마다 `FR-N` 을 붙인다. 번호는 1부터 순서대로, 문서 안에서 유일해야 한다.
+- 항목이 많으면 소제목으로 묶어도 된다 (`### 제거` / `### 신설` 등). 번호는 묶음을 가로질러 이어진다.
+- 요구 항목이 하나뿐이어도 섹션과 번호를 쓴다. 다운스트림은 셀 수 있는 단위를 필요로 한다.
+
+모드를 표기하는 줄은 쓰지 않는다. 경로가 하나뿐이라 표기할 모드가 없다.
+
+## Process Flow
 
 ```dot
 digraph brainstorm_flow {
@@ -124,24 +133,16 @@ digraph brainstorm_flow {
     "AskUserQuestion 게이트\n(og / js-super)" [shape=diamond];
     "Explore project context" [shape=box];
     "Confirm feature name + slug" [shape=box];
-    "Mode gate: PRD (default) / Socratic" [shape=diamond];
 
-    "[PRD] Category mini-question\n(외부향 / 내부도구 / 수정 / 인프라)" [shape=box];
-    "[PRD] UI/visual feature?" [shape=diamond];
-    "[PRD] Offer Visual Companion\n(own message, no other content)" [shape=box];
-    "[PRD] Show question plan\n(essential / minimal / skipped + reasons)" [shape=box];
-    "[PRD] User confirms plan?" [shape=diamond];
-    "[PRD] Run agreed PRD questions\n(only the agreed subset)" [shape=box];
+    "블록 1 — 질문\n(한 번에 하나, 커버 목록 5)" [shape=box];
+    "커버 목록 다 채워졌나?" [shape=diamond];
+    "블록 2 — 대안\n(2~3안, 고정 비교축 3, 추천 먼저)" [shape=box];
+    "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/FR-N)" [shape=box];
+    "제외 항목 취합해서 되돌려주기" [shape=box];
 
-    "[Socratic] Visual questions ahead?" [shape=diamond];
-    "[Socratic] Offer Visual Companion\n(own message, no other content)" [shape=box];
-    "[Socratic] Free-form clarifying questions\n(one at a time)" [shape=box];
-    "[Socratic] Propose 2-3 approaches\n(tradeoffs + recommendation)" [shape=box];
-    "[Socratic] Present design sections\n(section-by-section approval)" [shape=box];
-
-    "Self-review (mode-specific)" [shape=box];
-    "User reviews RAW <slug>-requirements.md" [shape=diamond];
-    "Invoke change-history\n(first entry: 요구사항-수정/생성)" [shape=box];
+    "Self-review (6 items)" [shape=box];
+    "블록 4 — 승인\n초안 전체 한 번에" [shape=diamond];
+    "Invoke change-history\n(first entry: 요구사항-수정)" [shape=box];
     "Auto-invoke /tech-design (no gate, v1.1.9+)" [shape=box];
     "Auto-invoke tech-design skill" [shape=doublecircle];
     "Exit: tell user to run /tech-design later" [shape=oval];
@@ -151,30 +152,19 @@ digraph brainstorm_flow {
     "AskUserQuestion 게이트\n(og / js-super)" -> "Advise: run /og-brainstorm\n(no auto-invoke)" [label="og"];
     "AskUserQuestion 게이트\n(og / js-super)" -> "Explore project context" [label="js-super"];
     "Explore project context" -> "Confirm feature name + slug";
-    "Confirm feature name + slug" -> "Mode gate: PRD (default) / Socratic";
+    "Confirm feature name + slug" -> "블록 1 — 질문\n(한 번에 하나, 커버 목록 5)";
 
-    "Mode gate: PRD (default) / Socratic" -> "[PRD] Category mini-question\n(외부향 / 내부도구 / 수정 / 인프라)" [label="PRD"];
-    "[PRD] Category mini-question\n(외부향 / 내부도구 / 수정 / 인프라)" -> "[PRD] UI/visual feature?";
-    "[PRD] UI/visual feature?" -> "[PRD] Offer Visual Companion\n(own message, no other content)" [label="yes"];
-    "[PRD] UI/visual feature?" -> "[PRD] Show question plan\n(essential / minimal / skipped + reasons)" [label="no — skip"];
-    "[PRD] Offer Visual Companion\n(own message, no other content)" -> "[PRD] Show question plan\n(essential / minimal / skipped + reasons)";
-    "[PRD] Show question plan\n(essential / minimal / skipped + reasons)" -> "[PRD] User confirms plan?";
-    "[PRD] User confirms plan?" -> "[PRD] Show question plan\n(essential / minimal / skipped + reasons)" [label="add items"];
-    "[PRD] User confirms plan?" -> "[PRD] Run agreed PRD questions\n(only the agreed subset)" [label="OK"];
-    "[PRD] Run agreed PRD questions\n(only the agreed subset)" -> "Self-review (mode-specific)";
+    "블록 1 — 질문\n(한 번에 하나, 커버 목록 5)" -> "커버 목록 다 채워졌나?";
+    "커버 목록 다 채워졌나?" -> "블록 1 — 질문\n(한 번에 하나, 커버 목록 5)" [label="아직 — 다음 질문"];
+    "커버 목록 다 채워졌나?" -> "블록 2 — 대안\n(2~3안, 고정 비교축 3, 추천 먼저)" [label="다 채워짐 / 사용자가 그만"];
+    "블록 2 — 대안\n(2~3안, 고정 비교축 3, 추천 먼저)" -> "제외 항목 취합해서 되돌려주기";
+    "제외 항목 취합해서 되돌려주기" -> "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/FR-N)";
+    "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/FR-N)" -> "Self-review (6 items)";
+    "Self-review (6 items)" -> "블록 4 — 승인\n초안 전체 한 번에";
 
-    "Mode gate: PRD (default) / Socratic" -> "[Socratic] Visual questions ahead?" [label="Socratic"];
-    "[Socratic] Visual questions ahead?" -> "[Socratic] Offer Visual Companion\n(own message, no other content)" [label="yes"];
-    "[Socratic] Visual questions ahead?" -> "[Socratic] Free-form clarifying questions\n(one at a time)" [label="no — skip"];
-    "[Socratic] Offer Visual Companion\n(own message, no other content)" -> "[Socratic] Free-form clarifying questions\n(one at a time)";
-    "[Socratic] Free-form clarifying questions\n(one at a time)" -> "[Socratic] Propose 2-3 approaches\n(tradeoffs + recommendation)";
-    "[Socratic] Propose 2-3 approaches\n(tradeoffs + recommendation)" -> "[Socratic] Present design sections\n(section-by-section approval)";
-    "[Socratic] Present design sections\n(section-by-section approval)" -> "Self-review (mode-specific)";
-
-    "Self-review (mode-specific)" -> "User reviews RAW <slug>-requirements.md";
-    "User reviews RAW <slug>-requirements.md" -> "User reviews RAW <slug>-requirements.md" [label="changes — revise → re-show"];
-    "User reviews RAW <slug>-requirements.md" -> "Invoke change-history\n(first entry: 요구사항-수정/생성)" [label="approve"];
-    "Invoke change-history\n(first entry: 요구사항-수정/생성)" -> "Auto-invoke /tech-design (no gate, v1.1.9+)";
+    "블록 4 — 승인\n초안 전체 한 번에" -> "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/FR-N)" [label="수정 요청 — 고쳐서 다시"];
+    "블록 4 — 승인\n초안 전체 한 번에" -> "Invoke change-history\n(first entry: 요구사항-수정)" [label="승인"];
+    "Invoke change-history\n(first entry: 요구사항-수정)" -> "Auto-invoke /tech-design (no gate, v1.1.9+)";
     "Auto-invoke /tech-design (no gate, v1.1.9+)" -> "Auto-invoke tech-design skill" [label="continue"];
     "Auto-invoke /tech-design (no gate, v1.1.9+)" -> "Exit: tell user to run /tech-design later" [label="user: stop/멈춰"];
 }
@@ -184,45 +174,18 @@ digraph brainstorm_flow {
 
 **1. Explore project context**
 - Skim existing files/docs/recent commits
-- Scope check: if the request bundles multiple independent subsystems, propose decomposition before continuing — never bundle multiple features into one PRD.
+- Scope check: if the request bundles multiple independent subsystems, propose decomposition before continuing — never bundle multiple features into one requirements doc.
 
 **2. Confirm feature name + slug** (1 question)
 - Ask: "What should we call this feature?" (e.g., '잔액 출금', '회원 보너스 지급')
 - Compute slug from the answer (replace spaces with hyphens)
 - Create folder: `docs/features/YYYY-MM-DD-<slug>/`
 
-**3. Mode selection gate** — see "Mode Selection" section below for the prompt template and intent parsing rules.
+**3~5. Socratic dialogue** — "Socratic Procedure" 의 블록 1~3 을 따른다. 질문으로 좁히고, 대안을 비교하고, 문서를 쓴다. 제외 항목 취합 룰은 블록 3 안에 있다.
 
-**4. Mode-specific dialogue**
-- **PRD** → "PRD Adaptive Planning" (category → plan agreement → adaptive questions)
-- **Socratic** → "Socratic Mode" (free-form upstream-style)
+**6. Self-review** — "Self-Review" 의 여섯 항목.
 
-Both modes ultimately produce `<slug>-requirements.md` at the same path.
-
-### PRD-mode special handling: 범위 밖 (Out of Scope) — CONSOLIDATE, do not re-ask
-
-Throughout the earlier dialogue (배경/목적, 사용자 스토리, FR, NFR), the user often says things like "X는 제외", "Y는 안 만들어", "Z는 다음 버전에" — track those exclusions as they are mentioned.
-
-When you reach the 범위 밖 step, do NOT ask "what's out of scope?" from scratch. Instead:
-
-1. List every exclusion already collected during the dialogue
-2. Show the consolidated list back to the user
-3. Ask only: "추가로 §5 범위 밖에 넣을 항목 있나요? 없으면 '없음'."
-
-Template (user-facing):
-```
-지금까지 명시된 제외 항목:
-- 의미검색 (대화 중 언급)
-- 다국어 검색 (FR-3 논의 중 보류)
-
-§5 범위 밖에 추가로 넣을 항목이 있나요? 없으면 "없음" 이라고 답해주세요.
-```
-
-If the user says "없음" or equivalent, §5 = the consolidated list as-is. If they add more, append. Do NOT start from a blank prompt — that wastes the user's time and can drop earlier-stated exclusions.
-
-**5. Self-review** (mode-specific, see checklist below)
-
-**6. Show the RAW doc + user review gate**
+**7. Show the RAW doc + user review gate**
 - Show the full RAW `<slug>-requirements.md`; await approval or change requests
 - If changes requested, revise per feedback → re-show RAW
 - On approval → continue to step 7
@@ -251,13 +214,13 @@ When `AskUserQuestion` is unavailable, ask in prose:
 
 > Approve `<slug>-requirements.md`? — `yes` / `no`
 
-**7. Invoke change-history skill** (first entry: initial creation)
+**8. Invoke change-history skill** (first entry: initial creation)
 - Tag: `[요구사항-수정]` (use the entry type even on first creation)
 - 이유: 신규 피처 brainstorming 결과
-- 무엇이: <slug>-requirements.md 전체 (PRD: FR-1..N / Socratic: free-form sections)
+- 무엇이: <slug>-requirements.md 전체 (FR-1..N + 대화에서 나온 섹션들)
 - 영향범위: 없음 (최초 생성)
 
-**8. Auto-proceed to tech-design (v1.1.9+ — no gate)**
+**9. Auto-proceed to tech-design (v1.1.9+ — no gate)**
 
 After change-history entry is logged, **automatically invoke** the `tech-design` skill (or `js-super:tech-design` depending on harness namespace). NO user gate here.
 
@@ -313,186 +276,86 @@ js-super:brainstorming 진입 시 1순위 발화. `/brainstorm` slash command �
 
 AI 가 small/large 분명 판정할 필요 없음. 명시적 small 신호 catch 만 정확하면 나머지는 게이트로 사용자 결정. false positive 안 발생.
 
-## Mode Selection
+## Socratic Procedure
 
-After the slug is set (step 2), ask the user to pick a mode. Use the standard Gate Question pattern (see "Asking the User a Gate Question" section).
+네 블록으로 진행한다. 앞 블록이 끝나야 다음으로 간다.
 
-**Tool form (preferred)**
+### 블록 1 — 질문
 
-Call `AskUserQuestion` with:
+한 번에 하나만 묻는다. 여러 개를 한 메시지에 담지 않는다. 고를 수 있는 형태로 물을 수 있으면 그렇게 한다.
 
-```json
-{
-  "question": "이 피처는 어떤 모드로 진행할까요? (잘 모르겠으면 PRD)",
-  "header": "모드 선택",
-  "multiSelect": false,
-  "options": [
-    {"label": "PRD (기본)", "description": "구조화 6-섹션, 외부 사용자향/제품 기능"},
-    {"label": "소크라테스식", "description": "자유 탐색, 내부 도구/탐색/실험"}
-  ]
-}
-```
+**커버 목록** — 다음 다섯 가지를 채우는 것이 목표다.
 
-**Prose fallback**
+1. 무엇을 만드는가 — 대상과 범위
+2. 왜 필요한가 — 해결하려는 문제
+3. 성공을 어떻게 아는가 — 판정 가능한 기준
+4. 무엇을 하지 않는가 — 명시적 제외
+5. 무엇이 걸림돌인가 — 제약과 의존
 
-When `AskUserQuestion` is unavailable:
+**종료 판정** — 다섯 가지가 다 채워지면 멈춘다. 개수 상한은 없다. 가벼운 사안이면 두세 개로 끝나고 무거운 사안이면 길어진다. 사용자가 먼저 "그만" 이라고 하면 채워진 것까지만 쓰고, 빈 항목은 문서에 `미정 — <이유>` 로 남긴다.
 
-```
-이 피처는 어떤 모드로 진행할까요?
+이미 답이 나온 항목을 다시 묻지 않는다. 사용자의 첫 입력이나 앞선 답변에 들어 있으면 그것으로 채우고 넘어간다.
 
-  1. PRD (default) — 구조화된 6-섹션 템플릿, 외부 사용자향/제품 기능에 적합. 카테고리에 맞춰 질문은 자동 최적화됨.
-  2. Socratic — 자유 탐색 대화, upstream superpowers 방식. 내부 도구/탐색/실험적 작업에 적합. 자유 형식 산출물.
+**사용자가 모르겠다고 할 때** — 순서대로 내려간다. 위 단계에서 풀리면 아래로 안 간다.
 
-어느 쪽? (잘 모르겠으면 PRD)
-```
+1. 같은 질문을 더 쉬운 말로 바꿔 다시 묻는다. 전문 용어를 빼고 구체적인 상황으로 바꾼다.
+2. 그래도 막히면 선택지를 만들어 고르게 한다. 각 선택지가 무엇을 뜻하는지 한 줄씩 붙인다.
+3. 그래도 막히면 기본값을 제안하고 "이대로 갈지" 만 확인한다. 그 기본값이 무엇을 전제하는지 한 줄 덧붙인다. 나중에 되짚을 수 있어야 한다.
 
-Parse intent in any language. Heuristics:
-- "1" / "PRD" / "구조화" / "기본" → PRD
-- "2" / "Socratic" / "소크라테스" / "자유" / "원본" → Socratic
-- Anything else → ask once more; if still unclear, default to PRD with a one-line note: "ℹ️ 잘 모르겠어서 PRD 로 기본 진행할게요."
+### 블록 2 — 대안
 
-Once chosen, the mode is fixed for this brainstorming run.
+방향을 정해야 하는 지점마다 2~3안을 제시한다. 하나만 내놓고 넘어가지 않는다.
 
-## PRD Adaptive Planning (PRD mode only)
+**비교축은 셋으로 고정한다.**
 
-Goal: avoid asking all 6 PRD questions when the feature category doesn't need them. Two sub-steps before the actual PRD questions begin.
+- 무엇이 달라지는가
+- 무엇을 포기하는가
+- 되돌리는 비용
 
-### Step P1 — Feature category mini-question
+**추천을 먼저 말한다.** 안을 나열한 뒤 "어느 쪽인가요" 로 끝내지 말고, 어느 쪽을 권하는지와 그 이유를 먼저 밝힌다. 그리고 **추천안이 깨지는 조건 하나**를 스스로 제시한다. "이 전제가 틀리면 다른 안이 낫습니다" 형태다.
 
-Ask once:
+고른 안과 버린 안, 그리고 고른 이유를 문서에 남긴다. 버린 안을 안 적으면 나중에 같은 논의를 처음부터 다시 하게 된다.
+
+### 블록 3 — 문서 작성
+
+`docs/features/YYYY-MM-DD-<slug>/<slug>-requirements.md` 를 쓴다. 형식은 "Document Schema" 를 따른다.
+
+**제외 항목은 취합해서 되돌려준다.** 대화 내내 사용자는 "X는 빼고", "Y는 다음에", "Z는 안 만들어" 같은 말을 한다. 그때마다 적어두었다가, 문서를 쓰기 전에 모아서 보여준다.
 
 ```
-이 피처의 한 줄 요약과 카테고리는?
+지금까지 나온 제외 항목입니다.
+- 의미 검색 (대화 중 언급)
+- 다국어 지원 (범위가 커진다고 하셔서 보류)
 
-  (a) 외부 사용자향 기능 (앱/웹의 사용자 노출 기능)
-  (b) 내부 도구 / 스크립트 (운영/백오피스/CLI)
-  (c) 기존 기능 수정 / 리팩터
-  (d) 인프라 / 운영
-
-요약: <한 줄> / 카테고리: a/b/c/d
+여기 더 넣을 게 있을까요? 없으면 "없음" 이라고 답해주세요.
 ```
 
-Parse the user's answer to fill the category. Heuristics + `category` is required — if missing, re-ask once.
+빈 상태에서 "범위 밖이 뭔가요" 라고 묻지 않는다. 사용자 시간을 뺏고, 앞서 말한 제외가 통째로 빠진다.
 
-### Step P1.5 — Visual Companion offer (PRD-stricter trigger)
+**기술 세부는 넣지 않는다.** 어떤 라이브러리를 쓸지, 파일을 어떻게 나눌지, 어떤 함수를 만들지는 다음 단계 산출물의 몫이다. 여기서는 "무엇이 되어야 하는가" 까지만 쓴다.
 
-After the category is set, evaluate whether upcoming questions will involve UI/layout/visual artifacts. The trigger:
+### 블록 4 — 승인
 
-- **Offer** if category is (a) 외부 사용자향 AND the one-liner mentions UI/screen/layout/dashboard/form/etc., OR if category is (c) 수정 with explicit visual scope. Examples: "대시보드 화면 추가", "회원가입 폼 리뉴얼", "리포트 레이아웃".
-- **Skip** for pure backend / API / data-flow / 내부 도구 / 인프라. PRD work is mostly textual; offering by default just adds noise.
+초안 전체를 한 번에 보여주고 승인받는다. 섹션마다 끊어서 확인받지 않는다. 확인 지점이 늘면 알람이 그만큼 늘고, 전체를 못 본 채로 부분에 동의하게 된다.
 
-If offering, the offer is its OWN message (no other content). See "Visual Companion" section below for the exact phrasing. If user declines, continue text-only.
+수정 요청이 오면 고쳐서 다시 전체를 보여준다. "어디를 고칠까요" 라고 되묻지 않는다. 사용자가 알아서 말한다.
 
-### Step P2 — Show the question plan, get explicit confirmation
+### 대화가 커질 때
 
-Compute the plan from this rubric:
-
-| 섹션 | (a) 외부향 | (b) 내부 도구 | (c) 수정 | (d) 인프라 |
-|---|---|---|---|---|
-| 1. 배경/목적 | ✅ 필수 | ✅ 필수 | ✅ 필수 | ✅ 필수 |
-| 2. 사용자 스토리 | ➖ 간소 | ⏭ 스킵 | ⏭ 스킵 | ⏭ 스킵 |
-| 3. FR | ✅ 필수 | ✅ 필수 | ✅ 필수 | ✅ 필수 |
-| 4. NFR | ➖ 간소 | ⏭ 스킵 | ⏭ 스킵 | ➖ 간소 |
-| 5. 범위 밖 | ➖ 간소 | ➖ 간소 | ➖ 간소 | ➖ 간소 |
-| 6. 수용 기준 | ➖ 간소* | ➖ 간소* | ➖ 간소* | ➖ 간소* |
-
-Legend: ✅ 필수 (full question) / ➖ 간소 (one-line answer accepted) / ⏭ 스킵 (don't ask, write "해당 없음 — <reason>" in the doc)
-
-\* §6 수용 기준은 ➖ 간소 디폴트. 자동화 테스트 강한 피처(API 명세 분명, 측정 지표 명확)면 사용자가 카테고리 게이트(P2)에서 "수용 기준 풀로" 라고 명시 시 ✅ 로 승격.
-
-Show the plan in user-facing form:
-
-```
-[<category>] 카테고리라서 다음 순서로 진행하려고 합니다:
-
-  ✅ 배경/목적 (필수)
-  ⏭ 사용자 스토리 — 스킵 (내부 도구라 외부 사용자 없음)
-  ✅ FR (필수)
-  ⏭ NFR — 스킵 (내부 도구는 NFR 의미 적음)
-  ➖ 범위 밖 — 간소 (1줄 또는 "없음")
-  ➖ 수용 기준 — 간소 (1줄, 풀로 가려면 "수용 기준 풀로")
-
-이대로 진행할까요? 추가로 깊게 묻고 싶은 항목 있나요?
-```
-
-Branches:
-- User OK → run only the planned questions
-- User wants more (e.g., "NFR 풀로 가자") → upgrade those items to ✅ 필수 and re-show, then run
-- User wants less → don't downgrade ✅ 필수 → 스킵 lightly. If they insist (e.g., "FR도 1줄로"), allow but warn once: "ℹ️ FR 간소화는 다음 단계 verify에서 누락 신호로 잡힐 수 있어요."
-
-### Step P3 — Run the agreed questions only
-
-For each section in the agreed plan:
-- ✅ 필수 → ask the full PRD question for that section (full question shapes: 배경/목적, 사용자 스토리, FR-N, NFR, 수용 기준)
-- ➖ 간소 → ask "한 줄 요약?" only
-- ⏭ 스킵 → don't ask; write `<section>: 해당 없음 — <reason from rubric>` in the doc
-
-The 범위 밖 (Out of Scope) consolidation rule still applies — track exclusions through the dialogue and offer them back. Do NOT ask from a blank prompt.
-
-## Socratic Mode
-
-Free-form upstream-superpowers-style dialogue. The doc is written as free-form prose, not the 6-section PRD template.
-
-### Process (Socratic)
-
-0. **Visual Companion offer (upstream-style trigger)** — evaluate whether upcoming questions will involve visual content (mockups, layouts, diagrams). If yes, offer the companion as its OWN message (no other content). See "Visual Companion" section below for the exact phrasing. If user declines, continue text-only. Skip silently for pure conceptual/code topics.
-1. **Clarifying questions** — one at a time. Cover purpose / constraints / success criteria. Prefer multiple choice when possible. Continue until the idea is shaped.
-2. **Propose 2-3 approaches** — with tradeoffs and your recommendation.
-3. **Present design sections** — section by section, get user approval after each. Section names emerge from the dialogue (no fixed schema).
-4. **Write the doc** at `docs/features/YYYY-MM-DD-<slug>/<slug>-requirements.md`:
-
-```markdown
-# 요구사항: <feature-name>
-
-> **모드**: Socratic (자유 형식). 다음 단계의 `tech-design` 가 본 문서를 자유 형식 산문으로 읽습니다 (PRD 6 섹션 ID 강제 X).
-
-<sections that emerged from the dialogue, e.g.:>
-## 배경
-## 핵심 결정
-## 인터랙션 흐름
-## 우려/해결
-## 다음 단계
-
----
-## 변경이력
-<!-- change-history skill auto-appends entries here, oldest first -->
-```
-
-Section names are NOT fixed — write whatever sections fit the dialogue. The only fixed parts are: H1 title (`# 요구사항: ...`), the Mode line, and the `## 변경이력` footer.
-
-### Self-review (Socratic — only the abstract scan)
-
-- Placeholder scan (TBD/TODO?)
-- Internal consistency
-- Scope check (single feature?)
-- Ambiguity check
-
-The 6-item PRD-specific scan does NOT apply (no FR-N/NFR template to check).
-
-### When Socratic mode breaks down
-
-If, mid-dialogue, the conversation reveals that the work IS user-facing/productisation in nature, suggest switching to PRD mode once: "ℹ️ 이 피처는 외부 사용자향처럼 보이는데 PRD 모드가 더 안전합니다. 전환할까요?" — if the user agrees, restart with the PRD planning step (step P1). Otherwise stay in Socratic.
+주고받다 보니 요청이 독립된 여러 덩어리로 드러나면, 계속 진행하기 전에 나누자고 제안한다. 한 문서에 여러 피처를 담으면 다음 단계가 전부 엉킨다.
 
 ## Self-Review
 
-Mode-aware. PRD mode runs both checks; Socratic mode runs only the abstract scan (the PRD-specific items don't apply to free-form prose).
+초안을 다 쓴 뒤 처음 보는 눈으로 여섯 가지를 훑는다.
 
-**PRD-specific (6 items, PRD mode only) — applies only to sections marked ✅ 필수 in the agreed plan; ➖ 간소 / ⏭ 스킵 sections are exempt:**
-1. Every FR has a unique id (FR-1, FR-2, ...)
-2. Every acceptance criterion is measurable (Yes/No answerable)
-3. Out-of-scope is explicit (use "없음" if truly empty) AND captures every exclusion the user mentioned during the dialogue — not just answers to step 5 itself
-4. No technical/implementation details leak into the body — those belong in <slug>-tech-design.md
-5. NFRs are concrete, not vague (e.g., "fast" → "p95 < 200ms")
-6. User stories include all three of who/what/why
+1. **미완성 표현**: "TBD", "TODO", 비어 있는 섹션, 뭉뚱그린 요구가 있는가? 고친다.
+2. **내부 모순**: 서로 어긋나는 서술이 있는가?
+3. **범위**: 한 피처로 묶이는가, 나눠야 하는가? 나눠야 하면 나눈다.
+4. **중의성**: 두 가지로 읽히는 요구가 있는가? 하나로 정하고 명시한다.
+5. **제외 항목 취합**: 대화에서 나온 제외가 문서에 다 들어갔는가? 블록 3 에서 되돌려준 목록과 대조한다.
+6. **기술 세부 누출**: 구현 방법이나 파일 구조가 본문에 섞였는가? 다음 단계 산출물로 넘긴다.
 
-**Abstract scan (4 items, both modes, fresh-eyes pass):**
-
-7. **Placeholder scan**: Any "TBD", "TODO", incomplete sections, or vague requirements? Fix them.
-8. **Internal consistency**: Do any sections contradict each other?
-9. **Scope check**: Is this focused enough for a single feature, or does it need decomposition? If yes, split.
-10. **Ambiguity check**: Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
-
-Fix any issues inline. No need to re-review — just fix and move on.
+찾은 문제는 그 자리에서 고친다. 다시 검토할 필요 없이 고치고 넘어간다.
 
 ## Asking the User a Gate Question (v1.1.8+)
 
@@ -541,34 +404,36 @@ Always prefer the tool when available. Detect availability via the harness tool 
 
 | Wrong | Right |
 |---|---|
-| Embedding tech decisions ("use Postgres", "REST API") in the PRD | Put those in <slug>-tech-design.md. PRD is tech-agnostic. |
-| Writing only "user can do X" without an FR id | `FR-N: <action>` plus a measurable acceptance criterion |
+| Embedding tech decisions ("use Postgres", "REST API") in the requirements doc | Put those in <slug>-tech-design.md. Requirements stay tech-agnostic. |
+| Writing only "user can do X" without an FR id | `FR-N: <action>` in the `## 요구 항목` section, plus a way to tell it's done |
 | Asking "범위 밖이 뭔가요?" from scratch when exclusions were stated earlier | Consolidate prior exclusions first; ask only for additions on top |
+| Renaming the `## 요구 항목` section or dropping FR numbers | Downstream skills look for that exact heading and those anchors. Keep both. |
 | Auto-crossing into design without asking | Always ask the approval prompt. On approval, auto-invoke. Without approval, stop. |
 | Asking the user to type `/tech-design` manually | Once approved, auto-invoke tech-design via Skill tool. User shouldn't have to retype. |
-| "Skip PRD because it's simple" | Simple cases just produce a shorter PRD, never a missing one. |
+| "Skip the doc because it's simple" | Simple cases just produce a shorter doc, never a missing one. |
 
 ## Red Flags (STOP if you think these)
 
 | Thought | Reality |
 |---|---|
 | "Just go straight to code, the user knows what they want" | Assumptions remain unvalidated. Run the questions. |
-| "Intent is obvious, summarize in one line" | Even obvious intent has gaps. Run the agreed P2 plan instead of skipping it — fill ✅ 필수 fully, ➖ 간소 with a one-line, ⏭ 스킵 with `해당 없음 — <reason>`. Skipping the planning step is the failure mode, not slimming. |
-| "spec.md is fine, isn't it?" | js-superpowers separates PRD from technical spec. The file is <slug>-requirements.md, not spec.md. |
+| "Intent is obvious, summarize in one line" | Even obvious intent has gaps. Walk the 커버 목록 — an item you can already answer costs one line, an item you skipped costs a rewrite later. |
+| "spec.md is fine, isn't it?" | js-superpowers separates requirements from technical spec. The file is <slug>-requirements.md, not spec.md. |
+| "The user said 모르겠다, so I'll just pick something" | Walk the 3단 사다리 instead. Rephrase, then offer choices, then propose a default and say what it assumes. |
 
 ## After Save — Invoke change-history
 
 On first save of <slug>-requirements.md, write a `[요구사항-수정]` entry:
 
 - 이유: 신규 피처 brainstorming 결과
-- 무엇이: <slug>-requirements.md 전체 (FR-1..N)
+- 무엇이: <slug>-requirements.md 전체 (FR-1..N + 대화에서 나온 섹션들)
 - 영향범위: 없음 (최초 생성)
 
 ## Visual Companion
 
 A browser-based companion for showing mockups, diagrams, and visual options during brainstorming. Available as a tool — not a mode. Accepting the companion means it's available for questions that benefit from visual treatment; it does NOT mean every question goes through the browser.
 
-**PRD context — stricter trigger:** PRD work is mostly textual. Do NOT offer the companion by default. Offer ONLY when the feature explicitly involves UI/layout/visual artifacts (e.g., "대시보드 화면", "폼 디자인", "리포트 레이아웃"). For pure backend/API/data-flow PRDs, skip the offer entirely.
+**Trigger:** Requirements work is mostly textual. Do NOT offer the companion by default. Offer ONLY when the feature explicitly involves UI/layout/visual artifacts (e.g., "대시보드 화면", "폼 디자인", "리포트 레이아웃"). For pure backend/API/data-flow work, skip the offer entirely.
 
 **Offering the companion (only when triggered):** When upcoming questions will involve visual content (mockups, layouts, diagrams), offer it once for consent:
 
@@ -593,16 +458,17 @@ If they agree to the companion, read the detailed guide before proceeding:
 - **YAGNI** — drop unnecessary requirements ruthlessly
 - **2-3 approaches** — when proposing options, show alternatives plus a recommendation
 - **Be flexible** — backtrack and re-ask when an earlier answer no longer holds
+- **Incremental validation** — confirm each piece as it lands instead of saving every check for the end
 
 ## Related Skills
 
 - `tech-design` — next step (technical spec)
-- `change-history` — first PRD entry
-- `change-propagation` — when the PRD is later edited, cascades to downstream MDs
+- `change-history` — first requirements entry
+- `change-propagation` — when the requirements doc is later edited, cascades to downstream MDs
 
 ## 승인 게이트 / multi-choice 결정 = AskUserQuestion 도구 (v2.3.6+)
 
-산출물 (PRD / tech-design / impl-plan) 작성 완료 후 사용자에게 **승인 / 수정 / 다른 방향** 류 multi-choice 결정을 요청할 때 → **반드시 `AskUserQuestion` 도구로 호출**. prose 자연어 멀티 옵션 금지.
+산출물 (요구사항 / tech-design / impl-plan) 작성 완료 후 사용자에게 **승인 / 수정 / 다른 방향** 류 multi-choice 결정을 요청할 때 → **반드시 `AskUserQuestion` 도구로 호출**. prose 자연어 멀티 옵션 금지.
 
 ### Why
 
@@ -616,7 +482,7 @@ If they agree to the companion, read the detailed guide before proceeding:
 - alternatives 2-3 안 사용자 선택
 - partial 수정 후 재승인
 
-기존 v2.0.3+ Socratic clarifying Q boilerplate + v2.1.1+ Other / 모호 응답 처리 룰 보존 (변경 X). 본 룰은 그 위에 multi-choice 결정 게이트 시점 명시 보강. CLAUDE.md "AskUserQuestion 도구 우선 (v2.3.5+)" 글로벌 룰의 PRD 흐름 측 boilerplate.
+기존 v2.0.3+ Socratic clarifying Q boilerplate + v2.1.1+ Other / 모호 응답 처리 룰 보존 (변경 X). 본 룰은 그 위에 multi-choice 결정 게이트 시점 명시 보강. CLAUDE.md "AskUserQuestion 도구 우선 (v2.3.5+)" 글로벌 룰의 요구사항 흐름 측 boilerplate.
 
 ### Anti-Patterns
 

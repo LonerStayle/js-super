@@ -186,7 +186,7 @@ js-super 자체 skill 의 Checklist 본문에 박힌 task 명칭은 **사용자 
 - **기존 4 skill body 변경 0** — auto-* 본문은 self-contained mirror. 본 4 skill 어떤 라인도 손대지 않음. 회귀 catch: `git diff HEAD~1 HEAD -- skills/{brainstorming,tech-design,writing-plans,executing-plans}/SKILL.md` empty 보장.
 - **Gate #14 (실행 모드 선택) override 명시** — v1.1.12+ "자동승인 절대 X" 룰을 auto-executing-plans 가 명시 override. 일반 `/execute-plan` 영향 0 (게이트 그대로). auto-* 명시적 invoke 시에만 작동.
 - **AskUserQuestion 호출 부재** — auto-* 본문 어디에도 AskUserQuestion 호출 X. clarifying Q 는 메인 turn 의 일반 prose 질의로 처리.
-- **Visual Companion / 카테고리 미니질문 / question plan 동의 등 PRD-mode 분기 부재** — Socratic only (D3).
+- **Visual Companion 호출 부재** — 정식 흐름의 PRD-mode 분기 (카테고리 미니질문 / question plan 동의) 는 "PRD 제거 + 소크라테스 단일화" 에서 폐지됨. auto-* 는 원래부터 Socratic only (D3).
 
 요약: auto-* 추가 / 변경은 atomic 으로 묶어 처리. 기존 4 skill 변경 + auto-* 변경 같이 commit X (분리 release).
 
@@ -458,7 +458,7 @@ grep -c "Other / 모호 응답 처리 (v2.1.1+)" \
 - 메인 turn 의 ad-hoc 결정 요청 (skill body 무관)
 - v2.3.5+ execute-plan 룰 1 (critical 7 케이스) 재질문
 - 사용자가 모호 응답 시 재질문 (v2.1.1+ Other 룰)
-- 모드 선택 게이트 진입 시점
+- 실행 모드 선택 게이트 진입 시점
 - BLOCKED → self-correct / reorder 도 실패 시 사용자 개입
 
 ### prose 예외 (좁게)
@@ -1605,3 +1605,62 @@ grep -l "clean-solo-prompt\|clean-cross-prompt\|no-clean-verify" skills/tech-des
 test -f skills/js-super-sub-driven/tests/H16-clean-verify/README.md && echo OK
 # expected: OK
 ```
+
+## PRD 제거 + 소크라테스 단일화 결합
+
+`brainstorming` 의 두 갈래(PRD / 소크라테스)를 없애고 소크라테스 단일 경로로 통합. 요구사항 문서의 계약은 `## 요구 항목` 섹션 + `FR-N` 앵커. spec: `docs/features/2026-08-15-prd제거-소크라테스고도화/`.
+
+### 핵심 룰
+
+- **E-1 요구 항목 계약** — 산출물에서 고정되는 것은 H1 / `## 요구 항목` + `FR-N` / `## 변경이력` 셋. 섹션 이름을 바꾸거나 번호를 빼면 다운스트림 4곳(`tech-design` / `verifying-spec` / `writing-plans` / `change-propagation`)이 앵커를 잃는다
+- **E-2 모드 표기 줄 폐지** — 경로가 하나라 표기할 모드가 없음. `tech-design` 의 입력 형식 감지도 함께 삭제 (옛 문서와 새 문서가 같은 `FR-N` 앵커를 공유하므로 구분 불필요). 옛 6섹션 문서는 `## 3. 기능 요구사항 (FR)` 아래 같은 앵커를 갖고 있어 그대로 읽힌다
+- **E-3 소크라테스 4블록** — 질문(커버 목록 5 + 종료 판정 + 3단 사다리) / 대안(고정 비교축 3 + 추천 먼저 + 깨지는 조건) / 문서(제외 항목 취합) / 승인(초안 전체 한 번)
+- **E-4 질문 개수 상한 없음** — 커버 목록 충족으로 종료 판정. `auto-brainstorming`(1~5개)·`fast-tasks`(2~3개)와 의도적으로 다름
+- **E-5 auto-\* 는 별도 사본** — 정식을 고쳐도 자동 전파되지 않음. 이번에는 `auto-brainstorming` 의 산출물 뼈대만 동기화하고 대화 절차 차이는 그대로 둠
+- **E-6 공용 문구 3곳 동시** — 승인 게이트 boilerplate("산출물 (요구사항 / tech-design / impl-plan)")는 `brainstorming` / `tech-design` / `writing-plans` 에 복제. 한 곳만 고치면 갈린다
+
+### 회귀 패턴
+
+| 누락 | 증상 |
+|---|---|
+| `## 요구 항목` 섹션 이름 변경 | 다운스트림 4곳이 앵커를 못 찾음 |
+| `FR-N` 번호 폐지 | `verifying-spec` A축이 셀 대상을 잃어 조용히 통과 |
+| `tech-design` 감지 분기만 지우고 요구 항목 읽는 경로 누락 | 옛 6섹션 문서가 안 읽힘 |
+| 공용 문구를 한 스킬만 교체 | 세 스킬의 문구가 갈림 |
+| `README.md` 게이트 행만 삭제 | 바로 위 개수 표기와 불일치 |
+| 흐름도 부분 수정 | 연결선이 없는 노드를 가리켜 그래프가 깨짐 |
+
+### 회귀 확인
+
+```bash
+# 모드 게이트 잔존 확인
+grep -c "Mode Selection\|PRD Adaptive Planning\|PRD mode\|Socratic mode" \
+  skills/brainstorming/SKILL.md skills/tech-design/SKILL.md
+# expected: 각 0
+
+# 요구 항목 계약 존재
+grep -c "## 요구 항목" skills/brainstorming/SKILL.md skills/auto-brainstorming/SKILL.md
+# expected: 각 1 이상
+
+# 소크라테스 4블록
+grep -c "블록 1 — 질문\|블록 2 — 대안\|블록 3 — 문서 작성\|블록 4 — 승인" skills/brainstorming/SKILL.md
+# expected: 4
+
+# 보존 계약 (건드리면 안 되는 것)
+grep -c "Advise: run /og-brainstorm" skills/brainstorming/SKILL.md
+# expected: 1 이상
+grep -rlF '`--no-ask` 플래그 (v2.5+)' skills/ commands/ | wc -l
+# expected: 12
+```
+
+### 영향 범위
+
+- 스킬 4(`brainstorming` / `tech-design` / `auto-brainstorming` / `writing-plans` 공용 문구) + 커맨드 2 + `README.md` + `CLAUDE.md` + 예제 1
+- `scripts/` `hooks/` 영향 0 — 요구사항 문서는 파일 이름만 검사
+- `verifying-spec` / `change-propagation` 본문 변경 0 — `FR-N` 유지로 기존 앵커 그대로 동작
+- og-\* / worktree 계열 영향 0. (`generating-html` 은 이 작업과 별개로 main 에서 저장소에서 제거됐다 — 머지 시점에 확인)
+- 버전 bump 는 main 전용 룰에 따라 main 에서
+
+### 미해결 (별건)
+
+- `tech-design` 흐름도의 조건부 주제 노드 3개(`Q: data model changes?` / `Q: external interfaces?` / `Q: test strategy?`)는 노드 선언과 연결선의 이름이 다르다 (`\n[활성 시만]` 접미사 유무). 착수 전부터 있던 문제이며 이번 범위 밖. 고칠 때는 선언 쪽 라벨에 접미사를 붙이거나 연결선 쪽에서 떼어 한쪽으로 맞출 것

@@ -5,7 +5,7 @@ description: auto-flow 진입점. /auto-brainstorm 명시 호출 전용 — 대�
 
 # Auto Brainstorming → <slug>-requirements.md (Socratic auto)
 
-js-super:auto-brainstorming 은 명시적 사용자 invoke (`/auto-brainstorm <피처명>`) 시에만 작동. PRD `auto-flow-requirements.md` D1~D12 (D9 amend) + tech-design D-T1~D-T12 의 자동 흐름 본문.
+js-super:auto-brainstorming 은 명시적 사용자 invoke (`/auto-brainstorm <피처명>`) 시에만 작동. `auto-flow-requirements.md` D1~D12 (D9 amend) + tech-design D-T1~D-T12 의 자동 흐름 본문.
 
 **Announce at start:** "auto-brainstorming skill 로 자동 진행하겠습니다 (Socratic clarifying Q + AI 자동 chain)."
 
@@ -63,8 +63,9 @@ mkdir -p docs/features/$(date +%Y-%m-%d)-<slug>/
 
 ### Step 4 — 산출물 자동 작성
 
-`<slug>-requirements.md` 작성 (Socratic free-form):
-- H1 + Mode line + 배경 + 핵심 결정 + 우려/해결 + 다음 단계 + 변경이력 footer
+`<slug>-requirements.md` 작성 (자유 산문):
+- H1 + 다음 단계 안내 배너 + 배경 + 핵심 결정 + `## 요구 항목` (FR-N) + 우려/해결 + 다음 단계 + 변경이력 footer
+- `## 요구 항목` 과 `FR-N` 은 필수. 나머지 섹션은 대화에서 나온 대로. 모드 표기 줄은 쓰지 않는다.
 - RAW 본문 그대로.
 
 ### Step 5 — change-history 자동

@@ -1,11 +1,11 @@
 ---
-description: upstream superpowers 원본 brainstorming(자유 탐색 Socratic 방식) 흐름. js-super 확장(PRD/변경이력/위험주석)을 우회한 원본 그대로. /og-brainstorm 명시 호출 전용.
+description: upstream superpowers 원본 brainstorming(자유 탐색 Socratic 방식) 흐름. js-super 확장(변경이력/위험주석)을 우회한 원본 그대로. /og-brainstorm 명시 호출 전용.
 disable-model-invocation: true
 ---
 
 # /og-brainstorm — 원본 brainstorming (upstream superpowers 5.0.7)
 
-이 커맨드는 **upstream superpowers 5.0.7 의 원본 brainstorming 흐름**을 그대로 재현합니다. js-super 확장(PRD / 변경이력 / 위험주석 / HTML 시각화)을 우회합니다. 아래 절차를 따르세요.
+이 커맨드는 **upstream superpowers 5.0.7 의 원본 brainstorming 흐름**을 그대로 재현합니다. js-super 확장(변경이력 / 위험주석 / HTML 시각화)을 우회합니다. 아래 절차를 따르세요.
 
 피처명을 인수로 주거나(`/og-brainstorm 잔액 출금`) 인수 없이 호출하면 자유 탐색 대화로 시작합니다.
 
@@ -176,9 +176,9 @@ If they agree to the companion, read the detailed guide before proceeding:
 | 항목 | `/brainstorm` (js-super 확장) | `/og-brainstorm` (upstream 원본) |
 |---|---|---|
 | 산출물 경로 | `docs/features/<date>-<slug>/<slug>-requirements.md` | `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` |
-| 산출물 형식 | PRD 6-섹션 또는 Socratic 자유 형식 (모드 선택) | upstream 자유 형식 단일 |
+| 산출물 형식 | 자유 산문 + `## 요구 항목` 과 `FR-N` 필수 | upstream 자유 형식 단일 |
+| 대화 방식 | 소크라테스 4블록 (커버 목록 5 / 고정 비교축 3 / 3단 사다리) | upstream 자유 대화 |
 | 변경이력 footer | 자동 누적 | 없음 |
-| 적응형 질문 (카테고리별 스킵) | 있음 | 없음 — 자유 대화 |
 | 다음 단계 | `/tech-design` | `/og-write-plan` |
 
 ## 주의
