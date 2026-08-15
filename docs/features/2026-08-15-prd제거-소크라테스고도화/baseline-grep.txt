@@ -16,3 +16,12 @@ skills/writing-plans/SKILL.md:2
 commands/og-brainstorm.md:3
 README.md:7
 CLAUDE.md:1
+
+# 완료 시점 2026-08-15 14:39
+## 보존 대상
+no-ask 섹션 제목 보유 파일: 12
+Advise: run /og-brainstorm (brainstorming 내): 3
+visual-companion.md 참조 파일: 3
+체인 invoke auto-tech-design: 1
+체인 invoke auto-writing-plans: 1
+체인 invoke auto-executing-plans: 1
