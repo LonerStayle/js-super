@@ -1278,3 +1278,84 @@ python3 -c "from scripts.preflight import feature_depth; print('OK')"
 - skill 본문 9 + commands 4 + `scripts/preflight.py` + fixture H14 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서. og-* / fast-tasks / worktree 계열 영향 0
 - executing-plans / js-super-sub-driven skill 본문 변경 0 — plan 부재 안내 보강은 preflight `human_reason` 안에서
 - writing-plans `**Model**:` ↔ js-super-sub-driven 결합 — 3-doc 트랙 전용이라 영향 0
+
+## audit-risk 구성 결합
+
+`/audit-risk` 는 프로젝트의 보안 / 개인정보 / 비용 / 거버넌스를 1회성으로 점검하는 커맨드다. 예전에는 점검 보조 에이전트 5개와 별도의 HTML 보고서 생성 보조 에이전트(`commands/audit-report-prompt.md`)로 나뉘어 있었는데, 과장된 심각도·근거 없는 점수 표기가 사용자 catch 로 드러나면서 마크다운 단일 산출물 구조로 다시 썼다.
+
+### 핵심 룰
+
+- **산출물은 마크다운 하나** — `docs/audit/<timestamp>-audit-risk.md`. HTML 생성 경로가 없다. 보고서는 메인이 직접 `Write` 도구로 작성하고, 전용 보조 에이전트를 따로 부르지 않는다
+- **규모 판정은 두 조건 AND** — 소스 파일 40개 미만이고 총 줄 수도 8,000 미만일 때만 축소 모드. 하나라도 넘으면 전체 모드. 애매한 경우는 전체 모드 쪽으로 떨어진다
+- **축소 모드도 다섯 영역을 그대로 순회** — 보조 에이전트 수만 5개에서 1개로 줄어들 뿐, 점검 영역(외부 API 비용 / 개인정보 / 사용량·결제 로직 / LLM 에이전트 / 거버넌스)은 하나도 건너뛰지 않는다
+- **심각도는 심각 / 높음 / 보통 3단계** — 모두 실행 경로를 확인했다는 전제 위에서만 붙인다. 실행 경로를 확인하지 못한 항목은 심각도 없이 `unverified` 로 분리한다. 0~100 점수는 쓰지 않는다
+- **`status: "clean"` 반환 시 `checked` 배열 필수** — 점검했지만 없음과 점검하지 않음을 구분하기 위한 안전장치다
+- **비밀값은 값 자체를 남기지 않는다** — `redact_secret` 표시와 파일·줄 번호만 적고, raw 값은 어떤 필드에도 넣지 않는다 (기존 안전장치 그대로 유지)
+- **커맨드 본문과 H23 fixture 는 함께 고칠 것** — `commands/audit-risk.md` 와 `commands/audit-risk-tests/H23-e2e/` 는 한 쌍이다. 한쪽만 고치면 사람이 돌리는 시나리오와 실제 동작이 어긋난다
+- **보고서 본문은 한국어로 쓴다** — 사람이 읽는 값(`checked` / `title` / `evidence` / `impact` / `recommendation` / `summary` / `why_unverified` / `how_to_check`)은 한국어 문장. 파일 경로·함수 이름·명령어·라이브러리 이름처럼 그대로 검색해야 찾을 수 있는 것만 영어로 둔다. 영어 약어는 처음 나올 때 한국어 설명을 함께 적는다. 이 규칙은 공통 지시문과 Step 4 보고서 작성 지침 **양쪽**에 있어야 한다 (한쪽만 있으면 보조 에이전트가 영어로 돌려준 문장이 그대로 보고서에 실린다)
+
+### 회귀 패턴 (한쪽만 변경 시)
+
+| 누락 | 증상 |
+|---|---|
+| 커맨드만 고치고 fixture 미개정 | 사람이 돌리는 시나리오와 실제 동작이 어긋남 |
+| 커맨드만 고치고 README 미갱신 | 사용자가 없는 산출물(HTML)을 기대함 |
+| 규모 판정을 OR 로 완화 | 큰 프로젝트가 축소 모드로 빠져 점검 누락 |
+| `clean` 의 `checked` 필수 규칙 약화 | 점검했지만 없음과 점검하지 않음이 구분되지 않음 |
+| 심각도에 실행 경로 확인 전제를 뺌 | 근거 없는 심각도가 다시 붙어 과장 회귀 |
+| 점수 필드 부활 | 근거 없는 숫자가 다시 보고서에 들어감 |
+
+### 회귀 catch grep
+
+```bash
+grep -rn "audit-risk.html\|audit-report-prompt" commands/ README.md skills/
+# expected: 0
+
+test ! -f commands/audit-report-prompt.md && echo OK
+# expected: OK
+
+grep -n '"score"' commands/audit-risk.md
+# expected: 0
+
+grep -c '"clean"' commands/audit-risk.md
+# expected: 1 이상
+
+grep -c "disable-model-invocation: true" commands/audit-risk.md
+# expected: 1
+```
+
+### 영향 범위
+
+- `commands/audit-risk.md` 전면 재작성 + `commands/audit-report-prompt.md` 삭제 + `commands/audit-risk-tests/H23-e2e/` 2 파일 + README 4곳 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
+- audit-risk 는 애초에 HTML 생성 skill 을 거치지 않고 자체 보조 에이전트로 HTML 을 만들던 구조였고, 이번에 그 구조 자체를 걷어냈다 (이후 별도 작업에서 `generating-html` skill 과 `/sync-html` 커맨드도 저장소에서 제거됨)
+- og-* / auto-* / 워크트리 계열 영향 0 — 명시 호출 커맨드 1개 재작성 범위 밖
+
+## /tech-teach-me 결합 메모
+
+`commands/tech-teach-me.md` — 요구사항·기술설계·구현계획 문서를 강의로 쪼개 한 강씩 설명하는 커맨드 전용 절차. 커맨드 본문 인라인 (스킬 없음 — v2.8.1 컨텍스트 절감 원리 답습).
+
+### 전역 룰의 명시 예외 — AskUserQuestion 호출 금지
+
+CLAUDE.md 의 "AskUserQuestion 도구 우선 (v2.3.5+)" 전역 룰에 대한 **명시 예외**. 이 커맨드 안에서는 강 진행·심화·종료를 모두 사용자 자유 입력으로 받고 `AskUserQuestion` 을 호출하지 않는다.
+
+- **Why**: 강마다 팝업이 뜨면 학습 흐름이 끊기고 피로하다 (사용자 결정). 알람 fire 를 포기하는 대신 대화 리듬을 택함.
+- **회귀 catch**: 본문에 AskUserQuestion 호출 지시가 생기면 회귀. 금지 섹션의 catch 라인만 허용.
+
+### 영향 범위
+
+- 커맨드 1 신규 + README 유틸리티 표 1행 + 본 섹션. skill / scripts / hooks 영향 0
+- 읽기 전용 — 코드·문서 수정 경로 없음
+- 자동 발동 경로 없음 (`disable-model-invocation: true`)
+
+### 회귀 catch grep
+
+```bash
+test -f commands/tech-teach-me.md && grep -c "disable-model-invocation: true" commands/tech-teach-me.md
+# expected: 1
+
+grep -n "AskUserQuestion" commands/tech-teach-me.md
+# expected: 금지 섹션의 catch 라인 1건만
+
+test ! -d skills/tech-teach-me && echo "OK: 커맨드 전용 유지"
+# expected: OK
+```
