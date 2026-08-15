@@ -1559,9 +1559,11 @@ grep -cF 'no `model` argument' skills/verifying-spec/SKILL.md
 grep -lF -- "--no-clean-verify" commands/tech-design.md commands/write-plan.md commands/auto-tech-design.md commands/auto-write-plan.md
 # expected: 4 lines
 
-# 호출 지점 본문 무변경 (이번 피처 diff 에 없어야 함)
-git diff --name-only main -- skills/tech-design/SKILL.md skills/writing-plans/SKILL.md skills/auto-tech-design/SKILL.md skills/auto-writing-plans/SKILL.md
-# expected: (없음)
+# 호출 지점에 dispatch 복제 금지 (브랜치 무관하게 성립하는 불변식)
+grep -l "clean-solo-prompt\|clean-cross-prompt\|no-clean-verify" skills/tech-design/SKILL.md skills/writing-plans/SKILL.md skills/auto-tech-design/SKILL.md skills/auto-writing-plans/SKILL.md
+# expected: (없음) — 네 호출 지점은 verifying-spec 을 이름으로만 부른다.
+# 여기에 프롬프트 경로나 플래그가 등장하면 절차가 복제된 것이고, 한 곳만 고쳤을 때 흐름별 동작이 갈린다.
+# (git diff main 비교는 머지 후 항상 비어 무의미하고, 무관한 브랜치에서 거짓 실패를 낸다)
 
 # fixture 존재
 test -f skills/js-super-sub-driven/tests/H16-clean-verify/README.md && echo OK

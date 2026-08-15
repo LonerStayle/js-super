@@ -8,7 +8,7 @@ commit_policy: per-task
 
 **Goal:** `verifying-spec` 이 메인 자체 검증과 동시에 맥락 없는 보조 에이전트 둘을 병렬로 띄우고, 결과를 메인이 중재해 하나의 보고서로 낸다.
 
-**Architecture:** 모든 변경이 `skills/verifying-spec/` 안에 갇힌다. 호출 지점 4곳(`tech-design` / `writing-plans` / `auto-tech-design` / `auto-writing-plans`)은 `verifying-spec` 을 이름으로만 부르므로 본문 변경 0. 검증자는 단독(대상 문서 경로만)과 대조(대상 + 상위 문서 경로) 둘로 나뉘며, 단독 쪽에 상위 문서 경로를 주지 않는 것으로 읽기 순서를 물리적으로 보장한다.
+**Architecture:** dispatch 와 중재 절차가 전부 `skills/verifying-spec/` 안에 갇힌다 (커맨드 4개의 플래그 안내, `CLAUDE.md` 결합 메모, fixture 는 별개로 추가된다). 호출 지점 4곳(`tech-design` / `writing-plans` / `auto-tech-design` / `auto-writing-plans`)은 `verifying-spec` 을 이름으로만 부르므로 본문 변경 0. 검증자는 단독(대상 문서 경로만)과 대조(대상 + 상위 문서 경로) 둘로 나뉘며, 단독 쪽에 상위 문서 경로를 주지 않는 것으로 읽기 순서를 물리적으로 보장한다.
 
 **Tech Stack:** Markdown 스킬 본문 + 프롬프트 템플릿. 실행 코드 없음. 검증은 grep 기반 정적 확인 + fixture 시나리오.
 
@@ -987,7 +987,7 @@ git commit -m "test: 무맥락 검증자 병렬 E2E 자기 검증 기록"
 
 - `skills/verifying-spec/SKILL.md:10-13` (HARD-GATE): **breaking** | R-1 — 보조 에이전트 dispatch 금지 문구가 이 기능과 정면 충돌한다. EXCEPTION 2 를 새기고, `NEVER dispatch a code-reviewer subagent for this skill` 문구를 "대체 금지" 표현으로 교체한다. Task 3 Step 3 + CLAUDE.md 회귀 grep 으로 고정
 - `skills/verifying-spec/SKILL.md:125-131` (Acceptance): **breaking** | R-2 — "Report includes all 4 axes" 문장을 남긴 채 항목만 추가한다. 1~3번 문장을 지우면 바깥 5개 파일의 "4축 보고서" 표현이 부정확해진다. R-1 과 같은 커밋(Task 3)에서 처리 — 따로 반영하면 중간 상태가 자기모순
-- `skills/auto-tech-design/SKILL.md:42-53`, `skills/auto-writing-plans/SKILL.md:75-86` (Step 5 보고서 노출): **side-effect** | R-3 — 본문 변경 0 이지만 확장된 보고서가 자동 전파된다. 두 스킬의 "AskUserQuestion 호출 X" 룰과는 충돌하지 않는다 (본 피처는 사용자 질문을 추가하지 않음). 실행 후 자동 흐름을 한 번 돌려 Step 5 노출을 확인한다
+- `skills/auto-tech-design/SKILL.md:42-53`, `skills/auto-writing-plans/SKILL.md:75-86` (Step 5 보고서 노출): **side-effect** | R-3 — 본문 변경 0 이지만 확장된 보고서가 자동 전파된다. 두 스킬의 "AskUserQuestion 호출 X" 룰과는 충돌하지 않는다 (본 피처는 사용자 질문을 추가하지 않음). **담당: Task 10.** 자동 흐름을 실제로 돌리지 않고 정적으로 확인한다 — 확장 보고서가 4축을 포함하는 상위집합이므로 `auto-tech-design` Step 5 의 "4축 보고서 생성" 지시가 그대로 성립하고, "결과는 transition notice 직전 노출" 은 보고서 내용을 그대로 싣는 지시라 형식 확장의 영향을 받지 않는다. 두 자동 흐름 본문은 변경 0 을 유지한다
 - `skills/verifying-spec/SKILL.md:26-48` (Procedure dot): **race** | R-4 — 두 백그라운드 통보가 메인 검증 도중 도착한다. 다이어그램과 본문 모두에 "보고서 작성 전 두 검증자 상태를 각각 확인" 단계를 명시한다 (Task 3 Step 4~6). 미수신은 실패로 표기
 - `skills/verifying-spec/SKILL.md` (Clean-Context Verifiers §Dispatch 규칙): **side-effect** | R-5 — 플래그 인식이 메인 판단이라 결정적이지 않다. dispatch 직후 한 줄 안내를 출력해 사용자가 즉시 알아채게 한다 (Task 3 Step 6)
 - `skills/verifying-spec/SKILL.md` (Clean-Context Verifiers §플래그): **side-effect** | R-6 — 보조 에이전트 호출 0 → 2. `--no-clean-verify` 로 끌 수 있게 한다 (Task 3 Step 6, Task 4~7 커맨드 안내)
