@@ -10,7 +10,7 @@
 <br/>
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-2.9.0-7c3aed?style=for-the-badge&labelColor=0d1117">
+  <img alt="Version" src="https://img.shields.io/badge/version-3.0.0-7c3aed?style=for-the-badge&labelColor=0d1117">
   <img alt="Upstream" src="https://img.shields.io/badge/upstream-superpowers%205.0.7-f97316?style=for-the-badge&labelColor=0d1117">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge&labelColor=0d1117">
   <img alt="Language" src="https://img.shields.io/badge/lang-한국어-3b82f6?style=for-the-badge&labelColor=0d1117">
@@ -493,6 +493,17 @@ flowchart TD
 
 ## 슬래시 명령 목록
 
+> **v3.0.0 에서 이름이 바뀐 명령 4 개** — 커맨드 이름이 같은 이름의 스킬을 가려서
+> 스킬이 아예 호출되지 않던 문제가 있었습니다. 이름을 겹치지 않게 바꿔 해결했어요.
+> 옛 이름은 더 이상 없으니 새 이름으로 불러주세요.
+>
+> | 예전 | 지금 |
+> |---|---|
+> | `/tech-design` | `/design-tech` |
+> | `/auto-tech-design` | `/auto-design-tech` |
+> | `/worktree-merge-back` | `/merge-back-worktree` |
+> | `/worktree-remove` | `/remove-worktree` |
+
 ### 워크플로
 
 | 명령 | 결과물 | 한 줄 설명 |
@@ -786,12 +797,13 @@ og-* 흐름은 변경이력 / 위험 주석 / 검증 게이트가 **안 따라�
 ## 버전 마일스톤
 
 <details>
-<summary><b>최근 (v2.x)</b></summary>
+<summary><b>최근 (v3.x / v2.x)</b></summary>
 
 <br/>
 
 | 버전 | 무엇이 바뀌었나요 |
 |---|---|
+| **v3.0.0** | **이름이 바뀐 슬래시 4 개** (아래 표 참고) + `/brainstorm` 이 대화형 한 갈래로 통일 (PRD 양식 폐지) + 구현계획서 **용어집** 자동 생성 + 사양 검증에 **맥락 없는 검증자** 병렬 + `/audit-risk` 마크다운 재작성 + `/tech-teach-me` 신규 + 스킬 3 종 정리 (`.html` 사본 기능 제거) |
 | **v2.9.0** | 산출물 깊이 선택 (2~3 문서) + 구현계획서 테스트 자연어 축약 + `/goodmorning` 단일화 (goodnight 통합) + 워크트리 재분기·심링크 훅 안정화 |
 | **v2.8** | `/goodnight` · `/goodmorning` 세션 핸드오프 + og 흐름 커맨드 전용화 |
 | **v2.7** | skill 빌더 3종 고도화 — 생성 스코프(프로젝트 / 전체) + 출처 표식 + `/list-skills` 조회 |
