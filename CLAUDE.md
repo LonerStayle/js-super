@@ -755,7 +755,7 @@ grep -c "silent log monitor (v2.4+)" skills/generating-html/SKILL.md
 v2.8.2 커맨드 강등으로 auto-* 3 skill 의 자동 dispatch 가 사라지면서:
 
 - **B-2 (5초 race delay) 폐지** — race 자체가 자동 발동 (dispatch 직후 change-history 가 footer 를 채우던 시점) 전용이었음. 옛 grep (`grep -c "5초 delay" skills/auto-*/SKILL.md` 각 ≥ 1) 은 반전 — 이제 0 이어야 함.
-- **B-1 / B-4 는 명시 호출 경로만** — `/sync-html` / `/audit-risk` 등. B-3 silent log 는 그대로.
+- **B-1 / B-4 는 명시 호출 경로만** — `/sync-html` 등. B-3 silent log 는 그대로. (`/audit-risk` 는 이후 마크다운 단일 산출물로 재작성되어 HTML 생성 경로 자체가 사라졌다 — "audit-risk 구성 결합" 섹션 참고.)
 
 ## --no-ask 플래그 ↔ 8 skill body 결합 (v2.5+)
 
@@ -1491,3 +1491,53 @@ python3 -c "from scripts.preflight import feature_depth; print('OK')"
 - skill 본문 9 + commands 4 + `scripts/preflight.py` + fixture H14 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서. og-* / fast-tasks / worktree 계열 / generating-html 구조 영향 0
 - executing-plans / js-super-sub-driven skill 본문 변경 0 — plan 부재 안내 보강은 preflight `human_reason` 안에서
 - writing-plans `**Model**:` ↔ js-super-sub-driven 결합 — 3-doc 트랙 전용이라 영향 0
+
+## audit-risk 구성 결합
+
+`/audit-risk` 는 프로젝트의 보안 / 개인정보 / 비용 / 거버넌스를 1회성으로 점검하는 커맨드다. 예전에는 점검 보조 에이전트 5개와 별도의 HTML 보고서 생성 보조 에이전트(`commands/audit-report-prompt.md`)로 나뉘어 있었는데, 과장된 심각도·근거 없는 점수 표기가 사용자 catch 로 드러나면서 마크다운 단일 산출물 구조로 다시 썼다.
+
+### 핵심 룰
+
+- **산출물은 마크다운 하나** — `docs/audit/<timestamp>-audit-risk.md`. HTML 생성 경로가 없다. 보고서는 메인이 직접 `Write` 도구로 작성하고, 전용 보조 에이전트를 따로 부르지 않는다
+- **규모 판정은 두 조건 AND** — 소스 파일 40개 미만이고 총 줄 수도 8,000 미만일 때만 축소 모드. 하나라도 넘으면 전체 모드. 애매한 경우는 전체 모드 쪽으로 떨어진다
+- **축소 모드도 다섯 영역을 그대로 순회** — 보조 에이전트 수만 5개에서 1개로 줄어들 뿐, 점검 영역(외부 API 비용 / 개인정보 / 사용량·결제 로직 / LLM 에이전트 / 거버넌스)은 하나도 건너뛰지 않는다
+- **심각도는 심각 / 높음 / 보통 3단계** — 모두 실행 경로를 확인했다는 전제 위에서만 붙인다. 실행 경로를 확인하지 못한 항목은 심각도 없이 `unverified` 로 분리한다. 0~100 점수는 쓰지 않는다
+- **`status: "clean"` 반환 시 `checked` 배열 필수** — 점검했지만 없음과 점검하지 않음을 구분하기 위한 안전장치다
+- **비밀값은 값 자체를 남기지 않는다** — `redact_secret` 표시와 파일·줄 번호만 적고, raw 값은 어떤 필드에도 넣지 않는다 (기존 안전장치 그대로 유지)
+- **커맨드 본문과 H23 fixture 는 함께 고칠 것** — `commands/audit-risk.md` 와 `commands/audit-risk-tests/H23-e2e/` 는 한 쌍이다. 한쪽만 고치면 사람이 돌리는 시나리오와 실제 동작이 어긋난다
+
+### 회귀 패턴 (한쪽만 변경 시)
+
+| 누락 | 증상 |
+|---|---|
+| 커맨드만 고치고 fixture 미개정 | 사람이 돌리는 시나리오와 실제 동작이 어긋남 |
+| 커맨드만 고치고 README 미갱신 | 사용자가 없는 산출물(HTML)을 기대함 |
+| 규모 판정을 OR 로 완화 | 큰 프로젝트가 축소 모드로 빠져 점검 누락 |
+| `clean` 의 `checked` 필수 규칙 약화 | 점검했지만 없음과 점검하지 않음이 구분되지 않음 |
+| 심각도에 실행 경로 확인 전제를 뺌 | 근거 없는 심각도가 다시 붙어 과장 회귀 |
+| 점수 필드 부활 | 근거 없는 숫자가 다시 보고서에 들어감 |
+
+### 회귀 catch grep
+
+```bash
+grep -rn "audit-risk.html\|audit-report-prompt" commands/ README.md skills/
+# expected: 0
+
+test ! -f commands/audit-report-prompt.md && echo OK
+# expected: OK
+
+grep -n '"score"' commands/audit-risk.md
+# expected: 0
+
+grep -c '"clean"' commands/audit-risk.md
+# expected: 1 이상
+
+grep -c "disable-model-invocation: true" commands/audit-risk.md
+# expected: 1
+```
+
+### 영향 범위
+
+- `commands/audit-risk.md` 전면 재작성 + `commands/audit-report-prompt.md` 삭제 + `commands/audit-risk-tests/H23-e2e/` 2 파일 + README 4곳 + `skills/generating-html/SKILL.md` 호출자 예시 정리 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
+- `generating-html` skill 본체 / `/sync-html` 변경 0 — audit-risk 는 애초에 그 skill 을 거치지 않고 자체 보조 에이전트로 HTML 을 만들던 구조였고, 이번에 그 구조 자체를 걷어냈다
+- og-* / auto-* / 워크트리 계열 영향 0 — 명시 호출 커맨드 1개 재작성 범위 밖
