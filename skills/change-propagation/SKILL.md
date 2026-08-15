@@ -162,7 +162,6 @@ A propagation run is correct when ALL hold:
 2. Every approved target produced a change-history entry
 3. All entries in the batch share **연관 항목** with the other CH-ids in the batch
 4. Code-only edits did not modify the BODY of <slug>-requirements.md or <slug>-tech-design.md (reverse-cascade is forbidden — 단 2-doc 트랙의 `## 변경이력` footer append 는 본문 수정이 아니므로 예외)
-5. (v2.2.2+) `.html` 동봉본이 존재하는 feature 라면 마지막 단계에서 안내문 출력 → `이 변경으로 .html 이 stale 됐을 수 있음. 필요시 /sync-html <slug>` (자동 호출 X — stale 허용 철학 보존)
 
 ## Related Skills
 
@@ -170,4 +169,3 @@ A propagation run is correct when ALL hold:
 - `brainstorming` / `tech-design` / `writing-plans` — re-entered when an upstream MD edit needs a re-dialogue
 - `verifying-spec` — re-runs after upstream MD changes if scope is non-trivial
 - `risk-annotation` — invoked again if cascading touches code
-- `/sync-html <slug>` (v2.2.2+) — `.html` 동봉본 stale 시 사용자 수동 호출 (자동 호출 X, stale 허용 철학)

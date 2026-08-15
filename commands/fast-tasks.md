@@ -19,7 +19,7 @@ Step 1 Socratic Q × N 흐름의 AskUserQuestion 게이트에서 사용자가 "O
 - `verifying-spec` 4축 보고서
 - 변경이력 footer / `change-history` skill 호출
 - `risk-annotation` (RISK 주석)
-- `generating-html` / `code-pretty` 호출
+- `code-pretty` 호출
 - AskUserQuestion 게이트 (Socratic Q 외)
 
 → 최종 산출물은 단일 `<batch-slug>-tasks.md` **1 파일** + 실제 코드 변경만.

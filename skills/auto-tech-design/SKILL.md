@@ -1,6 +1,6 @@
 ---
 name: auto-tech-design
-description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계 auto-brainstorming 의 명시 invoke 로만 진입, 사용자 자유 요청에서 자동 선택 금지. requirements.md 읽기 + adaptive 7-topic 자동 판정 + design decision 자동 alternatives 비교 → recommendation 자동 선택 + verifying-spec 4축 보고서 transition 직전 노출 + auto-writing-plans 자동 invoke. AskUserQuestion / generating-html 호출 X.
+description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계 auto-brainstorming 의 명시 invoke 로만 진입, 사용자 자유 요청에서 자동 선택 금지. requirements.md 읽기 + adaptive 7-topic 자동 판정 + design decision 자동 alternatives 비교 → recommendation 자동 선택 + verifying-spec 4축 보고서 transition 직전 노출 + auto-writing-plans 자동 invoke. AskUserQuestion 호출 X.
 ---
 
 # Auto Designing Direction → <slug>-tech-design.md (auto)
@@ -10,7 +10,7 @@ description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계
 - [ ] Step 1 — 입력 확인 + slug 추론
 - [ ] Step 2 — adaptive 7-topic 자동 판정
 - [ ] Step 3 — AI 자동 design decision (각 활성 토픽)
-- [ ] Step 4 — 산출물 자동 작성 (<slug>-tech-design.md)
+- [ ] Step 4 — 산출물 자동 작성 + 서술 수준 점검 (<slug>-tech-design.md)
 - [ ] Step 5 — verifying-spec 자동 실행 (4축 보고서)
 - [ ] Step 6 — change-history 자동 ([개발방향-수정] entry)
 - [ ] Step 7 — 깊이 판정 + Transition notice + (3개 판정 시) auto-writing-plans invoke
@@ -35,9 +35,11 @@ description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계
 
 각 활성 토픽에 대해 메인이 2-3 alternatives + recommendation 1개 자동 선택 (D-T3). reasoning 은 §5 결정+대안 비교 에 logged. 비활성 토픽은 N/A 한 줄.
 
-### Step 4 — 산출물 자동 작성
+### Step 4 — 산출물 자동 작성 + 서술 수준 점검
 
 `<slug>-tech-design.md` 7-section schema 따라 작성. RAW 본문.
+
+작성 직후 메인이 서술 문단을 한 번 훑는다 — 남아 있는 코드 식별자마다 "그 이름이 바뀌면 문서 밖의 무언가가 깨지는가" 를 판정하고, 아니면 역할 서술로 교체한다. 표 / 코드 블록 / 도식은 대상 아님. 룰은 아래 "서술 수준 — 이름보다 역할" 섹션. 사용자 응답 wait X (auto 모드).
 
 ### Step 5 — verifying-spec 자동 실행
 
@@ -75,9 +77,22 @@ description: auto-flow 2단계 — /auto-tech-design 커맨드 또는 앞 단계
 | Wrong | Right |
 |---|---|
 | AskUserQuestion 호출 | NEVER. |
-| generating-html 호출 (모든 형태) | NEVER. v2.8.2+ 커맨드 강등 — 자동 발동 폐지 (v2.3.2 의 Step 4.5 dispatch 제거). `.html` 필요 시 사용자가 명시 호출. |
 | 일반 tech-design skill body 호출 | NEVER. self-contained mirror (D-T1). |
 | transition notice 후 wait sleep | NEVER. |
+| 서술 문단에 내부 변수나 아직 없는 함수 이름 박기 | 역할을 말로 풀어쓴다. 아래 "서술 수준" 섹션 참조. |
+
+## 서술 수준 — 이름보다 역할
+
+`<slug>-tech-design.md` 의 **서술 문단** (줄글로 설명하는 부분) 에서는 코드 식별자를 기본적으로 쓰지 않는다. 이름을 쓰려는 자리마다 그 역할을 말로 풀어쓰고, **그 이름이 바뀌면 문서 밖의 무언가가 깨지는 경우**에만 실제 이름을 쓴다.
+
+| 실제 이름을 쓴다 | 말로 풀어쓴다 |
+|---|---|
+| 사용자가 입력하는 명령어 | 내부 변수, 지역 변수 |
+| 설정 파일의 키 이름 | 아직 없는 새 함수·클래스 이름 |
+| 외부나 다른 팀이 호출하는 공개 함수 | 직접 지은 중간 계산값 |
+| 저장소에 이미 있는 파일 경로 | 반복문 변수, 임시로 붙인 이름 |
+
+적용 부위는 서술 문단뿐 — §2 영향 파일 표, 코드 블록, 도식은 그대로 둔다. 배경 설명은 `skills/tech-design/SKILL.md` 의 같은 이름 섹션 답습 (본 skill 은 판단에 필요한 부분만 보유).
 
 ## Related Skills
 

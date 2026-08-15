@@ -14,21 +14,19 @@
 2. [기본 워크플로우 7단계](#2-기본-워크플로우-7단계)
 3. [철학](#3-철학)
 4. [설치](#4-설치)
-5. [스킬 라이브러리 (14개)](#5-스킬-라이브러리-14개)
+5. [스킬 라이브러리 (12개)](#5-스킬-라이브러리-12개)
    - [5.1 using-superpowers — 시스템 입문](#51-using-superpowers--시스템-입문)
    - [5.2 brainstorming — 아이디어를 디자인으로](#52-brainstorming--아이디어를-디자인으로)
    - [5.3 writing-plans — 구현 계획 작성](#53-writing-plans--구현-계획-작성)
-   - [5.4 using-git-worktrees — 격리된 워크스페이스](#54-using-git-worktrees--격리된-워크스페이스)
-   - [5.5 subagent-driven-development — 서브에이전트 주도 개발](#55-subagent-driven-development--서브에이전트-주도-개발)
-   - [5.6 executing-plans — 인라인 계획 실행](#56-executing-plans--인라인-계획-실행)
-   - [5.7 test-driven-development — TDD](#57-test-driven-development--tdd)
-   - [5.8 systematic-debugging — 체계적 디버깅](#58-systematic-debugging--체계적-디버깅)
-   - [5.9 verification-before-completion — 완료 전 검증](#59-verification-before-completion--완료-전-검증)
-   - [5.10 requesting-code-review — 코드 리뷰 요청](#510-requesting-code-review--코드-리뷰-요청)
-   - [5.11 receiving-code-review — 코드 리뷰 수용](#511-receiving-code-review--코드-리뷰-수용)
-   - [5.12 dispatching-parallel-agents — 병렬 에이전트 디스패치](#512-dispatching-parallel-agents--병렬-에이전트-디스패치)
-   - [5.13 finishing-a-development-branch — 개발 브랜치 마무리](#513-finishing-a-development-branch--개발-브랜치-마무리)
-   - [5.14 writing-skills — 새 스킬 작성](#514-writing-skills--새-스킬-작성)
+   - [5.4 subagent-driven-development — 서브에이전트 주도 개발](#54-subagent-driven-development--서브에이전트-주도-개발)
+   - [5.5 executing-plans — 인라인 계획 실행](#55-executing-plans--인라인-계획-실행)
+   - [5.6 test-driven-development — TDD](#56-test-driven-development--tdd)
+   - [5.7 systematic-debugging — 체계적 디버깅](#57-systematic-debugging--체계적-디버깅)
+   - [5.8 verification-before-completion — 완료 전 검증](#58-verification-before-completion--완료-전-검증)
+   - [5.9 requesting-code-review — 코드 리뷰 요청](#59-requesting-code-review--코드-리뷰-요청)
+   - [5.10 receiving-code-review — 코드 리뷰 수용](#510-receiving-code-review--코드-리뷰-수용)
+   - [5.11 dispatching-parallel-agents — 병렬 에이전트 디스패치](#511-dispatching-parallel-agents--병렬-에이전트-디스패치)
+   - [5.12 finishing-a-development-branch — 개발 브랜치 마무리](#512-finishing-a-development-branch--개발-브랜치-마무리)
 6. [기여 가이드라인 (CLAUDE.md)](#6-기여-가이드라인-claudemd)
 
 ---
@@ -54,7 +52,7 @@
 | 단계 | 스킬 | 트리거 | 산출물 |
 |---|---|---|---|
 | 1 | **brainstorming** | 코드 작성 전 | 디자인 문서(spec) |
-| 2 | **using-git-worktrees** | 디자인 승인 후 | 격리된 브랜치 워크스페이스 + 깨끗한 테스트 베이스라인 |
+| 2 | **setting-up-worktrees** | 디자인 승인 후 | 격리된 브랜치 워크스페이스 + 로컬 빌드 환경 파일 자동 복사 |
 | 3 | **writing-plans** | spec 확정 시 | 2~5분 단위 bite-sized 작업으로 분해된 구현 계획 |
 | 4a | **subagent-driven-development** | 계획 실행 (권장) | 작업당 fresh 서브에이전트 + 2단계 리뷰 |
 | 4b | **executing-plans** | 계획 실행 (대안) | 체크포인트 기반 일괄 실행 |
@@ -123,7 +121,7 @@ gemini extensions update superpowers   # 업데이트
 
 ---
 
-## 5. 스킬 라이브러리 (14개)
+## 5. 스킬 라이브러리 (12개)
 
 ### 5.1 `using-superpowers` — 시스템 입문
 
@@ -340,69 +338,7 @@ Expected: FAIL (구현 전)
 
 ---
 
-### 5.4 `using-git-worktrees` — 격리된 워크스페이스
-
-**언제 사용**: 현재 워크스페이스로부터 격리가 필요한 기능 작업 시작 시, 또는 구현 계획 실행 전.
-
-#### 디렉토리 선택 (우선순위)
-
-1. **기존 디렉토리 확인**:
-   ```bash
-   ls -d .worktrees 2>/dev/null    # 선호 (숨김)
-   ls -d worktrees 2>/dev/null     # 대안
-   ```
-   둘 다 있으면 `.worktrees` 승.
-
-2. **CLAUDE.md 확인**:
-   ```bash
-   grep -i "worktree.*director" CLAUDE.md
-   ```
-   선호 명시되면 묻지 말고 사용.
-
-3. **사용자에게 질문**:
-   ```
-   No worktree directory found. Where should I create worktrees?
-   1. .worktrees/ (project-local, hidden)
-   2. ~/.config/superpowers/worktrees/<project-name>/ (global)
-   ```
-
-#### 안전 검증
-
-**프로젝트 로컬 디렉토리 (.worktrees/worktrees)**: worktree 생성 전 ignored 검증 필수:
-```bash
-git check-ignore -q .worktrees 2>/dev/null || git check-ignore -q worktrees 2>/dev/null
-```
-ignored 안 되어 있으면: `.gitignore`에 추가 → 커밋 → worktree 생성. **worktree 콘텐츠가 실수로 리포에 커밋되는 것 방지**.
-
-**글로벌 디렉토리** (`~/.config/superpowers/worktrees`): 프로젝트 외부이므로 .gitignore 검증 불필요.
-
-#### 생성 단계
-1. **프로젝트 이름 감지**: `project=$(basename "$(git rev-parse --show-toplevel)")`
-2. **Worktree 생성**:
-   ```bash
-   git worktree add "$path" -b "$BRANCH_NAME"
-   cd "$path"
-   ```
-3. **프로젝트 셋업 자동 감지·실행**:
-   - Node: `npm install` (package.json)
-   - Rust: `cargo build` (Cargo.toml)
-   - Python: `pip install -r requirements.txt` 또는 `poetry install`
-   - Go: `go mod download`
-4. **깨끗한 베이스라인 검증** — 테스트 실행. 실패면 보고 + 진행 여부 질문.
-5. **위치 보고**:
-   ```
-   Worktree ready at <full-path>
-   Tests passing (<N> tests, 0 failures)
-   ```
-
-#### 위험 신호
-**Never**: ignored 검증 없이 생성 / 베이스라인 테스트 검증 건너뛰기 / 실패 테스트로 진행 / 디렉토리 위치 가정 / CLAUDE.md 확인 건너뛰기
-
-**Always**: 디렉토리 우선순위 따르기 / 프로젝트 로컬은 ignored 검증 / 셋업 자동 감지·실행 / 깨끗한 베이스라인 검증
-
----
-
-### 5.5 `subagent-driven-development` — 서브에이전트 주도 개발
+### 5.4 `subagent-driven-development` — 서브에이전트 주도 개발
 
 **언제 사용**: 현재 세션 내에서 독립적 작업이 있는 구현 계획 실행 시.
 
@@ -462,7 +398,7 @@ ignored 안 되어 있으면: `.gitignore`에 추가 → 커밋 → worktree 생
 
 ---
 
-### 5.6 `executing-plans` — 인라인 계획 실행
+### 5.5 `executing-plans` — 인라인 계획 실행
 
 **언제 사용**: 별도 세션에서 리뷰 체크포인트와 함께 구현 계획 실행 시.
 
@@ -495,7 +431,7 @@ ignored 안 되어 있으면: `.gitignore`에 추가 → 커밋 → worktree 생
 
 ---
 
-### 5.7 `test-driven-development` — TDD
+### 5.6 `test-driven-development` — TDD
 
 **언제 사용**: 어떤 기능/버그픽스 구현 시, 구현 코드 작성 전에.
 
@@ -604,7 +540,7 @@ green 후에만:
 
 ---
 
-### 5.8 `systematic-debugging` — 체계적 디버깅
+### 5.7 `systematic-debugging` — 체계적 디버깅
 
 **언제 사용**: 어떤 버그, 테스트 실패, 예상치 못한 동작이든 — 수정 제안 전.
 
@@ -718,7 +654,7 @@ Phase 1을 완료하지 않았다면 수정 제안 불가.
 
 ---
 
-### 5.9 `verification-before-completion` — 완료 전 검증
+### 5.8 `verification-before-completion` — 완료 전 검증
 
 **언제 사용**: 작업이 완료/수정/통과됐다고 주장 직전, 커밋이나 PR 만들기 전.
 
@@ -835,7 +771,7 @@ Phase 1을 완료하지 않았다면 수정 제안 불가.
 
 ---
 
-### 5.10 `requesting-code-review` — 코드 리뷰 요청
+### 5.9 `requesting-code-review` — 코드 리뷰 요청
 
 **언제 사용**: 작업 완료 시, 주요 기능 구현 시, 머지 전에 — 작업이 요구사항 충족하는지 검증.
 
@@ -896,7 +832,7 @@ Phase 1을 완료하지 않았다면 수정 제안 불가.
 
 ---
 
-### 5.11 `receiving-code-review` — 코드 리뷰 수용
+### 5.10 `receiving-code-review` — 코드 리뷰 수용
 
 **언제 사용**: 코드 리뷰 피드백 받을 때, 제안 구현 전, 특히 피드백이 불명확하거나 기술적으로 의심스러울 때.
 
@@ -1039,7 +975,7 @@ WHY: 항목들이 관련됐을 수 있음. 부분 이해 = 잘못된 구현.
 
 ---
 
-### 5.12 `dispatching-parallel-agents` — 병렬 에이전트 디스패치
+### 5.11 `dispatching-parallel-agents` — 병렬 에이전트 디스패치
 
 **언제 사용**: 공유 상태나 순차 의존성 없이 작업할 수 있는 2+ 독립 task 직면 시.
 
@@ -1131,7 +1067,7 @@ src/agents/agent-tool-abort.test.ts의 3개 실패 테스트 수정:
 
 ---
 
-### 5.13 `finishing-a-development-branch` — 개발 브랜치 마무리
+### 5.12 `finishing-a-development-branch` — 개발 브랜치 마무리
 
 **언제 사용**: 구현 완료, 모든 테스트 통과, 작업 통합 방법 결정 필요.
 
@@ -1245,166 +1181,6 @@ Option 3: worktree 유지.
 
 ---
 
-### 5.14 `writing-skills` — 새 스킬 작성
-
-**언제 사용**: 새 스킬 생성, 기존 스킬 편집, 배포 전 스킬 작동 검증.
-
-#### 핵심 원칙
-**스킬 작성은 프로세스 문서에 적용된 TDD.** 테스트 케이스(서브에이전트와 압박 시나리오) 작성 → 실패 보기(베이스라인 동작) → 스킬 작성(문서) → 통과 보기(에이전트 준수) → 리팩토링(루프홀 차단).
-
-> 에이전트가 스킬 없이 실패하는 걸 못 봤다면, 스킬이 옳은 걸 가르치는지 모름.
-
-> **필수 배경**: 이 스킬 사용 전 superpowers:test-driven-development 이해 필수.
-
-#### 스킬이란?
-**입증된 기법, 패턴, 도구를 위한 참조 가이드.** 미래 Claude 인스턴스가 효과적 접근법을 찾고 적용하도록 도움.
-- **스킬은**: 재사용 가능한 기법, 패턴, 도구, 참조 가이드
-- **스킬이 아님**: 한 번 문제를 어떻게 풀었는지에 대한 서사
-
-#### TDD 매핑 (스킬용)
-| TDD 개념 | 스킬 생성 |
-|---|---|
-| 테스트 케이스 | 서브에이전트 압박 시나리오 |
-| 프로덕션 코드 | 스킬 문서 (SKILL.md) |
-| 테스트 실패 (RED) | 스킬 없이 에이전트가 규칙 위반 (베이스라인) |
-| 테스트 통과 (GREEN) | 스킬 있을 때 에이전트 준수 |
-| 리팩토링 | 준수 유지하며 루프홀 차단 |
-| 테스트 먼저 작성 | 스킬 쓰기 **전에** 베이스라인 시나리오 실행 |
-| 실패 보기 | 에이전트가 쓰는 정확한 합리화 문서화 |
-| 최소 코드 | 그 위반들에 대응하는 스킬 작성 |
-| 통과 보기 | 에이전트가 이제 준수 검증 |
-| 리팩토링 사이클 | 새 합리화 발견 → 막기 → 재검증 |
-
-#### 스킬 생성 시점
-**Create when**:
-- 기법이 직관적으로 명백하지 않았음
-- 프로젝트들 간 다시 참조할 것
-- 패턴이 광범위 적용 (프로젝트 특화 X)
-- 다른 사람이 혜택
-
-**Don't create**:
-- 일회성 솔루션
-- 다른 곳에 잘 문서화된 표준 관행
-- 프로젝트 특화 컨벤션 (CLAUDE.md에)
-- 기계적 제약 (regex/검증으로 강제 가능하면 자동화 — 문서는 판단 콜에)
-
-#### 스킬 타입
-- **Technique**: 따를 단계 있는 구체적 메서드 (condition-based-waiting, root-cause-tracing)
-- **Pattern**: 문제 사고 방식 (flatten-with-flags, test-invariants)
-- **Reference**: API 문서, 문법 가이드, 도구 문서
-
-#### 디렉토리 구조
-```
-skills/
-  skill-name/
-    SKILL.md              # 메인 참조 (필수)
-    supporting-file.*     # 필요 시만
-```
-
-**Flat namespace** — 모든 스킬이 한 검색 가능 namespace.
-
-**별도 파일 대상**:
-1. 무거운 참조 (100+ 라인) — API 문서, 종합 문법
-2. 재사용 도구 — 스크립트, 유틸리티, 템플릿
-
-**인라인 유지**: 원칙·개념, 코드 패턴 (<50 라인), 그 외 모든 것.
-
-#### SKILL.md 구조
-**Frontmatter (YAML)** — 필수 두 필드:
-- `name`: letters, numbers, hyphens만 (괄호·특수문자 X)
-- `description`: 3인칭, **언제** 사용만 (무엇을 하는지 X)
-  - "Use when..."로 시작
-  - 구체적 증상·상황·컨텍스트
-  - **스킬 프로세스/워크플로우 절대 요약 X** (CSO 섹션 참조)
-  - 가능하면 500자 이하
-
-```markdown
----
-name: Skill-Name-With-Hyphens
-description: Use when [구체적 트리거 조건과 증상]
----
-
-# Skill Name
-
-## Overview
-이게 뭔가? 1~2 문장 핵심 원칙.
-
-## When to Use
-[작은 인라인 플로우차트 IF 결정 비자명]
-SYMPTOMS와 사용 케이스 불릿
-사용하지 말 시점
-
-## Core Pattern (techniques/patterns용)
-Before/after 코드 비교
-
-## Quick Reference
-스캔용 표 또는 불릿
-
-## Implementation
-단순 패턴은 인라인 코드
-무거운 참조나 재사용 도구는 파일 링크
-
-## Common Mistakes
-무엇이 잘못됐고 + 수정
-
-## Real-World Impact (선택)
-구체적 결과
-```
-
-#### Claude Search Optimization (CSO) — 발견의 핵심
-
-##### 1. Rich Description Field
-**목적**: Claude가 description을 읽고 어떤 스킬을 로드할지 결정. 답해야 할 질문: **"지금 이 스킬을 읽어야 하나?"**
-
-**중요: Description = 언제 사용, NOT 스킬이 무엇을 하는지**
-
-description이 워크플로우를 요약하면 Claude가 풀 스킬 컨텐츠 대신 description만 따를 수 있음.
-- "code review between tasks" 라고 하면 → Claude가 1번만 리뷰
-- 플로우차트엔 명백히 2번 리뷰가 있어도
-
-description을 "Use when executing implementation plans with independent tasks"로 (워크플로우 요약 없이) 바꿨더니 Claude가 플로우차트를 정확히 읽고 2단계 리뷰 따름.
-
-> **함정**: 워크플로우 요약 description은 Claude가 갈 지름길을 만듦. 스킬 본문은 Claude가 건너뛰는 문서가 됨.
-
-```yaml
-# ❌ BAD: 워크플로우 요약
-description: Use when executing plans - dispatches subagent per task with code review between tasks
-
-# ❌ BAD: 너무 많은 프로세스 디테일
-description: Use for TDD - write test first, watch it fail, write minimal code, refactor
-
-# ✅ GOOD: 트리거 조건만
-description: Use when executing implementation plans with independent tasks in the current session
-
-# ✅ GOOD: 트리거만
-description: Use when implementing any feature or bugfix, before writing implementation code
-```
-
-**컨텐츠 가이드라인**:
-- 구체적 트리거, 증상, 상황 (스킬 적용 신호)
-- *문제* (race condition, 일관 없는 동작)를 묘사 — *언어 특화 증상*(setTimeout, sleep) X
-- 트리거는 기술 무관 (스킬 자체가 기술 특화면 명시)
-- 3인칭 (시스템 프롬프트에 주입됨)
-- **스킬 프로세스/워크플로우 절대 요약 X**
-
-```yaml
-# ❌ 너무 추상적
-description: For async testing
-# ❌ 1인칭
-description: I can help you with async tests when they're flaky
-# ❌ 스킬이 특화 아닌데 기술 언급
-description: Use when tests use setTimeout/sleep and are flaky
-# ✅ "Use when"으로 시작, 문제 묘사, 워크플로우 X
-description: Use when tests have race conditions, timing dependencies, or pass/fail inconsistently
-# ✅ 기술 특화 명시
-description: Use when using React Router and handling authentication redirects
-```
-
-##### 2. 키워드 커버리지
-(이하 후속 섹션은 testing-anti-patterns, anti-pattern 섹션 등 — `skills/writing-skills/SKILL.md` 참고)
-
----
-
 ## 6. 기여 가이드라인 (CLAUDE.md)
 
 ### AI 에이전트라면 — 멈추세요. 무엇이든 하기 전에 이 섹션 읽기.
@@ -1462,7 +1238,6 @@ description: Use when using React Router and handling authentication redirects
 
 ### 스킬 변경엔 평가 필요
 스킬은 산문이 아니라 에이전트 행동을 형성하는 코드.
-- `superpowers:writing-skills`로 변경 개발·테스트
 - 다중 세션에 걸친 적대적 압박 테스트
 - PR에 before/after eval 결과 표시
 - 신중히 튜닝된 콘텐츠(Red Flags 표, 합리화 목록, "human partner" 언어) 수정엔 개선 증거 필요
