@@ -655,9 +655,9 @@ v2.5.1+ 에서 `worktree-merge-back` 자동화 강화 + `worktree-remove` 신규
 ### 적용 범위 (5 본문 + 6 manifest = 11 파일)
 
 - `skills/worktree-merge-back/SKILL.md` — Step 3 머지 대상 변경 (origin → 로컬) + 충돌 처리 완화 (재귀 머지 자동) + Step 4.5 신규 (env 동기화) + Step 5 보강
-- `commands/worktree-merge-back.md` — 안내 동기화
+- `commands/merge-back-worktree.md` — 안내 동기화
 - `skills/worktree-remove/SKILL.md` — 신규
-- `commands/worktree-remove.md` — 신규
+- `commands/remove-worktree.md` — 신규
 - `CLAUDE.md` — v2.0.4+ Anti-Pattern 표 v2.5.1+ 분기 + 본 섹션
 - 6 manifest — 버전 2.5.1
 
@@ -686,7 +686,7 @@ grep -F "Step 4.5" skills/worktree-merge-back/SKILL.md
 # expected: >= 1
 
 # D-4: worktree-remove 신규 파일 존재
-test -f skills/worktree-remove/SKILL.md && test -f commands/worktree-remove.md
+test -f skills/worktree-remove/SKILL.md && test -f commands/remove-worktree.md
 echo $?
 # expected: 0
 
@@ -703,7 +703,7 @@ grep -nE "git branch -d|safe \(-d\)|--force" skills/worktree-remove/SKILL.md
 
 | 누락 | 증상 |
 |---|---|
-| skill body 만 변경 | `/worktree-merge-back` 슬래시 명령 본문이 옛 표현 유지 → 사용자 혼란 |
+| skill body 만 변경 | `/merge-back-worktree` 슬래시 명령 본문이 옛 표현 유지 → 사용자 혼란 |
 | commands 만 변경 | 메인이 skill body 따라 옛 글롭 적용 → env 동기화 누락 |
 | worktree-remove skill 만 신규 | 슬래시 명령 부재 → 사용자 진입 X |
 | HARD-GATE 한쪽 누락 | main 워크트리에서 호출 시 안전성 핵심 손상 |
@@ -1162,7 +1162,7 @@ grep -F "Advise: run /og-brainstorm" skills/brainstorming/SKILL.md
 
 ```bash
 # 커맨드 4종 플래그
-grep -lF "disable-model-invocation: true" commands/auto-brainstorm.md commands/auto-tech-design.md commands/auto-write-plan.md commands/auto-execute-plan.md
+grep -lF "disable-model-invocation: true" commands/auto-brainstorm.md commands/auto-design-tech.md commands/auto-write-plan.md commands/auto-execute-plan.md
 # expected: 4 lines
 
 # 스킬 4종 진입 제약 문구
@@ -1592,7 +1592,7 @@ grep -cF 'no `model` argument' skills/verifying-spec/SKILL.md
 # expected: >= 1
 
 # 커맨드 4곳 플래그 안내
-grep -lF -- "--no-clean-verify" commands/tech-design.md commands/write-plan.md commands/auto-tech-design.md commands/auto-write-plan.md
+grep -lF -- "--no-clean-verify" commands/design-tech.md commands/write-plan.md commands/auto-design-tech.md commands/auto-write-plan.md
 # expected: 4 lines
 
 # 호출 지점에 dispatch 복제 금지 (브랜치 무관하게 성립하는 불변식)
@@ -1664,3 +1664,101 @@ grep -rlF '`--no-ask` 플래그 (v2.5+)' skills/ commands/ | wc -l
 ### 미해결 (별건)
 
 - `tech-design` 흐름도의 조건부 주제 노드 3개(`Q: data model changes?` / `Q: external interfaces?` / `Q: test strategy?`)는 노드 선언과 연결선의 이름이 다르다 (`\n[활성 시만]` 접미사 유무). 착수 전부터 있던 문제이며 이번 범위 밖. 고칠 때는 선언 쪽 라벨에 접미사를 붙이거나 연결선 쪽에서 떼어 한쪽으로 맞출 것
+
+## 커맨드 이름 ↔ 스킬 이름 충돌 금지 (2026-08-15+)
+
+**커맨드 파일명 (`commands/<name>.md`) 과 스킬 디렉토리명 (`skills/<name>/`) 이 같으면 커맨드가 스킬을 가린다.** 그 스킬은 Skill 도구로 어떤 이름으로도 호출할 수 없게 된다 (`js-super:<name>` → 커맨드 본문이 반환, `<name>` → Unknown skill).
+
+### 왜 치명적인가
+
+충돌한 커맨드가 스킬로 위임하는 얇은 껍데기면 그 기능 전체가 죽는다. 게다가 스킬끼리의 체인 호출 (`brainstorming` → `tech-design`, `auto-brainstorming` → `auto-tech-design`) 도 같이 끊긴다.
+
+**정적 grep 으로는 안 잡힌다.** `grep -cF "js-super:auto-tech-design" skills/auto-brainstorming/SKILL.md` 는 1 을 반환해 통과하지만, 실행하면 커맨드가 잡혀 체인이 끊긴다. 문자열은 제자리에 있는데 해석이 다른 경우라 원리상 문면 검사로 안 잡히는 종류다.
+
+### 실제 사고 (2026-08-15 발견)
+
+4쌍이 충돌해 있었다. 네 커맨드 모두 스킬 위임 껍데기였으므로 네 기능 모두 죽어 있었다.
+
+| 옛 슬래시 | 새 슬래시 | 스킬 (변경 없음) |
+|---|---|---|
+| `/tech-design` | `/design-tech` | `tech-design` |
+| `/auto-tech-design` | `/auto-design-tech` | `auto-tech-design` |
+| `/worktree-merge-back` | `/merge-back-worktree` | `worktree-merge-back` |
+| `/worktree-remove` | `/remove-worktree` | `worktree-remove` |
+
+스킬 이름을 그대로 둔 이유: 스킬 식별자는 다른 스킬 본문의 체인 invoke, 본 CLAUDE.md 의 결합 메모 grep, fixture README 가 참조한다. 반면 슬래시 이름은 사용자 타이핑과 안내문에만 나온다. 바꿀 때 깨질 위험이 슬래시 쪽이 훨씬 작다.
+
+`docs/features/` 아래 과거 스펙 문서 23건은 날짜가 박힌 기록이라 옛 슬래시 이름을 그대로 뒀다.
+
+### 회귀 catch
+
+```bash
+# 커맨드 파일명과 스킬 디렉토리명 충돌 (신규 커맨드/스킬 추가 시 필수)
+for c in commands/*.md; do n=$(basename "$c" .md); [ -d "skills/$n" ] && echo "충돌: /$n ↔ skills/$n/"; done
+# expected: 출력 없음
+
+# 위임 커맨드가 스킬 이름을 정확히 가리키는가
+grep -c "js-super:tech-design" commands/design-tech.md
+grep -c "js-super:auto-tech-design" commands/auto-design-tech.md
+grep -c "js-super:worktree-merge-back" commands/merge-back-worktree.md
+grep -c "js-super:worktree-remove" commands/remove-worktree.md
+# expected: 각 >= 1
+
+# 옛 슬래시 표기 잔존 (skills/ 경로와 스킬 목록 나열은 제외)
+grep -rn '/tech-design\|/auto-tech-design\|/worktree-merge-back\|/worktree-remove' skills/ commands/ README.md CLAUDE.md \
+  | grep -v 'skills/tech-design\|skills/auto-tech-design\|skills/worktree-merge-back\|skills/worktree-remove' \
+  | grep -v '<slug>-tech-design' | grep -v 'brainstorming/tech-design'
+# expected: 출력 없음
+```
+
+### 신규 커맨드/스킬 추가 시 룰
+
+커맨드는 짧은 명령형 (`/brainstorm`, `/write-plan`, `/execute-plan`), 스킬은 서술형 (`brainstorming`, `writing-plans`, `executing-plans`) 으로 짓는다. 같은 이름을 쓰지 않는다.
+
+### 영향 범위
+
+- 커맨드 파일 4개 rename + 27개 파일의 슬래시 표기 80줄. 스킬 본문의 절차·룰 변경 0, 스킬 디렉토리명 변경 0.
+- `scripts/` / `hooks/` / `agents/` / 6 manifest 영향 0.
+- 확인은 머지 후 `/reload-plugins` 로. 플러그인은 `~/.claude/plugins/cache/` 에서 읽히므로 워크트리 수정만으로는 반영되지 않는다.
+
+## 스킬 검증 환경 ↔ CLAUDE.md 파싱 계약 (2026-08-15+)
+
+`evals/` 러너는 **본 파일의 bash 코드 블록을 실행 시점에 직접 읽어** 결합 회귀 룰로 쓴다. 룰을 별도 파일로 복제하지 않는다. 복제하면 정답 원천이 둘이 되고, 본 파일은 3.5개월에 54회 갱신되므로 매 릴리즈마다 어긋날 기회를 갖는다.
+
+### 파서가 기대하는 형식
+
+```
+```bash
+<검사 명령 (여러 줄 가능, 줄 끝 역슬래시 이음 지원)>
+# expected: <기대값>
+```
+```
+
+- 코드 펜스 언어는 `bash` / `sh` / `shell` 중 하나여야 한다. `text` 나 언어 없음은 안 읽힌다
+- `# expected:` 주석이 명령 바로 뒤에 와야 한다. 한 블록에 여러 룰을 넣으려면 각각 뒤에 붙인다
+- 기대값이 **순수 숫자** (`0`, `1`, `각 >= 1`, `3 lines`) 면 기계가 판정한다
+- 기대값에 조건이 붙으면 (`0 (Anti-Pattern catch 라인만 허용)`) 자연어로 보고 모델 판정으로 넘긴다. 지금은 판정 대기 상태로 남는다
+
+### 룰 작성 시 지켜야 할 것
+
+- 명령은 **읽기 전용**이어야 한다. 러너가 관문으로 검사해서 쓰기 계열이면 실행하지 않고 차단 보고한다. 허용 명령은 `grep`, `ls`, `test`, `awk`, `sed -n`, `find`, `cat`, `wc`, `head`, `tail`, `echo`, `sort`, `uniq`, `cut`, `tr`, `python3`, `git`(읽기 하위 명령만) 이다
+- `<slug>` 같은 자리표시자를 쓴 명령은 그대로 실행되지 않아 차단된다. 실행 가능한 룰로 만들려면 실제 경로를 쓴다
+- 셸은 `bash` 로 고정되어 돈다. 사용자 기본 셸(zsh) 기준으로 쓰면 결과가 달라질 수 있다
+
+### 회귀 catch
+
+```bash
+python3 -c "import sys; sys.path.insert(0,'.'); from pathlib import Path; from evals.runner.coupling import collect_rules; print(len(collect_rules(Path('.'))))"
+# expected: >= 100
+```
+
+```bash
+ls evals/run.py evals/runner/coupling.py evals/baseline.json | wc -l
+# expected: 3
+```
+
+### 영향 범위
+
+- 본 파일의 코드 블록 형식이나 `# expected:` 주석 형식을 바꾸면 러너가 조용히 룰을 놓친다. 러너는 파싱된 룰 수가 직전 실행보다 줄면 경고한다. 절대 수치를 assert 로 박지는 않는다 (자산이 계속 늘어나는 저장소에서 절대값 검사는 매 릴리즈에 마찰을 부과한다)
+- fixture README (`skills/*/tests/**/*.md`) 도 같은 형식으로 읽힌다. 두 원천을 합쳐 111건이다
+- `evals/` 는 Claude Code 의 자동 로드 경로 밖이라 사용자 세션에 안 올라간다

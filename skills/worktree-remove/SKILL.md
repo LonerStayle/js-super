@@ -1,11 +1,11 @@
 ---
 name: worktree-remove
-description: 커맨드 /worktree-remove 명시 호출로만 진입 — 자유 요청에서 자동 선택 금지. 현재 feature 워크트리를 정리 (git worktree remove + 브랜치 안전 삭제 -d, --force 옵트인 시 -D). worktree-only (main 에서 호출 시 차단).
+description: 커맨드 /remove-worktree 명시 호출로만 진입 — 자유 요청에서 자동 선택 금지. 현재 feature 워크트리를 정리 (git worktree remove + 브랜치 안전 삭제 -d, --force 옵트인 시 -D). worktree-only (main 에서 호출 시 차단).
 ---
 
 # Worktree Remove (v2.5.1+)
 
-현재 feature 워크트리를 정리 — `git worktree remove` + `git branch -d` 를 한 슬래시로 묶음. `worktree-merge-back` 직후 정리 흐름의 사용자 편의 명령. chain 없음 — 사용자가 `/worktree-remove` 명시 호출.
+현재 feature 워크트리를 정리 — `git worktree remove` + `git branch -d` 를 한 슬래시로 묶음. `worktree-merge-back` 직후 정리 흐름의 사용자 편의 명령. chain 없음 — 사용자가 `/remove-worktree` 명시 호출.
 
 **Announce at start:** "I'm using the worktree-remove skill — cleanup current worktree + branch (worktree-only)."
 
@@ -19,7 +19,7 @@ MAIN_WORKTREE=$(git worktree list --porcelain | awk '/^worktree / {print $2; exi
 if [ "$CURRENT_PATH" = "$MAIN_WORKTREE" ]; then
   echo "❌ 이 skill 은 worktree 안에서만 사용 가능합니다."
   echo "   현재: $CURRENT_PATH (main 워크트리)"
-  echo "   main 워크트리 자체는 /worktree-remove 로 제거할 수 없습니다."
+  echo "   main 워크트리 자체는 /remove-worktree 로 제거할 수 없습니다."
   exit 1
 fi
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
@@ -30,7 +30,7 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
 
 ## When to Use
 
-- 사용자가 명시적으로 `/worktree-remove` 호출 시에만
+- 사용자가 명시적으로 `/remove-worktree` 호출 시에만
 - 자동 발동 경로 없음 — `worktree-merge-back` 의 자동 chain X
 - 명시 invoke 시점: feature 작업 완료 + `worktree-merge-back` 끝난 후 (또는 워크트리 단독 폐기 의도)
 
@@ -87,12 +87,12 @@ git -C "$MAIN_PATH" branch -d "$CURRENT_BRANCH"
 
 ```
 ⚠️ 브랜치 "$CURRENT_BRANCH" 가 parent 로 머지되지 않아 안전 삭제(-d) 차단되었습니다.
-   1. 머지 후 재호출 — /worktree-merge-back 먼저 실행 후 /worktree-remove
-   2. 또는 강제 삭제 — /worktree-remove --force 명시 호출 (데이터 손실 위험)
+   1. 머지 후 재호출 — /merge-back-worktree 먼저 실행 후 /remove-worktree
+   2. 또는 강제 삭제 — /remove-worktree --force 명시 호출 (데이터 손실 위험)
    (워크트리는 이미 제거됨 — Step 4 안내 그대로 진행)
 ```
 
-**`--force` 옵트인 분기 (D-6)** — 사용자가 `/worktree-remove --force` 명시 시에만 진입:
+**`--force` 옵트인 분기 (D-6)** — 사용자가 `/remove-worktree --force` 명시 시에만 진입:
 
 ```bash
 git -C "$MAIN_PATH" worktree remove --force "$CURRENT_PATH"

@@ -6,7 +6,7 @@
 
 ## S1 — 기본 호출 (플래그 없음)
 
-**입력**: 아무 피처 폴더에서 `/tech-design <slug>` 실행. `--no-clean-verify` 미지정.
+**입력**: 아무 피처 폴더에서 `/design-tech <slug>` 실행. `--no-clean-verify` 미지정.
 
 **Expected**
 - dispatch 직후 `ℹ️ 무맥락 검증자 2개를 백그라운드로 띄웠습니다.` 안내 1회 노출
@@ -19,7 +19,7 @@
 
 ## S2 — `--no-clean-verify` 지정
 
-**입력**: `/tech-design <slug> --no-clean-verify`
+**입력**: `/design-tech <slug> --no-clean-verify`
 
 **Expected**
 - 보조 에이전트 dispatch **0건**

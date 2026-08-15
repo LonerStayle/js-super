@@ -179,8 +179,8 @@ If they agree to the companion, read the detailed guide before proceeding:
 | 산출물 형식 | 자유 산문 + `## 요구 항목` 과 `FR-N` 필수 | upstream 자유 형식 단일 |
 | 대화 방식 | 소크라테스 4블록 (커버 목록 5 / 고정 비교축 3 / 3단 사다리) | upstream 자유 대화 |
 | 변경이력 footer | 자동 누적 | 없음 |
-| 다음 단계 | `/tech-design` | `/og-write-plan` |
+| 다음 단계 | `/design-tech` | `/og-write-plan` |
 
 ## 주의
 
-`/og-*` 흐름과 `/brainstorm`, `/tech-design`, `/write-plan`, `/execute-plan` 흐름을 **하나의 피처 안에서 섞지 마세요**. 한 피처는 한 흐름으로 일관되게.
+`/og-*` 흐름과 `/brainstorm`, `/design-tech`, `/write-plan`, `/execute-plan` 흐름을 **하나의 피처 안에서 섞지 마세요**. 한 피처는 한 흐름으로 일관되게.

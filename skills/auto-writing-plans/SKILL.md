@@ -20,7 +20,7 @@ description: auto-flow 3단계 — /auto-write-plan 커맨드 또는 앞 단계 
 
 ### Step 1 — 입력 확인 + slug 추론
 
-`<slug>-requirements.md` + `<slug>-tech-design.md` 모두 존재 확인. 누락 시 `ℹ️ 입력이 누락됐습니다 (<누락 파일>). /auto-brainstorm 또는 /auto-tech-design 부터 시작해주세요.` 안내 후 종료.
+`<slug>-requirements.md` + `<slug>-tech-design.md` 모두 존재 확인. 누락 시 `ℹ️ 입력이 누락됐습니다 (<누락 파일>). /auto-brainstorm 또는 /auto-design-tech 부터 시작해주세요.` 안내 후 종료.
 
 **2-doc → 3-doc 승격 (산출물 깊이 선택)**: tech-design frontmatter 가 `depth: 2` 면 승격으로 간주 — 한 줄 안내 후 frontmatter `depth: 3` 갱신 + `depth_reason` 승격 사유 교체 + `change-history` [개발방향-수정] entry, 이후 기존 흐름 진행 (재확인 게이트 없음 — 명시 실행이므로).
 

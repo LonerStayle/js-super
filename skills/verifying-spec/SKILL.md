@@ -87,7 +87,7 @@ digraph verify_flow {
 
 ### `--no-clean-verify` 플래그
 
-사용자가 이번 슬래시 호출(`/tech-design`, `/write-plan`, `/auto-tech-design`, `/auto-write-plan`)에 `--no-clean-verify` 토큰을 **명시**한 경우에만 건너뛴다. 메인 자체 판단으로 끄지 않는다.
+사용자가 이번 슬래시 호출(`/design-tech`, `/write-plan`, `/auto-design-tech`, `/auto-write-plan`)에 `--no-clean-verify` 토큰을 **명시**한 경우에만 건너뛴다. 메인 자체 판단으로 끄지 않는다.
 
 변경 규모나 복잡도를 보고 알아서 켜고 끄는 조건부 게이팅은 도입하지 않는다 — 판정이 틀리면 건너뛴 사실이 사용자에게 보이지 않는다.
 

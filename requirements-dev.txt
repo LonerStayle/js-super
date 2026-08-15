@@ -3,3 +3,4 @@ requests>=2.31
 pytest-json-report>=1.5
 pytest-httpserver>=1.0
 pyyaml>=6.0
+pytest-xdist>=3.5

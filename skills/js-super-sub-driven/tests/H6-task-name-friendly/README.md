@@ -2,7 +2,7 @@
 
 ## 시나리오
 
-`/brainstorm`, `/tech-design`, `/write-plan`, `/execute-plan` 진입 시 메인이 TaskCreate 로 만든 Checklist 항목 이름이 사용자 친화 한국어인지 검증.
+`/brainstorm`, `/design-tech`, `/write-plan`, `/execute-plan` 진입 시 메인이 TaskCreate 로 만든 Checklist 항목 이름이 사용자 친화 한국어인지 검증.
 
 ## 기대 동작
 

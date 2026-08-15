@@ -9,7 +9,7 @@ auto-brainstorming 끝 → transition notice → 사용자가 "stop" 입력 → 
 ```
 /auto-brainstorm 새 피처
 ... (clarifying Q + AI 자동 진행) ...
-ℹ️ Auto-proceeding to /tech-design. Type "stop" to abort.
+ℹ️ Auto-proceeding to /design-tech. Type "stop" to abort.
 
 사용자: stop
 ```
@@ -18,7 +18,7 @@ auto-brainstorming 끝 → transition notice → 사용자가 "stop" 입력 → 
 
 1. 메인이 다음 turn 시작 시 `parse_interrupt("stop")` → True
 2. `js-super:auto-tech-design` invoke 안 함
-3. 종료 메시지: ℹ️ OK. /tech-design 나중에 직접 실행.
+3. 종료 메시지: ℹ️ OK. /design-tech 나중에 직접 실행.
 4. requirements.md + change-history 첫 entry 는 이미 commit 됨 → 보존
 
 다른 키워드도 동작:

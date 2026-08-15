@@ -46,7 +46,7 @@
 ## v1.1.17+ — auto-flow dogfood fixtures
 
 - H7 — auto-brainstorm small 피처 자동 chain (D1, D4)
-- H8 — /auto-tech-design 기존 PRD 활용 chain (D-T9, D4)
+- H8 — /auto-design-tech 기존 PRD 활용 chain (D-T9, D4)
 - H9 — mid-flight stop 인터럽트 (D7, D-T8, R11)
 - H10 — auto-execute BLOCKED → failure isolation (D6, R2, R9)
 

@@ -36,7 +36,7 @@ The output is free-form prose. Only three things are fixed: the H1 title, a `## 
 <HARD-GATE>
 This skill produces requirements only — NOT <slug>-tech-design.md, NOT code, NOT implementation plans. Technical decisions belong to the next step.
 
-After <slug>-requirements.md is approved AND change-history is logged, **automatically invoke** the `tech-design` skill via the Skill tool (v1.1.9+ — the separate "proceed?" gate has been removed). Output a one-line interrupt-notice `ℹ️ /tech-design 단계로 자동 넘어갑니다. 멈추려면 "stop" 입력해주세요.` so the user can pause if needed. If they explicitly type "stop"/"멈춰"/"잠깐", exit cleanly with `ℹ️ 알겠습니다. /tech-design 은 나중에 직접 실행해주세요.`. The original combined approval gate (#8) already captured the user's intent; a separate proceed gate just adds friction.
+After <slug>-requirements.md is approved AND change-history is logged, **automatically invoke** the `tech-design` skill via the Skill tool (v1.1.9+ — the separate "proceed?" gate has been removed). Output a one-line interrupt-notice `ℹ️ /design-tech 단계로 자동 넘어갑니다. 멈추려면 "stop" 입력해주세요.` so the user can pause if needed. If they explicitly type "stop"/"멈춰"/"잠깐", exit cleanly with `ℹ️ 알겠습니다. /design-tech 은 나중에 직접 실행해주세요.`. The original combined approval gate (#8) already captured the user's intent; a separate proceed gate just adds friction.
 </HARD-GATE>
 
 ### 예외 — `--no-ask` 플래그 (v2.5+)
@@ -75,7 +75,7 @@ You MUST create a TaskCreate task for each of these items and complete them in o
 6. **자체 점검** — 여섯 항목 단일 목록. "Self-Review" 참조.
 7. **사용자 검토** — 초안 전체를 한 번에 보여주고 승인받는다. 수정 요청이 오면 고쳐서 다시 보여준다.
 8. **변경이력 기록** — append first `[요구사항-수정]` entry via `change-history` skill
-9. **개발방향 단계 자동 진행** — Right after the change-history entry is logged, auto-invoke `tech-design` via the Skill tool with a one-line interrupt-notice. On user "stop"/"멈춰"/"잠깐" → exit cleanly with notice telling the user to run /tech-design later.
+9. **개발방향 단계 자동 진행** — Right after the change-history entry is logged, auto-invoke `tech-design` via the Skill tool with a one-line interrupt-notice. On user "stop"/"멈춰"/"잠깐" → exit cleanly with notice telling the user to run /design-tech later.
 
 If you find yourself skipping ahead, stop and create the missing task.
 
@@ -99,7 +99,7 @@ Save path: `docs/features/YYYY-MM-DD-<slug>/<slug>-requirements.md`
 ```markdown
 # 요구사항: <feature-name>
 
-> **다음 단계 안내**: 이 문서는 요구사항 (기획 단계) 입니다. 다음 단계로 `tech-design` skill (또는 `/tech-design` 슬래시) 을 호출해서 `<slug>-tech-design.md` (기술 설계서) 를 만드세요. 기술 결정이나 구현 세부사항은 여기 박지 마세요 — 그건 다음 산출물 (tech-design, 3개 트랙이면 plan 까지) 에 들어갑니다.
+> **다음 단계 안내**: 이 문서는 요구사항 (기획 단계) 입니다. 다음 단계로 `tech-design` skill (또는 `/design-tech` 슬래시) 을 호출해서 `<slug>-tech-design.md` (기술 설계서) 를 만드세요. 기술 결정이나 구현 세부사항은 여기 박지 마세요 — 그건 다음 산출물 (tech-design, 3개 트랙이면 plan 까지) 에 들어갑니다.
 
 <대화에서 나온 섹션들. 예: ## 배경 / ## 핵심 결정 / ## 인터랙션 흐름 / ## 우려와 해결>
 
@@ -143,9 +143,9 @@ digraph brainstorm_flow {
     "Self-review (6 items)" [shape=box];
     "블록 4 — 승인\n초안 전체 한 번에" [shape=diamond];
     "Invoke change-history\n(first entry: 요구사항-수정)" [shape=box];
-    "Auto-invoke /tech-design (no gate, v1.1.9+)" [shape=box];
+    "Auto-invoke /design-tech (no gate, v1.1.9+)" [shape=box];
     "Auto-invoke tech-design skill" [shape=doublecircle];
-    "Exit: tell user to run /tech-design later" [shape=oval];
+    "Exit: tell user to run /design-tech later" [shape=oval];
 
     "Step 0 Router (FR-3)\n명시적 small 신호?" -> "Advise: run /og-brainstorm\n(no auto-invoke)" [label="small"];
     "Step 0 Router (FR-3)\n명시적 small 신호?" -> "AskUserQuestion 게이트\n(og / js-super)" [label="그 외"];
@@ -164,9 +164,9 @@ digraph brainstorm_flow {
 
     "블록 4 — 승인\n초안 전체 한 번에" -> "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/FR-N)" [label="수정 요청 — 고쳐서 다시"];
     "블록 4 — 승인\n초안 전체 한 번에" -> "Invoke change-history\n(first entry: 요구사항-수정)" [label="승인"];
-    "Invoke change-history\n(first entry: 요구사항-수정)" -> "Auto-invoke /tech-design (no gate, v1.1.9+)";
-    "Auto-invoke /tech-design (no gate, v1.1.9+)" -> "Auto-invoke tech-design skill" [label="continue"];
-    "Auto-invoke /tech-design (no gate, v1.1.9+)" -> "Exit: tell user to run /tech-design later" [label="user: stop/멈춰"];
+    "Invoke change-history\n(first entry: 요구사항-수정)" -> "Auto-invoke /design-tech (no gate, v1.1.9+)";
+    "Auto-invoke /design-tech (no gate, v1.1.9+)" -> "Auto-invoke tech-design skill" [label="continue"];
+    "Auto-invoke /design-tech (no gate, v1.1.9+)" -> "Exit: tell user to run /design-tech later" [label="user: stop/멈춰"];
 }
 ```
 
@@ -224,9 +224,9 @@ When `AskUserQuestion` is unavailable, ask in prose:
 
 After change-history entry is logged, **automatically invoke** the `tech-design` skill (or `js-super:tech-design` depending on harness namespace). NO user gate here.
 
-Output a one-line notice `ℹ️ /tech-design 단계로 자동 넘어갑니다. 멈추려면 "stop" 입력해주세요.` so the user has a chance to interrupt mid-transition if they really want to pause.
+Output a one-line notice `ℹ️ /design-tech 단계로 자동 넘어갑니다. 멈추려면 "stop" 입력해주세요.` so the user has a chance to interrupt mid-transition if they really want to pause.
 
-If the user explicitly types "stop"/"멈춰"/"잠깐" after the notice, exit cleanly with `ℹ️ 알겠습니다. /tech-design 은 나중에 직접 실행해주세요.` Otherwise auto-invoke.
+If the user explicitly types "stop"/"멈춰"/"잠깐" after the notice, exit cleanly with `ℹ️ 알겠습니다. /design-tech 은 나중에 직접 실행해주세요.` Otherwise auto-invoke.
 
 Rationale: gate #8 (RAW 산출물 승인) 에서 이미 사용자 의도가 다음 단계 진행으로 잡혔어요. 별도 "다음 단계 갈까요?" 게이트는 마찰만 더할 뿐이라 v1.1.9+ 에서 제거됐고, 대신 한 줄 안내로 사용자가 멈출 기회를 줍니다.
 
@@ -409,7 +409,7 @@ Always prefer the tool when available. Detect availability via the harness tool 
 | Asking "범위 밖이 뭔가요?" from scratch when exclusions were stated earlier | Consolidate prior exclusions first; ask only for additions on top |
 | Renaming the `## 요구 항목` section or dropping FR numbers | Downstream skills look for that exact heading and those anchors. Keep both. |
 | Auto-crossing into design without asking | Always ask the approval prompt. On approval, auto-invoke. Without approval, stop. |
-| Asking the user to type `/tech-design` manually | Once approved, auto-invoke tech-design via Skill tool. User shouldn't have to retype. |
+| Asking the user to type `/design-tech` manually | Once approved, auto-invoke tech-design via Skill tool. User shouldn't have to retype. |
 | "Skip the doc because it's simple" | Simple cases just produce a shorter doc, never a missing one. |
 
 ## Red Flags (STOP if you think these)

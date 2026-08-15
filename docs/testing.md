@@ -33,9 +33,11 @@ cd tests/claude-code
 
 ### Requirements
 
-- Must run from the **superpowers plugin directory** (not from temp directories)
 - Claude Code must be installed and available as `claude` command
-- Local dev marketplace must be enabled: `"superpowers@superpowers-dev": true` in `~/.claude/settings.json`
+- Run against an isolated copy, not the working tree: `rsync -a --exclude .git ./ "$TMPD/repo/"` then pass `--plugin-dir "$TMPD/repo"`
+- Pass `--setting-sources ""` so the user's own settings do not leak into the run
+- Do NOT rely on a dev marketplace entry in `~/.claude/settings.json` — that mechanism is gone; `--plugin-dir` is the supported way to test a working copy
+- **Caveat (measured 2026-08-15):** `--plugin-dir` does NOT replace an installed plugin of the same name. Both load, so old and new definitions coexist in `slash_commands` and `skills`. If you are testing a rename or a removal, uninstall the plugin first or load the copy under a different plugin name — otherwise the stale definition can satisfy your assertion. See `docs/features/2026-08-15-skill-eval-harness/사전실측-노트.md` §4
 
 ## Integration Test: subagent-driven-development
 
@@ -182,9 +184,10 @@ ls -lt "$SESSION_DIR"/*.jsonl | head -5
 **Problem**: Skill not found when running headless tests
 
 **Solutions**:
-1. Ensure you're running FROM the superpowers directory: `cd /path/to/superpowers && tests/...`
-2. Check `~/.claude/settings.json` has `"superpowers@superpowers-dev": true` in `enabledPlugins`
-3. Verify skill exists in `skills/` directory
+1. Verify the skill exists in `skills/<name>/SKILL.md` in the copy you passed to `--plugin-dir`
+2. Read the `init` event from `--output-format stream-json` and check the `skills` array — it lists exactly what loaded
+3. Check for a name collision: a command file `commands/<name>.md` shadows a skill directory `skills/<name>/`, making that skill unreachable by any name. Run `for c in commands/*.md; do n=$(basename "$c" .md); [ -d "skills/$n" ] && echo "collision: /$n"; done`
+4. Remember `--plugin-dir` is additive — if the plugin is also installed, both versions load and the installed one may answer instead
 
 ### Permission Errors
 

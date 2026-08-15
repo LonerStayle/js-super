@@ -16,7 +16,7 @@ v2.5.1+ 의 Step 3 가 `git merge $MAIN_BRANCH` (로컬) 패턴이라 origin pus
 
 ## Trigger
 
-feature-y 에서 `/worktree-merge-back` 호출.
+feature-y 에서 `/merge-back-worktree` 호출.
 
 ## Expected
 
@@ -38,7 +38,7 @@ feature-y 에서 `/worktree-merge-back` 호출.
 7. Step 3 재진입 → working tree clean → Step 4 자동 진행
 8. Step 4 — merge-base 검증 통과 → merge commit 메시지 → 머지 실행
 9. **Step 4.5 신규 (v2.5.1+)** — env 파일 동기화 검토 (본 시나리오에선 env 파일 0건 → "동기화할 환경 파일 없음" 안내 후 자동 진행)
-10. Step 5 — 사후 처리 안내 (`/worktree-remove` 호출 안내 + remote 동기화 안내 포함)
+10. Step 5 — 사후 처리 안내 (`/remove-worktree` 호출 안내 + remote 동기화 안내 포함)
 
 ## Catch
 
@@ -46,4 +46,4 @@ feature-y 에서 `/worktree-merge-back` 호출.
 - **AskUserQuestion 호출 0** (v2.5.1+ 변경 — prose 안내만)
 - 사용자가 `git merge --abort` 선택 시 본 skill 재호출 X 가정 (자동 abort 안 함)
 - Step 4.5 env 동기화 자동 진행 (대상 0건이면 한 줄 안내, 대상 ≥ 1 면 각 파일 1줄 prose 보고)
-- Step 5 종료 메시지에 `/worktree-remove` 호출 안내 1줄 포함 (자동 chain X — 사용자 명시 호출만)
+- Step 5 종료 메시지에 `/remove-worktree` 호출 안내 1줄 포함 (자동 chain X — 사용자 명시 호출만)

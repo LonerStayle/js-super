@@ -1,5 +1,5 @@
 ---
-description: 새 피처의 <slug>-requirements.md 를 소크라테스 대화로 작성합니다. 기획 레벨 합의 후 /tech-design으로 넘어갑니다.
+description: 새 피처의 <slug>-requirements.md 를 소크라테스 대화로 작성합니다. 기획 레벨 합의 후 /design-tech으로 넘어갑니다.
 ---
 
 # /brainstorm
@@ -8,7 +8,7 @@ description: 새 피처의 <slug>-requirements.md 를 소크라테스 대화로 
 
 산출물은 `docs/features/<오늘날짜>-<slug>/<slug>-requirements.md` 입니다.
 
-다음 단계는 `/tech-design` 입니다.
+다음 단계는 `/design-tech` 입니다.
 
 ## `--no-ask` 플래그 (v2.5+)
 

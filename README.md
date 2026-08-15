@@ -82,7 +82,7 @@ flowchart LR
 
     A["/brainstorm"]:::cmd --> B[요구사항.md]:::doc
     B --> G1{확인 게이트}:::gate
-    G1 --> C["/tech-design"]:::cmd
+    G1 --> C["/design-tech"]:::cmd
     C --> D[기술설계.md]:::doc
     D --> G2{확인 게이트 + 깊이 선택}:::gate
     G2 -->|3개 문서| E["/write-plan"]:::cmd
@@ -114,7 +114,7 @@ flowchart LR
 
 ```
 /brainstorm 사용자 잔액 출금 기능
-/tech-design
+/design-tech
 /write-plan
 /execute-plan
 ```
@@ -384,12 +384,12 @@ flowchart LR
 
 <br/>
 
-### `/worktree-merge-back` — main 더럽히지 않고 머지 준비
+### `/merge-back-worktree` — main 더럽히지 않고 머지 준비
 
 > *"feature 작업 1 주 했더니 main 이 멀리 갔어요. 머지하려니 충돌 무서워요"*
 
 feature 브랜치가 오래 살면 main 이 앞으로 갑니다. 보통은 main 워크트리에서 `git merge feature` 하다가 거기서 충돌 나서 main 이 더러워지죠.
-**`/worktree-merge-back` 은 거꾸로**, **feature 워크트리 안에서 main 을 당겨와 충돌을 거기서 해결**합니다.
+**`/merge-back-worktree` 은 거꾸로**, **feature 워크트리 안에서 main 을 당겨와 충돌을 거기서 해결**합니다.
 
 <table>
 <tr>
@@ -400,7 +400,7 @@ feature 브랜치가 오래 살면 main 이 앞으로 갑니다. 보통은 main 
 ```bash
 # feature 워크트리로 들어가서
 cd .worktrees/GNG-432-캔버스첨부오류
-/worktree-merge-back
+/merge-back-worktree
 ```
 
 이걸 하면 main 의 최신 변경을 이 워크트리로 당겨 옵니다. 충돌은 여기서만 일어나요.
@@ -498,7 +498,7 @@ flowchart TD
 | 명령 | 결과물 | 한 줄 설명 |
 |---|---|---|
 | `/brainstorm <주제>` | `요구사항.md` | 소크라테스 대화 → 요구사항 정리 |
-| `/tech-design` | `기술설계.md` | 요구사항 기반 기술 설계 |
+| `/design-tech` | `기술설계.md` | 요구사항 기반 기술 설계 |
 | `/write-plan` | `구현계획.md` | task 단위로 잘게 쪼개기 |
 | `/execute-plan` | 코드 + 흔적 | 인라인 / 서브에이전트 모드 선택 |
 | `/auto-*` 4 개 | 같은 결과물 | 게이트 최소화 자동 진행 |
@@ -512,8 +512,8 @@ flowchart TD
 | `/goodmorning` | 아침 브리핑 — 워크트리·세션 기록을 실행 시점에 수집해 위험 우선 보고 |
 | `/audit-risk` | 규모에 맞춰 AI 1~5 명이 보안·거버넌스 점검 → 마크다운 보고서 |
 | `/worktree <브랜치>` | 격리 작업 공간 + `.env*` + Claude 메모리 자동 |
-| `/worktree-merge-back` | feature 워크트리 안에서 안전한 main 머지 |
-| `/worktree-remove` | 현재 워크트리 + 브랜치 안전 정리 |
+| `/merge-back-worktree` | feature 워크트리 안에서 안전한 main 머지 |
+| `/remove-worktree` | 현재 워크트리 + 브랜치 안전 정리 |
 | `/new-skill <설명>` | 자유 텍스트 한 줄 → skill 자동 생성 (프로젝트 / 전체 선택) |
 | `/list-skills` | js-super 가 만든 skill 만 조회 (프로젝트 + 전체) |
 | `/remove-skill <이름>` | js-super 가 만든 skill 안전 정리 |
@@ -573,7 +573,7 @@ PR 리뷰 시 `grep "# RISK"` 한 줄로 catch.
 ```
 docs/features/2026-05-23-잔액-출금/
 ├── 잔액-출금-requirements.md      ← /brainstorm
-├── 잔액-출금-tech-design.md       ← /tech-design
+├── 잔액-출금-tech-design.md       ← /design-tech
 └── 잔액-출금-implementation-plan.md ← /write-plan
 ```
 
@@ -614,11 +614,11 @@ docs/features/2026-05-23-잔액-출금/
 def charge(user_id, amount):
     return payment_gateway.charge(user_id, amount)
 
-# RISK(breaking): API v1 응답 구조 변경, v1 클라이언트 깨짐 — by /tech-design §3
+# RISK(breaking): API v1 응답 구조 변경, v1 클라이언트 깨짐 — by /design-tech §3
 def get_balance_v2(user_id) -> dict:
     ...
 
-# RISK(race): 동시 출금 시 잔액 차감 충돌 가능 — by /tech-design §5
+# RISK(race): 동시 출금 시 잔액 차감 충돌 가능 — by /design-tech §5
 def withdraw(user_id, amount):
     balance = db.get_balance(user_id)
     ...
@@ -795,12 +795,12 @@ og-* 흐름은 변경이력 / 위험 주석 / 검증 게이트가 **안 따라�
 | **v2.8** | `/goodnight` · `/goodmorning` 세션 핸드오프 + og 흐름 커맨드 전용화 |
 | **v2.7** | skill 빌더 3종 고도화 — 생성 스코프(프로젝트 / 전체) + 출처 표식 + `/list-skills` 조회 |
 | **v2.6** | `/new-skill` · `/remove-skill` — skill 만들고 정리하기 |
-| **v2.5** | `--no-ask` 모드 + `/worktree-remove` 워크트리 정리 |
+| **v2.5** | `--no-ask` 모드 + `/remove-worktree` 워크트리 정리 |
 | **v2.4** | 한국어 친화 안내 톤 |
 | **v2.3.5** | 실행 중 자잘한 재질문 줄임, 질문할 땐 알람 보장 |
 | **v2.3.0** | `/audit-risk` 보안·거버넌스 1 회 감사 |
 | **v2.1.0** | `/fast-tasks` 잡일 묶어 처리 |
-| **v2.0.4** | `/worktree-merge-back` 안전한 머지 |
+| **v2.0.4** | `/merge-back-worktree` 안전한 머지 |
 | **v2.0.0** | 서브에이전트 병렬 모드 |
 
 <sub>v2.2 ~ v2.8.2 에 걸쳐 있던 <code>.html</code> 사람용 사본 기능 (<code>generating-html</code> 스킬 · <code>/sync-html</code> 명령) 은 이후 제거됐습니다. 산출물은 <code>.md</code> 로 통일됩니다.</sub>

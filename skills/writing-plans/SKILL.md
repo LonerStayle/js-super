@@ -30,7 +30,7 @@ Notification 훅 (`elicitation_dialog` 매처) 이 알람을 발화하려면 도
 Take <slug>-requirements.md + <slug>-tech-design.md as inputs and produce a comprehensive implementation plan (`<slug>-implementation-plan.md`) decomposed into bite-sized TDD tasks. The upstream superpowers patterns (exact file paths, complete code in every step, TDD cycle, no placeholders, frequent commits) are inherited as-is. js-superpowers extends them with: change-history footer, structured "위험 코드 지점" section, and a verification gate after save.
 
 <HARD-GATE>
-Both <slug>-requirements.md and <slug>-tech-design.md must exist in the current feature folder. If either is missing, instruct the user to run /brainstorm or /tech-design first.
+Both <slug>-requirements.md and <slug>-tech-design.md must exist in the current feature folder. If either is missing, instruct the user to run /brainstorm or /design-tech first.
 </HARD-GATE>
 
 ### 2-doc → 3-doc 승격 (산출물 깊이 선택)
