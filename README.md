@@ -429,7 +429,7 @@ cd .worktrees/GNG-432-캔버스첨부오류
 
 > *"배포 전에 보안 / 비용 한 번 점검하고 싶은데 시간이 없어요"*
 
-5 명의 AI 가 동시에 코드를 다른 각도로 훑고, 한 명이 그걸 모아 보기 좋은 HTML 보고서를 만들어 줍니다. 코드는 **건드리지 않아요**.
+프로젝트 크기에 맞춰 AI 1 명 또는 5 명이 코드를 훑고, 결과를 마크다운 보고서 한 장으로 정리합니다. 코드는 **건드리지 않아요**.
 
 ```mermaid
 flowchart TD
@@ -443,16 +443,16 @@ flowchart TD
     C["민감 로직 검토"]:::sub
     D["AI 자동화 위험"]:::sub
     E["거버넌스 점검"]:::sub
-    F["보고서 생성"]:::sub
-    R["docs/audit/...html"]:::out
+    R["docs/audit/...md"]:::out
 
     M --> A & B & C & D & E
-    A & B & C & D & E --> F
-    F --> R
+    A & B & C & D & E --> M
+    M --> R
 ```
 
+- 프로젝트 규모가 작으면 다섯 영역을 AI 1 명이 순서대로 훑는 방식으로 자동 전환됩니다
 - Snyk, Bandit 같은 외부 보안 도구를 **대체하는 게 아니라 보완**합니다 (다른 각도로 catch)
-- 보고서는 `.html` 한 장 — gitignored, 사람만 보면 됩니다
+- 보고서는 `.md` 한 장 — gitignored, 편집기에서 바로 읽고 이전 결과와 비교할 수 있습니다
 
 <br/>
 
@@ -513,7 +513,7 @@ flowchart TD
 | 명령 | 한 줄 설명 |
 |---|---|
 | `/goodmorning` | 아침 브리핑 — 워크트리·세션 기록을 실행 시점에 수집해 위험 우선 보고 |
-| `/audit-risk` | 5+1 AI 가 보안·거버넌스 동시 점검 → HTML 보고서 |
+| `/audit-risk` | 규모에 맞춰 AI 1~5 명이 보안·거버넌스 점검 → 마크다운 보고서 |
 | `/worktree <브랜치>` | 격리 작업 공간 + `.env*` + Claude 메모리 자동 |
 | `/worktree-merge-back` | feature 워크트리 안에서 안전한 main 머지 |
 | `/worktree-remove` | 현재 워크트리 + 브랜치 안전 정리 |
