@@ -1,6 +1,6 @@
 ---
 name: auto-executing-plans
-description: auto-flow 4단계 (마지막) — /auto-execute-plan 커맨드 또는 앞 단계 auto-writing-plans 의 명시 invoke 로만 진입, 사용자 자유 요청에서 자동 선택 금지. implementation-plan.md 읽기 + Entry Guard (preflight.subagent_task_entry_check) + DAG 자동 build + 무조건 wave-parallel subagent 강제 (Gate #14 override) + failure isolation 그대로 + End-of-run consolidator 자동 + finishing-a-development-branch 자동 호출. AskUserQuestion / generating-html 호출 X.
+description: auto-flow 4단계 (마지막) — /auto-execute-plan 커맨드 또는 앞 단계 auto-writing-plans 의 명시 invoke 로만 진입, 사용자 자유 요청에서 자동 선택 금지. implementation-plan.md 읽기 + Entry Guard (preflight.subagent_task_entry_check) + DAG 자동 build + 무조건 wave-parallel subagent 강제 (Gate #14 override) + failure isolation 그대로 + End-of-run consolidator 자동 + finishing-a-development-branch 자동 호출. AskUserQuestion 호출 X.
 ---
 
 # Auto Executing Plans → wave-parallel + finishing (auto)
@@ -66,7 +66,6 @@ description: auto-flow 4단계 (마지막) — /auto-execute-plan 커맨드 또�
 | `executing-plans` (inline) 호출 | NEVER. D5 — 무조건 wave-parallel subagent. |
 | Gate #14 게이트 발화 | NEVER. D5 — auto-flow 가 명시 override. |
 | AskUserQuestion 호출 | NEVER. |
-| generating-html 호출 | NEVER. |
 | failure 1건 시 종료 | NEVER. D6 — 격리 후 계속. |
 
 ## Related Skills

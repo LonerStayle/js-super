@@ -1,135 +1,132 @@
 # H23 — `/audit-risk` E2E Fixture
 
-End-to-end fixture for the v2.3.0 `/audit-risk` command. 6 scenarios cover the golden path + edge cases + safety constraints.
+End-to-end fixture for `/audit-risk`. 6 시나리오로 골든 패스 + 경계 케이스 + 안전성 제약을 다룬다.
 
 ## Purpose
 
-Validate `/audit-risk` 의 5+1 subagent 패턴 동작:
+`/audit-risk` 의 규모별 모드 동작을 검증한다.
 
-- 5 read-only subagent (A/B/C/D/E) 병렬 dispatch + 결과 종합
-- 1 sequential Subagent F (HTML 보고서 생성) 의 self-contained / secret redaction / v2.2.4 mirror 톤 자유
+- 소스 파일 40개 미만이고 총 8,000줄 미만이면 축소 모드. 보조 에이전트 1개가 다섯 영역을 순서대로 순회한다.
+- 둘 중 하나라도 넘으면 전체 모드. 보조 에이전트 5개를 한 메시지에 병렬로 호출한다.
+- 두 모드 모두 결과를 취합한 뒤 메인이 마크다운 보고서 1개를 직접 작성한다 (`docs/audit/<timestamp>-audit-risk.md`). 보고서 전용 에이전트는 따로 없다.
 
-이 fixture 는 **runtime 발동 안 함**. 사람이 dogfood 시 시나리오 실행 + ground truth 비교.
+이 fixture 는 **runtime 에서 자동 실행되지 않는다**. 사람이 dogfood 할 때 시나리오를 직접 세팅하고 결과를 ground truth 와 비교한다.
 
 ## Scenarios
 
-### G1 — 정상 1회 호출 (golden path)
+### G1 — 작은 프로젝트 (축소 모드)
 
-**Setup**: 실제 프로젝트 (모든 5 영역 active) 에서 `/audit-risk` 호출.
+**Setup**: 소스 파일 40개 미만, 총 8,000줄 미만인 프로젝트에서 `/audit-risk` 를 호출한다.
 
 **Expected**:
-- 5 subagent 모두 결과 반환 (1건 fail 시 partial OK)
-- Subagent F 가 `docs/audit/<YYYY-MM-DD-HHMMSS>-audit-risk.html` write
-- HTML offline 렌더 OK (file:// double-click)
-- 모든 finding 의 file:line 이 HTML 에 표시
-- 위험도 카운트 (Critical/High/Medium/Low) 정확
-- 영역별 score 5개 모두 표시
+- Step 1 규모 측정에서 두 조건(파일 수·줄 수)을 모두 충족해 축소 모드로 안내됨
+- `Task` 호출 1회로 다섯 영역(A~E)을 순서대로 모두 점검함
+- 코드베이스가 작다는 이유로 영역을 건너뛰지 않음
+- `docs/audit/<timestamp>-audit-risk.md` 가 1개 생성됨
 
 **Verification**:
 ```bash
-# 외부 URL 참조 0
-grep -cE "https?://.+\.(css|js|woff|ttf|otf)" docs/audit/*.html
+# 보고서 존재
+ls docs/audit/*-audit-risk.md
+# expected: 파일 1개 이상
+
+# 모드 표기 확인
+grep -c "모드: 간단(1)" docs/audit/*-audit-risk.md
+# expected: ≥ 1
+
+# 다섯 영역 이름이 보고서에 모두 등장
+grep -c "외부 API 비용\|개인정보\|사용량·결제 로직\|LLM 에이전트\|거버넌스" docs/audit/*-audit-risk.md
+# expected: ≥ 5
+```
+
+### G2 — 큰 프로젝트 (전체 모드)
+
+**Setup**: 소스 파일 40개 이상이거나 총 8,000줄 이상인 프로젝트에서 `/audit-risk` 를 호출한다.
+
+**Expected**:
+- Step 1 규모 측정에서 두 조건 중 하나라도 넘어 전체 모드로 안내됨
+- 메인이 한 메시지에 `Task` 호출 5개(영역 A~E 각 1개)를 병렬로 실행함
+- 다섯 결과를 모두 기다린 뒤 취합함
+- `docs/audit/<timestamp>-audit-risk.md` 가 1개 생성됨
+
+**Verification**:
+```bash
+# 모드 표기 확인
+grep -c "모드: 전체(5)" docs/audit/*-audit-risk.md
+# expected: ≥ 1
+```
+
+### G3 — 문제 없는 프로젝트 (clean)
+
+**Setup**: 위험 패턴이 없는 프로젝트(외부 SDK 미사용, PII 필드 없음, 결제 로직 없음, 인증 우회 없음)에서 `/audit-risk` 를 호출한다.
+
+**Expected**:
+- 각 영역이 `status: "clean"` 을 반환하고 `checked` 배열(무엇을 어떤 기준으로 봤는지)을 채움
+- 보고서에 영역별로 "점검함, 해당 항목 없음" 이 명시적으로 나옴
+- 없는 위험을 만들어내지 않음 — 억지 findings 0건
+
+**Verification**:
+```bash
+# "점검함, 해당 항목 없음" 표기 존재
+grep -c "점검함, 해당 항목 없음" docs/audit/*-audit-risk.md
+# expected: ≥ 1
+
+# 요약 표의 건수가 모두 0 인지 육안 확인
+grep -A5 "^## 요약" docs/audit/*-audit-risk.md
+```
+
+### G4 — 비밀값 하드코딩 (마스킹)
+
+**Setup**: 의도된 hardcoded API key 를 포함한 프로젝트(예: `const API_KEY = "sk-test_abc123xyz"`)에서 `/audit-risk` 를 호출한다.
+
+**Expected**:
+- 영역 E 가 secrets-hardcoded category 로 finding 을 반환하고 `redact_secret: true` 로 마킹함
+- finding 의 어떤 필드에도 값 자체가 남지 않음 — 파일 경로와 줄 번호만 남음
+- 보고서에도 값이 나오지 않고 파일:줄만 표시됨
+
+**Verification**:
+```bash
+# 값 자체가 노출되었는지 확인 (의도된 값으로 검색)
+grep -c "sk-test_abc123xyz" docs/audit/*-audit-risk.md
 # expected: 0
 
-# 영역별 카드 모두 존재
-grep -c "api[_-]cost\|api-cost\|API Cost" docs/audit/*.html  # ≥ 1
-grep -c "pii\|PII" docs/audit/*.html                           # ≥ 1
-grep -c "sensitive\|Sensitive" docs/audit/*.html               # ≥ 1
-grep -c "agent\|Agent" docs/audit/*.html                       # ≥ 1
-grep -c "governance\|Governance" docs/audit/*.html             # ≥ 1
-```
-
-### G2 — Subagent D PASS 시나리오 (LLM 에이전트 코드 0)
-
-**Setup**: LLM 에이전트 없는 프로젝트 (openai / anthropic / langchain 등 import 0) 에서 `/audit-risk` 호출.
-
-**Expected**:
-- Subagent D pre-check 가 LLM 에이전트 코드 부재 감지
-- D 반환: `{"status": "PASS", "score": 100, "findings": [], "summary": "에이전트 위험 없음, 본 영역 점검 불필요"}`
-- 다른 4 영역 (A/B/C/E) 정상 진행
-- Subagent F 가 HTML 에서 Agent 영역을 **단일 PASS 카드 + 비활성 안내**로 렌더링 (findings cards X)
-- 전체 위험도 카운트에서 Agent 0건 분리 명시
-
-**Verification**:
-```bash
-# HTML 안에 PASS 안내 명시
-grep -c "에이전트 위험 없음\|에이전트 코드 부재\|본 영역 점검 불필요" docs/audit/*.html
+# 파일:줄 표시는 남아있음
+grep -c "secrets\.py" docs/audit/*-audit-risk.md
 # expected: ≥ 1
 ```
 
-### G3 — Secret Redaction
+### G5 — 영역 1개 실패 (부분 보고서)
 
-**Setup**: 의도된 hardcoded API key 포함 프로젝트 (예: `const API_KEY = "sk-test_abc123xyz"`).
+**Setup**: 영역 하나(예: 영역 A, context7/WebSearch 호출이 막힌 환경)가 실패하도록 만든 뒤 `/audit-risk` 를 호출한다.
 
 **Expected**:
-- Subagent E 가 secrets-hardcoded category 로 Critical finding 반환
-- finding 의 `redact_secret: true` 마킹
-- raw secret value 는 finding 의 어떤 필드에도 노출 X
-- Subagent F 가 HTML 에서 해당 항목을 `****` 마스킹 + file:line 만 표시
-- HTML 본문 어디에도 raw value (`sk-test_abc123xyz`) 가 출현하지 않음
+- 실패한 영역만 `status: "failed"` 로 표시되고 나머지 4개 영역은 정상 진행됨
+- 메인이 전체를 중단하지 않고 부분 보고서를 작성함
+- 보고서에서 실패한 영역이 "점검 실패" 로 표기됨
 
 **Verification**:
 ```bash
-# raw secret 값이 HTML 에 노출되었는지 (의도된 값으로 검색)
-grep -c "sk-test_abc123xyz\|sk-test_[a-zA-Z0-9]*" docs/audit/*.html
-# expected: 0 — 마스킹 적용
-
-# 마스킹 표시 존재
-grep -c "\*\*\*\*" docs/audit/*.html
+# "점검 실패" 표기 존재
+grep -c "점검 실패" docs/audit/*-audit-risk.md
 # expected: ≥ 1
+
+# 나머지 4개 영역은 findings 또는 "점검함, 해당 항목 없음" 으로 정상 표기됨을 육안 확인
 ```
 
-### G4 — Self-contained (외부 URL 0)
+### G6 — LLM 에이전트 코드 없음 (해당 없음)
 
-**Setup**: G1 의 HTML 산출물에 대해 검증.
+**Setup**: LLM 에이전트 코드가 없는 프로젝트(openai / anthropic / langchain 등 import 0)에서 `/audit-risk` 를 호출한다.
 
 **Expected**:
-- `<link href="https://...">` — 0
-- `<script src="https://...">` — 0
-- `@import url(...)` — 0
-- 시스템 폰트 stack 또는 inline data URI 만 사용
+- 영역 D 의 사전 확인이 LLM 에이전트 코드 부재를 감지하고 즉시 종료함
+- 영역 D 가 `status: "skipped"` 를 반환하고 "LLM 에이전트 관련 코드가 없어 이 영역은 해당되지 않음" 을 요약으로 남김
+- 다른 4개 영역은 정상 진행됨
+- 보고서에서 영역 D 가 "해당 없음 (관련 코드 없음)" 으로 표기됨
 
 **Verification**:
 ```bash
-# 모든 외부 URL 검증
-grep -cE "(<link[^>]+href=[\"']https?://|<script[^>]+src=[\"']https?://|@import\s+url\([\"']?https?://)" docs/audit/*.html
-# expected: 0
-
-# 정적 폰트 stack 확인 (system-ui / -apple-system 등 OK)
-grep -c "system-ui\|-apple-system\|BlinkMacSystemFont\|sans-serif\|monospace" docs/audit/*.html
-# expected: ≥ 1
-```
-
-### G5 — 부분 실패 fail-safe
-
-**Setup**: Subagent A 의 context7 / WebSearch 호출이 실패하는 환경 (네트워크 차단 등) 에서 `/audit-risk` 호출.
-
-**Expected**:
-- Subagent A 가 findings 일부 반환 + `pricing_lookup_status: "failed"` 마킹
-- 또는 A 전체가 fail → `area.status: "failed"`
-- 메인이 종료 X — 다른 4 영역 (B/C/D/E) 정상 진행
-- Subagent F 가 HTML 에서 API Cost 영역에 "추정 불가" 라벨 또는 "Subagent A 실패 — 본 영역 검사 부분 누락" 카드 명시
-
-**Verification**:
-```bash
-# 부분 실패 명시 카드
-grep -c "추정 불가\|Subagent.*실패\|partial\|failed" docs/audit/*.html
-# expected: ≥ 1 (실패 시나리오에서)
-```
-
-### G6 — 빈 프로젝트 (graceful empty state)
-
-**Setup**: 신규 프로젝트 (소스 파일 < 5개, 외부 SDK 0, PII 필드 0, 에이전트 0) 에서 `/audit-risk` 호출.
-
-**Expected**:
-- 5 영역 모두 findings: [] + score 100 + summary "위험 없음"
-- Subagent F 가 HTML 생성 — 빈 상태도 우아하게 표현 (empty state UI)
-- "이 프로젝트는 5 영역 모두 무결" 큰 hero 카드 또는 metaphor (트로피 / 체크마크 / 색감 강한 축하 톤)
-
-**Verification**:
-```bash
-# 위험 없음 표시
-grep -c "위험 없음\|0건\|empty\|safe\|무결" docs/audit/*.html
+# "해당 없음" 표기 존재
+grep -c "해당 없음 (관련 코드 없음)" docs/audit/*-audit-risk.md
 # expected: ≥ 1
 ```
 
@@ -137,23 +134,22 @@ grep -c "위험 없음\|0건\|empty\|safe\|무결" docs/audit/*.html
 
 | 시나리오 | 핵심 검증 | grep expected |
 |---|---|---|
-| G1 | golden path — 5 영역 모두 active | 외부 URL 0, 5 영역 모두 표시 |
-| G2 | Agent PASS 분기 | "에이전트 위험 없음" ≥ 1 |
-| G3 | Secret redaction | raw value 0, `****` ≥ 1 |
-| G4 | Self-contained | 외부 URL 0, 시스템 폰트 OK |
-| G5 | 부분 실패 fail-safe | "추정 불가 / 실패" ≥ 1 |
-| G6 | 빈 프로젝트 | "위험 없음 / 무결" ≥ 1 |
+| G1 | 작은 프로젝트 — 축소 모드 진입 | "모드: 간단(1)" ≥ 1 |
+| G2 | 큰 프로젝트 — 전체 모드 진입 | "모드: 전체(5)" ≥ 1 |
+| G3 | 문제 없음 — 억지 항목 없음 | "점검함, 해당 항목 없음" ≥ 1 |
+| G4 | 비밀값 마스킹 | 값 자체 0, 파일:줄 ≥ 1 |
+| G5 | 영역 1개 실패 — 부분 보고서 | "점검 실패" ≥ 1 |
+| G6 | 에이전트 영역 미해당 | "해당 없음 (관련 코드 없음)" ≥ 1 |
 
 ## 사용 방법
 
-1. dogfood 환경에서 위 시나리오 중 하나 setup
-2. `/audit-risk` 호출
-3. 산출된 `docs/audit/<timestamp>-audit-risk.html` 에 대해 expected verification grep 실행
-4. 모든 grep PASS 확인 → 시나리오 통과
-5. 1건 FAIL → `commands/audit-risk.md` 또는 `commands/audit-report-prompt.md` 결함 디버그
+1. dogfood 환경에서 위 시나리오 중 하나를 세팅한다.
+2. `/audit-risk` 를 호출한다.
+3. 산출된 `docs/audit/<timestamp>-audit-risk.md` 에 대해 해당 시나리오의 verification grep 을 실행한다.
+4. 모든 grep 이 통과하면 시나리오 통과다.
+5. 1건이라도 FAIL 이면 `commands/audit-risk.md` 를 디버그한다.
 
 ## 관련 파일
 
-- `commands/audit-risk.md` — 메인 dispatch 본문 (5+1 subagent)
-- `commands/audit-report-prompt.md` — Subagent F prompt
-- `expected-mock-findings.md` — G1/G3 의 ground truth 모의 finding list
+- `commands/audit-risk.md` — 메인 실행 본문 (규모 판정 + 모드별 보조 에이전트 호출 + 보고서 작성)
+- `expected-mock-findings.md` — G1 / G4 의 ground truth 모의 finding list
