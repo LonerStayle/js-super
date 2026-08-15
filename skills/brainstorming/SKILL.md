@@ -174,45 +174,18 @@ digraph brainstorm_flow {
 
 **1. Explore project context**
 - Skim existing files/docs/recent commits
-- Scope check: if the request bundles multiple independent subsystems, propose decomposition before continuing — never bundle multiple features into one PRD.
+- Scope check: if the request bundles multiple independent subsystems, propose decomposition before continuing — never bundle multiple features into one requirements doc.
 
 **2. Confirm feature name + slug** (1 question)
 - Ask: "What should we call this feature?" (e.g., '잔액 출금', '회원 보너스 지급')
 - Compute slug from the answer (replace spaces with hyphens)
 - Create folder: `docs/features/YYYY-MM-DD-<slug>/`
 
-**3. Mode selection gate** — see "Mode Selection" section below for the prompt template and intent parsing rules.
+**3~5. Socratic dialogue** — "Socratic Procedure" 의 블록 1~3 을 따른다. 질문으로 좁히고, 대안을 비교하고, 문서를 쓴다. 제외 항목 취합 룰은 블록 3 안에 있다.
 
-**4. Mode-specific dialogue**
-- **PRD** → "PRD Adaptive Planning" (category → plan agreement → adaptive questions)
-- **Socratic** → "Socratic Mode" (free-form upstream-style)
+**6. Self-review** — "Self-Review" 의 여섯 항목.
 
-Both modes ultimately produce `<slug>-requirements.md` at the same path.
-
-### PRD-mode special handling: 범위 밖 (Out of Scope) — CONSOLIDATE, do not re-ask
-
-Throughout the earlier dialogue (배경/목적, 사용자 스토리, FR, NFR), the user often says things like "X는 제외", "Y는 안 만들어", "Z는 다음 버전에" — track those exclusions as they are mentioned.
-
-When you reach the 범위 밖 step, do NOT ask "what's out of scope?" from scratch. Instead:
-
-1. List every exclusion already collected during the dialogue
-2. Show the consolidated list back to the user
-3. Ask only: "추가로 §5 범위 밖에 넣을 항목 있나요? 없으면 '없음'."
-
-Template (user-facing):
-```
-지금까지 명시된 제외 항목:
-- 의미검색 (대화 중 언급)
-- 다국어 검색 (FR-3 논의 중 보류)
-
-§5 범위 밖에 추가로 넣을 항목이 있나요? 없으면 "없음" 이라고 답해주세요.
-```
-
-If the user says "없음" or equivalent, §5 = the consolidated list as-is. If they add more, append. Do NOT start from a blank prompt — that wastes the user's time and can drop earlier-stated exclusions.
-
-**5. Self-review** (mode-specific, see checklist below)
-
-**6. Show the RAW doc + user review gate**
+**7. Show the RAW doc + user review gate**
 - Show the full RAW `<slug>-requirements.md`; await approval or change requests
 - If changes requested, revise per feedback → re-show RAW
 - On approval → continue to step 7
@@ -241,13 +214,13 @@ When `AskUserQuestion` is unavailable, ask in prose:
 
 > Approve `<slug>-requirements.md`? — `yes` / `no`
 
-**7. Invoke change-history skill** (first entry: initial creation)
+**8. Invoke change-history skill** (first entry: initial creation)
 - Tag: `[요구사항-수정]` (use the entry type even on first creation)
 - 이유: 신규 피처 brainstorming 결과
-- 무엇이: <slug>-requirements.md 전체 (PRD: FR-1..N / Socratic: free-form sections)
+- 무엇이: <slug>-requirements.md 전체 (FR-1..N + 대화에서 나온 섹션들)
 - 영향범위: 없음 (최초 생성)
 
-**8. Auto-proceed to tech-design (v1.1.9+ — no gate)**
+**9. Auto-proceed to tech-design (v1.1.9+ — no gate)**
 
 After change-history entry is logged, **automatically invoke** the `tech-design` skill (or `js-super:tech-design` depending on harness namespace). NO user gate here.
 
@@ -431,34 +404,36 @@ Always prefer the tool when available. Detect availability via the harness tool 
 
 | Wrong | Right |
 |---|---|
-| Embedding tech decisions ("use Postgres", "REST API") in the PRD | Put those in <slug>-tech-design.md. PRD is tech-agnostic. |
-| Writing only "user can do X" without an FR id | `FR-N: <action>` plus a measurable acceptance criterion |
+| Embedding tech decisions ("use Postgres", "REST API") in the requirements doc | Put those in <slug>-tech-design.md. Requirements stay tech-agnostic. |
+| Writing only "user can do X" without an FR id | `FR-N: <action>` in the `## 요구 항목` section, plus a way to tell it's done |
 | Asking "범위 밖이 뭔가요?" from scratch when exclusions were stated earlier | Consolidate prior exclusions first; ask only for additions on top |
+| Renaming the `## 요구 항목` section or dropping FR numbers | Downstream skills look for that exact heading and those anchors. Keep both. |
 | Auto-crossing into design without asking | Always ask the approval prompt. On approval, auto-invoke. Without approval, stop. |
 | Asking the user to type `/tech-design` manually | Once approved, auto-invoke tech-design via Skill tool. User shouldn't have to retype. |
-| "Skip PRD because it's simple" | Simple cases just produce a shorter PRD, never a missing one. |
+| "Skip the doc because it's simple" | Simple cases just produce a shorter doc, never a missing one. |
 
 ## Red Flags (STOP if you think these)
 
 | Thought | Reality |
 |---|---|
 | "Just go straight to code, the user knows what they want" | Assumptions remain unvalidated. Run the questions. |
-| "Intent is obvious, summarize in one line" | Even obvious intent has gaps. Run the agreed P2 plan instead of skipping it — fill ✅ 필수 fully, ➖ 간소 with a one-line, ⏭ 스킵 with `해당 없음 — <reason>`. Skipping the planning step is the failure mode, not slimming. |
-| "spec.md is fine, isn't it?" | js-superpowers separates PRD from technical spec. The file is <slug>-requirements.md, not spec.md. |
+| "Intent is obvious, summarize in one line" | Even obvious intent has gaps. Walk the 커버 목록 — an item you can already answer costs one line, an item you skipped costs a rewrite later. |
+| "spec.md is fine, isn't it?" | js-superpowers separates requirements from technical spec. The file is <slug>-requirements.md, not spec.md. |
+| "The user said 모르겠다, so I'll just pick something" | Walk the 3단 사다리 instead. Rephrase, then offer choices, then propose a default and say what it assumes. |
 
 ## After Save — Invoke change-history
 
 On first save of <slug>-requirements.md, write a `[요구사항-수정]` entry:
 
 - 이유: 신규 피처 brainstorming 결과
-- 무엇이: <slug>-requirements.md 전체 (FR-1..N)
+- 무엇이: <slug>-requirements.md 전체 (FR-1..N + 대화에서 나온 섹션들)
 - 영향범위: 없음 (최초 생성)
 
 ## Visual Companion
 
 A browser-based companion for showing mockups, diagrams, and visual options during brainstorming. Available as a tool — not a mode. Accepting the companion means it's available for questions that benefit from visual treatment; it does NOT mean every question goes through the browser.
 
-**PRD context — stricter trigger:** PRD work is mostly textual. Do NOT offer the companion by default. Offer ONLY when the feature explicitly involves UI/layout/visual artifacts (e.g., "대시보드 화면", "폼 디자인", "리포트 레이아웃"). For pure backend/API/data-flow PRDs, skip the offer entirely.
+**Trigger:** Requirements work is mostly textual. Do NOT offer the companion by default. Offer ONLY when the feature explicitly involves UI/layout/visual artifacts (e.g., "대시보드 화면", "폼 디자인", "리포트 레이아웃"). For pure backend/API/data-flow work, skip the offer entirely.
 
 **Offering the companion (only when triggered):** When upcoming questions will involve visual content (mockups, layouts, diagrams), offer it once for consent:
 
@@ -483,12 +458,13 @@ If they agree to the companion, read the detailed guide before proceeding:
 - **YAGNI** — drop unnecessary requirements ruthlessly
 - **2-3 approaches** — when proposing options, show alternatives plus a recommendation
 - **Be flexible** — backtrack and re-ask when an earlier answer no longer holds
+- **Incremental validation** — confirm each piece as it lands instead of saving every check for the end
 
 ## Related Skills
 
 - `tech-design` — next step (technical spec)
-- `change-history` — first PRD entry
-- `change-propagation` — when the PRD is later edited, cascades to downstream MDs
+- `change-history` — first requirements entry
+- `change-propagation` — when the requirements doc is later edited, cascades to downstream MDs
 
 ## 승인 게이트 / multi-choice 결정 = AskUserQuestion 도구 (v2.3.6+)
 
