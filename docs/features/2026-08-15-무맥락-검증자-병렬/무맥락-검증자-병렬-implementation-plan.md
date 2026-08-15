@@ -914,8 +914,8 @@ grep -cF "## A. Consistency" skills/verifying-spec/SKILL.md
 grep -cF "## C. Code Impact" skills/verifying-spec/SKILL.md
 # expected: >= 1
 
-# Acceptance 확장
-grep -cF "no `model` argument" skills/verifying-spec/SKILL.md
+# Acceptance 확장 (홑따옴표 필수 — 큰따옴표 안 백틱은 셸이 명령으로 해석)
+grep -cF 'no `model` argument' skills/verifying-spec/SKILL.md
 # expected: >= 1
 
 # 커맨드 4곳 플래그 안내
