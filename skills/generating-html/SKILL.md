@@ -180,7 +180,7 @@ A generating-html run is correct when ALL hold:
 
 ## 비동기 신뢰성 룰 (v2.4+) — silent log monitor (v2.4+)
 
-`generating-html` 백그라운드 호출이 처음 `.md` 생성 시 가끔 실패하던 회귀를 해결한 룰. 호출자 측 (`/sync-html` / `/audit-risk` 등 명시 호출 경로) 이 같이 답습.
+`generating-html` 백그라운드 호출이 처음 `.md` 생성 시 가끔 실패하던 회귀를 해결한 룰. 호출자 측 (`/sync-html` 등 명시 호출 경로) 이 같이 답습.
 
 ### B-1 — dispatch 결과 verify
 
@@ -200,7 +200,7 @@ YYYY-MM-DD HH:MM:SS | FAIL     | <slug>-<type>.md | <reason>
 
 ### B-4 — 메인 응답에 dispatch 결과 명시
 
-호출자 측 (`/sync-html` / `/audit-risk` 등 명시 호출 경로) 의 안내 시점에 결과를 함께 알림:
+호출자 측 (`/sync-html` 등 명시 호출 경로) 의 안내 시점에 결과를 함께 알림:
 
 - 완료 시: "백그라운드 호출 완료 (N KB)"
 - 실패 시: "실패 — `/sync-html` 으로 사용자가 직접 재시도 필요"
