@@ -322,49 +322,73 @@ js-super:brainstorming 진입 시 1순위 발화. `/brainstorm` slash command �
 
 AI 가 small/large 분명 판정할 필요 없음. 명시적 small 신호 catch 만 정확하면 나머지는 게이트로 사용자 결정. false positive 안 발생.
 
-## Socratic Mode
+## Socratic Procedure
 
-Free-form upstream-superpowers-style dialogue. The doc is written as free-form prose, not the 6-section PRD template.
+네 블록으로 진행한다. 앞 블록이 끝나야 다음으로 간다.
 
-### Process (Socratic)
+### 블록 1 — 질문
 
-0. **Visual Companion offer (upstream-style trigger)** — evaluate whether upcoming questions will involve visual content (mockups, layouts, diagrams). If yes, offer the companion as its OWN message (no other content). See "Visual Companion" section below for the exact phrasing. If user declines, continue text-only. Skip silently for pure conceptual/code topics.
-1. **Clarifying questions** — one at a time. Cover purpose / constraints / success criteria. Prefer multiple choice when possible. Continue until the idea is shaped.
-2. **Propose 2-3 approaches** — with tradeoffs and your recommendation.
-3. **Present design sections** — section by section, get user approval after each. Section names emerge from the dialogue (no fixed schema).
-4. **Write the doc** at `docs/features/YYYY-MM-DD-<slug>/<slug>-requirements.md`:
+한 번에 하나만 묻는다. 여러 개를 한 메시지에 담지 않는다. 고를 수 있는 형태로 물을 수 있으면 그렇게 한다.
 
-```markdown
-# 요구사항: <feature-name>
+**커버 목록** — 다음 다섯 가지를 채우는 것이 목표다.
 
-> **모드**: Socratic (자유 형식). 다음 단계의 `tech-design` 가 본 문서를 자유 형식 산문으로 읽습니다 (PRD 6 섹션 ID 강제 X).
+1. 무엇을 만드는가 — 대상과 범위
+2. 왜 필요한가 — 해결하려는 문제
+3. 성공을 어떻게 아는가 — 판정 가능한 기준
+4. 무엇을 하지 않는가 — 명시적 제외
+5. 무엇이 걸림돌인가 — 제약과 의존
 
-<sections that emerged from the dialogue, e.g.:>
-## 배경
-## 핵심 결정
-## 인터랙션 흐름
-## 우려/해결
-## 다음 단계
+**종료 판정** — 다섯 가지가 다 채워지면 멈춘다. 개수 상한은 없다. 가벼운 사안이면 두세 개로 끝나고 무거운 사안이면 길어진다. 사용자가 먼저 "그만" 이라고 하면 채워진 것까지만 쓰고, 빈 항목은 문서에 `미정 — <이유>` 로 남긴다.
 
----
-## 변경이력
-<!-- change-history skill auto-appends entries here, oldest first -->
+이미 답이 나온 항목을 다시 묻지 않는다. 사용자의 첫 입력이나 앞선 답변에 들어 있으면 그것으로 채우고 넘어간다.
+
+**사용자가 모르겠다고 할 때** — 순서대로 내려간다. 위 단계에서 풀리면 아래로 안 간다.
+
+1. 같은 질문을 더 쉬운 말로 바꿔 다시 묻는다. 전문 용어를 빼고 구체적인 상황으로 바꾼다.
+2. 그래도 막히면 선택지를 만들어 고르게 한다. 각 선택지가 무엇을 뜻하는지 한 줄씩 붙인다.
+3. 그래도 막히면 기본값을 제안하고 "이대로 갈지" 만 확인한다. 그 기본값이 무엇을 전제하는지 한 줄 덧붙인다. 나중에 되짚을 수 있어야 한다.
+
+### 블록 2 — 대안
+
+방향을 정해야 하는 지점마다 2~3안을 제시한다. 하나만 내놓고 넘어가지 않는다.
+
+**비교축은 셋으로 고정한다.**
+
+- 무엇이 달라지는가
+- 무엇을 포기하는가
+- 되돌리는 비용
+
+**추천을 먼저 말한다.** 안을 나열한 뒤 "어느 쪽인가요" 로 끝내지 말고, 어느 쪽을 권하는지와 그 이유를 먼저 밝힌다. 그리고 **추천안이 깨지는 조건 하나**를 스스로 제시한다. "이 전제가 틀리면 다른 안이 낫습니다" 형태다.
+
+고른 안과 버린 안, 그리고 고른 이유를 문서에 남긴다. 버린 안을 안 적으면 나중에 같은 논의를 처음부터 다시 하게 된다.
+
+### 블록 3 — 문서 작성
+
+`docs/features/YYYY-MM-DD-<slug>/<slug>-requirements.md` 를 쓴다. 형식은 "Document Schema" 를 따른다.
+
+**제외 항목은 취합해서 되돌려준다.** 대화 내내 사용자는 "X는 빼고", "Y는 다음에", "Z는 안 만들어" 같은 말을 한다. 그때마다 적어두었다가, 문서를 쓰기 전에 모아서 보여준다.
+
+```
+지금까지 나온 제외 항목입니다.
+- 의미 검색 (대화 중 언급)
+- 다국어 지원 (범위가 커진다고 하셔서 보류)
+
+여기 더 넣을 게 있을까요? 없으면 "없음" 이라고 답해주세요.
 ```
 
-Section names are NOT fixed — write whatever sections fit the dialogue. The only fixed parts are: H1 title (`# 요구사항: ...`), the Mode line, and the `## 변경이력` footer.
+빈 상태에서 "범위 밖이 뭔가요" 라고 묻지 않는다. 사용자 시간을 뺏고, 앞서 말한 제외가 통째로 빠진다.
 
-### Self-review (Socratic — only the abstract scan)
+**기술 세부는 넣지 않는다.** 어떤 라이브러리를 쓸지, 파일을 어떻게 나눌지, 어떤 함수를 만들지는 다음 단계 산출물의 몫이다. 여기서는 "무엇이 되어야 하는가" 까지만 쓴다.
 
-- Placeholder scan (TBD/TODO?)
-- Internal consistency
-- Scope check (single feature?)
-- Ambiguity check
+### 블록 4 — 승인
 
-The 6-item PRD-specific scan does NOT apply (no FR-N/NFR template to check).
+초안 전체를 한 번에 보여주고 승인받는다. 섹션마다 끊어서 확인받지 않는다. 확인 지점이 늘면 알람이 그만큼 늘고, 전체를 못 본 채로 부분에 동의하게 된다.
 
-### When Socratic mode breaks down
+수정 요청이 오면 고쳐서 다시 전체를 보여준다. "어디를 고칠까요" 라고 되묻지 않는다. 사용자가 알아서 말한다.
 
-If, mid-dialogue, the conversation reveals that the work IS user-facing/productisation in nature, suggest switching to PRD mode once: "ℹ️ 이 피처는 외부 사용자향처럼 보이는데 PRD 모드가 더 안전합니다. 전환할까요?" — if the user agrees, restart with the PRD planning step (step P1). Otherwise stay in Socratic.
+### 대화가 커질 때
+
+주고받다 보니 요청이 독립된 여러 덩어리로 드러나면, 계속 진행하기 전에 나누자고 제안한다. 한 문서에 여러 피처를 담으면 다음 단계가 전부 엉킨다.
 
 ## Self-Review
 
