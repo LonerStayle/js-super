@@ -313,122 +313,6 @@ js-super:brainstorming 진입 시 1순위 발화. `/brainstorm` slash command �
 
 AI 가 small/large 분명 판정할 필요 없음. 명시적 small 신호 catch 만 정확하면 나머지는 게이트로 사용자 결정. false positive 안 발생.
 
-## Mode Selection
-
-After the slug is set (step 2), ask the user to pick a mode. Use the standard Gate Question pattern (see "Asking the User a Gate Question" section).
-
-**Tool form (preferred)**
-
-Call `AskUserQuestion` with:
-
-```json
-{
-  "question": "이 피처는 어떤 모드로 진행할까요? (잘 모르겠으면 PRD)",
-  "header": "모드 선택",
-  "multiSelect": false,
-  "options": [
-    {"label": "PRD (기본)", "description": "구조화 6-섹션, 외부 사용자향/제품 기능"},
-    {"label": "소크라테스식", "description": "자유 탐색, 내부 도구/탐색/실험"}
-  ]
-}
-```
-
-**Prose fallback**
-
-When `AskUserQuestion` is unavailable:
-
-```
-이 피처는 어떤 모드로 진행할까요?
-
-  1. PRD (default) — 구조화된 6-섹션 템플릿, 외부 사용자향/제품 기능에 적합. 카테고리에 맞춰 질문은 자동 최적화됨.
-  2. Socratic — 자유 탐색 대화, upstream superpowers 방식. 내부 도구/탐색/실험적 작업에 적합. 자유 형식 산출물.
-
-어느 쪽? (잘 모르겠으면 PRD)
-```
-
-Parse intent in any language. Heuristics:
-- "1" / "PRD" / "구조화" / "기본" → PRD
-- "2" / "Socratic" / "소크라테스" / "자유" / "원본" → Socratic
-- Anything else → ask once more; if still unclear, default to PRD with a one-line note: "ℹ️ 잘 모르겠어서 PRD 로 기본 진행할게요."
-
-Once chosen, the mode is fixed for this brainstorming run.
-
-## PRD Adaptive Planning (PRD mode only)
-
-Goal: avoid asking all 6 PRD questions when the feature category doesn't need them. Two sub-steps before the actual PRD questions begin.
-
-### Step P1 — Feature category mini-question
-
-Ask once:
-
-```
-이 피처의 한 줄 요약과 카테고리는?
-
-  (a) 외부 사용자향 기능 (앱/웹의 사용자 노출 기능)
-  (b) 내부 도구 / 스크립트 (운영/백오피스/CLI)
-  (c) 기존 기능 수정 / 리팩터
-  (d) 인프라 / 운영
-
-요약: <한 줄> / 카테고리: a/b/c/d
-```
-
-Parse the user's answer to fill the category. Heuristics + `category` is required — if missing, re-ask once.
-
-### Step P1.5 — Visual Companion offer (PRD-stricter trigger)
-
-After the category is set, evaluate whether upcoming questions will involve UI/layout/visual artifacts. The trigger:
-
-- **Offer** if category is (a) 외부 사용자향 AND the one-liner mentions UI/screen/layout/dashboard/form/etc., OR if category is (c) 수정 with explicit visual scope. Examples: "대시보드 화면 추가", "회원가입 폼 리뉴얼", "리포트 레이아웃".
-- **Skip** for pure backend / API / data-flow / 내부 도구 / 인프라. PRD work is mostly textual; offering by default just adds noise.
-
-If offering, the offer is its OWN message (no other content). See "Visual Companion" section below for the exact phrasing. If user declines, continue text-only.
-
-### Step P2 — Show the question plan, get explicit confirmation
-
-Compute the plan from this rubric:
-
-| 섹션 | (a) 외부향 | (b) 내부 도구 | (c) 수정 | (d) 인프라 |
-|---|---|---|---|---|
-| 1. 배경/목적 | ✅ 필수 | ✅ 필수 | ✅ 필수 | ✅ 필수 |
-| 2. 사용자 스토리 | ➖ 간소 | ⏭ 스킵 | ⏭ 스킵 | ⏭ 스킵 |
-| 3. FR | ✅ 필수 | ✅ 필수 | ✅ 필수 | ✅ 필수 |
-| 4. NFR | ➖ 간소 | ⏭ 스킵 | ⏭ 스킵 | ➖ 간소 |
-| 5. 범위 밖 | ➖ 간소 | ➖ 간소 | ➖ 간소 | ➖ 간소 |
-| 6. 수용 기준 | ➖ 간소* | ➖ 간소* | ➖ 간소* | ➖ 간소* |
-
-Legend: ✅ 필수 (full question) / ➖ 간소 (one-line answer accepted) / ⏭ 스킵 (don't ask, write "해당 없음 — <reason>" in the doc)
-
-\* §6 수용 기준은 ➖ 간소 디폴트. 자동화 테스트 강한 피처(API 명세 분명, 측정 지표 명확)면 사용자가 카테고리 게이트(P2)에서 "수용 기준 풀로" 라고 명시 시 ✅ 로 승격.
-
-Show the plan in user-facing form:
-
-```
-[<category>] 카테고리라서 다음 순서로 진행하려고 합니다:
-
-  ✅ 배경/목적 (필수)
-  ⏭ 사용자 스토리 — 스킵 (내부 도구라 외부 사용자 없음)
-  ✅ FR (필수)
-  ⏭ NFR — 스킵 (내부 도구는 NFR 의미 적음)
-  ➖ 범위 밖 — 간소 (1줄 또는 "없음")
-  ➖ 수용 기준 — 간소 (1줄, 풀로 가려면 "수용 기준 풀로")
-
-이대로 진행할까요? 추가로 깊게 묻고 싶은 항목 있나요?
-```
-
-Branches:
-- User OK → run only the planned questions
-- User wants more (e.g., "NFR 풀로 가자") → upgrade those items to ✅ 필수 and re-show, then run
-- User wants less → don't downgrade ✅ 필수 → 스킵 lightly. If they insist (e.g., "FR도 1줄로"), allow but warn once: "ℹ️ FR 간소화는 다음 단계 verify에서 누락 신호로 잡힐 수 있어요."
-
-### Step P3 — Run the agreed questions only
-
-For each section in the agreed plan:
-- ✅ 필수 → ask the full PRD question for that section (full question shapes: 배경/목적, 사용자 스토리, FR-N, NFR, 수용 기준)
-- ➖ 간소 → ask "한 줄 요약?" only
-- ⏭ 스킵 → don't ask; write `<section>: 해당 없음 — <reason from rubric>` in the doc
-
-The 범위 밖 (Out of Scope) consolidation rule still applies — track exclusions through the dialogue and offer them back. Do NOT ask from a blank prompt.
-
 ## Socratic Mode
 
 Free-form upstream-superpowers-style dialogue. The doc is written as free-form prose, not the 6-section PRD template.
@@ -476,16 +360,6 @@ If, mid-dialogue, the conversation reveals that the work IS user-facing/producti
 ## Self-Review
 
 Mode-aware. PRD mode runs both checks; Socratic mode runs only the abstract scan (the PRD-specific items don't apply to free-form prose).
-
-**PRD-specific (6 items, PRD mode only) — applies only to sections marked ✅ 필수 in the agreed plan; ➖ 간소 / ⏭ 스킵 sections are exempt:**
-1. Every FR has a unique id (FR-1, FR-2, ...)
-2. Every acceptance criterion is measurable (Yes/No answerable)
-3. Out-of-scope is explicit (use "없음" if truly empty) AND captures every exclusion the user mentioned during the dialogue — not just answers to step 5 itself
-4. No technical/implementation details leak into the body — those belong in <slug>-tech-design.md
-5. NFRs are concrete, not vague (e.g., "fast" → "p95 < 200ms")
-6. User stories include all three of who/what/why
-
-**Abstract scan (4 items, both modes, fresh-eyes pass):**
 
 7. **Placeholder scan**: Any "TBD", "TODO", incomplete sections, or vague requirements? Fix them.
 8. **Internal consistency**: Do any sections contradict each other?
