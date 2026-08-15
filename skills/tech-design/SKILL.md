@@ -27,7 +27,7 @@ Notification 훅 (`elicitation_dialog` 매처) 이 알람을 발화하려면 도
 
 사용자가 "Other" 자유 응답 또는 "모르겠음 / 이해 안 됨" 류 답변 catch 시 → **그 질문만 단독 재호출 + prose 설명 추가**. 다음 단계 자동 진행 X (anchor 질문 강제 X 룰은 명확 yes/no 답변에만 적용).
 
-Take <slug>-requirements.md (PRD) as input and produce <slug>-tech-design.md, a technical spec covering architecture, data model, interfaces, key decisions with alternatives, preliminary risks, and test strategy. Step-by-step task decomposition belongs to `writing-plans`, not here.
+Take <slug>-requirements.md as input and produce <slug>-tech-design.md, a technical spec covering architecture, data model, interfaces, key decisions with alternatives, preliminary risks, and test strategy. Step-by-step task decomposition belongs to `writing-plans`, not here.
 
 <HARD-GATE>
 You MUST have an existing <slug>-requirements.md in the current feature folder before invoking this skill. If none exists, instruct the user to run /brainstorm first.
@@ -61,7 +61,7 @@ critical 7 케이스 (파일 삭제 / `git push --force` / DB migration / mass c
 You MUST create a TaskCreate task for each of these items and complete them in order:
 
 1. **입력 확인** — confirm <slug>-requirements.md exists (HARD-GATE if not)
-2. **기존 코드 둘러보기** — `<slug>-requirements.md` §2 (영향 컴포넌트) 먼저 Read. 추가 grep/Read 는 tech-design 결정 (아키텍처 / data flow / pattern) 깊이 부족할 때만. (v1.1.15+ slim)
+2. **기존 코드 둘러보기** — `<slug>-requirements.md` 의 `## 요구 항목` 을 먼저 Read. 추가 grep/Read 는 tech-design 결정 (아키텍처 / data flow / pattern) 깊이 부족할 때만. (v1.1.15+ slim)
 3. **적응형 7-토픽 질의응답** — `<slug>-requirements.md` 읽고 활성/비활성 토픽 판정 후 한 줄 announce. 항상 활성 4개 (1 아키텍처 / 2 컴포넌트 / 5 결정+대안 / 6 위험), 조건부 3개 (3 데이터 모델 / 4 외부 인터페이스 / 7 테스트 전략). 자세한 룰은 "Adaptive Topics" 섹션 참조. (v1.1.15+, FR-1)
 4. **자체 점검** — FR mapping coverage, alternatives present, risk categorization (no user prompt yet)
 5. **사양 정합성 검증 (사전)** — main agent runs A+C verification via `verifying-spec`, produces 4-axis report internally (Tolerance for missing skill)
@@ -86,7 +86,7 @@ If you find yourself skipping ahead, stop and create the missing task.
 ```markdown
 # 개발방향: <feature-name>
 
-> **다음 단계 안내**: 이 문서는 기술 설계서입니다 (아키텍처 / 컴포넌트 / 데이터 / 인터페이스 / 결정 / 위험 / 테스트 전략). `<slug>-requirements.md` (PRD) 를 기반으로 작성됩니다. 3개 트랙이면 다음 단계 `<slug>-implementation-plan.md` (단계별 계획) 의 입력이 됩니다 (`writing-plans` skill 또는 `/write-plan` 슬래시). 2개 확정 트랙 (frontmatter `depth: 2`) 이면 이 문서가 마지막 산출물입니다. 단계별 구현 task 는 여기 박지 마세요 — 그건 다음 산출물 (plan) 에 들어갑니다.
+> **다음 단계 안내**: 이 문서는 기술 설계서입니다 (아키텍처 / 컴포넌트 / 데이터 / 인터페이스 / 결정 / 위험 / 테스트 전략). `<slug>-requirements.md` 를 기반으로 작성됩니다. 3개 트랙이면 다음 단계 `<slug>-implementation-plan.md` (단계별 계획) 의 입력이 됩니다 (`writing-plans` skill 또는 `/write-plan` 슬래시). 2개 확정 트랙 (frontmatter `depth: 2`) 이면 이 문서가 마지막 산출물입니다. 단계별 구현 task 는 여기 박지 마세요 — 그건 다음 산출물 (plan) 에 들어갑니다.
 
 ## 1. 아키텍처 개요 (diagram + prose)
 ## 2. 영향 받는 컴포넌트/파일
@@ -105,7 +105,7 @@ If you find yourself skipping ahead, stop and create the missing task.
 ```dot
 digraph design_flow {
     "Read <slug>-requirements.md" [shape=box];
-    "Survey existing code\n(PRD §2 재활용 v1.1.15+)" [shape=box];
+    "Survey existing code\n(요구 항목 재활용 v1.1.15+)" [shape=box];
     "Step 0 announce\n활성/비활성 토픽 한 줄" [shape=box];
     "Q: architecture candidates (2-3)?" [shape=box];
     "Q: impacted component mapping?" [shape=box];
@@ -123,8 +123,8 @@ digraph design_flow {
     "Record depth: 2 + exit (2개 확정)" [shape=oval];
     "Exit: tell user to run /write-plan later" [shape=oval];
 
-    "Read <slug>-requirements.md" -> "Survey existing code\n(PRD §2 재활용 v1.1.15+)";
-    "Survey existing code\n(PRD §2 재활용 v1.1.15+)" -> "Step 0 announce\n활성/비활성 토픽 한 줄";
+    "Read <slug>-requirements.md" -> "Survey existing code\n(요구 항목 재활용 v1.1.15+)";
+    "Survey existing code\n(요구 항목 재활용 v1.1.15+)" -> "Step 0 announce\n활성/비활성 토픽 한 줄";
     "Step 0 announce\n활성/비활성 토픽 한 줄" -> "Q: architecture candidates (2-3)?";
     "Step 0 announce\n활성/비활성 토픽 한 줄" -> "Q: data model changes?\n[활성 시만]" [label="활성"];
     "Step 0 announce\n활성/비활성 토픽 한 줄" -> "Q: external interfaces?\n[활성 시만]" [label="활성"];
@@ -162,7 +162,7 @@ Step 3 의 7-topic dialogue 를 사용자 마찰 줄이기 위해 adaptive 진�
 
 - **3 데이터 모델** — DB / 스키마 / 마이그레이션 / 영구 저장 / 외부 시스템 데이터 교환을 implicit/explicit 시사하면 활성. 메타 워크플로우 / 순수 함수 / 산문 처리만이면 비활성.
 - **4 외부 인터페이스** — REST / GraphQL / webhook / 이벤트 발행 / 외부 노출 시사하면 활성. 내부 모듈 간 호출만이면 비활성.
-- **7 테스트 전략** — FR 수가 많거나 (≥3), 위험 카테고리 다수, 다중 파일 영향이면 활성. trivial 변경 / 단일 함수면 비활성.
+- **7 테스트 전략** — 요구 항목 수가 많거나 (≥3), 위험 카테고리 다수, 다중 파일 영향이면 활성. trivial 변경 / 단일 함수면 비활성.
 
 ### Step 0 announce — 항상 노출
 
@@ -193,14 +193,11 @@ Step 3 의 7-topic dialogue 를 사용자 마찰 줄이기 위해 adaptive 진�
 
 **1. Verify input**
 - Confirm <slug>-requirements.md exists in the same feature folder. If not, HARD-GATE — instruct the user to run `/brainstorm` first.
-- **Detect input mode (PRD vs Socratic)** — read the doc and check:
-  - Has `## 3. 기능 요구사항 (FR)` or `FR-` identifiers → **PRD mode** input
-  - Has `> **Mode:** Socratic` line near the top, OR no FR-N pattern, OR free-form section names → **Socratic mode** input
-- Both inputs are valid. Adapt §2-§3 below accordingly. NEVER reject a Socratic-style input as "missing FRs".
+- **Locate the requirements** — find the `## 요구 항목` section and read its `FR-N` items. Older docs (written before the section name was fixed) carry the same `FR-N` anchors under `## 3. 기능 요구사항 (FR)`; read those the same way.
+- If a doc has no `FR-N` anchors at all, treat every sentence describing a behavior the system must have as one requirement, and say so in a one-line notice. Never reject a doc as "missing FRs".
 
 **2. Survey the codebase**
-- **PRD input** — for each FR-N, Grep/Read to identify likely impacted code areas
-- **Socratic input** — extract the implicit requirements from prose (any sentence describing a behavior the system MUST do is treated as an FR for survey purposes), then Grep/Read those areas
+- For each `FR-N`, Grep/Read to identify likely impacted code areas
 - (Full impact analysis is reserved for verifying-spec.)
 
 **3. Step-by-step questions** (one at a time, multiple choice when possible)
@@ -289,7 +286,7 @@ Call `AskUserQuestion`:
 
 ## Self-Review
 
-- Every FR (PRD input) OR every behavior-implying sentence (Socratic input) in <slug>-requirements.md is mapped to either §2 (impacted components) or §4 (external IF)
+- Every `FR-N` in <slug>-requirements.md is mapped to either §2 (impacted components) or §4 (external IF)
 - Every key decision in §5 has at least one alternative and a reason for the chosen path
 - Risk candidates in §6 are pre-classified using risk-annotation categories (`side-effect | breaking | race`)
 - §7 test strategy is consistent with §3 and §4 (DB changes → migration tests, APIs → integration/contract tests)
@@ -320,7 +317,7 @@ If not, the boundaries need work. Smaller, well-bounded units are also easier fo
 | Wrong | Right |
 |---|---|
 | Listing step-by-step tasks here | Tasks belong in <slug>-implementation-plan.md. 개발방향 stops at "how it is designed". |
-| Missing FR mapping | Every FR must appear in §2 or §4. |
+| Missing FR mapping | Every `FR-N` from `## 요구 항목` must appear in §2 or §4. |
 | One decision, no alternatives | Always present at least one alternative + comparison. |
 | "Be careful here" without a category | Force one of the three risk-annotation categories (`side-effect`, `breaking`, `race`). |
 
