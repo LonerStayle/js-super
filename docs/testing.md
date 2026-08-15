@@ -33,9 +33,11 @@ cd tests/claude-code
 
 ### Requirements
 
-- Must run from the **superpowers plugin directory** (not from temp directories)
 - Claude Code must be installed and available as `claude` command
-- Local dev marketplace must be enabled: `"superpowers@superpowers-dev": true` in `~/.claude/settings.json`
+- Run against an isolated copy, not the working tree: `rsync -a --exclude .git ./ "$TMPD/repo/"` then pass `--plugin-dir "$TMPD/repo"`
+- Pass `--setting-sources ""` so the user's own settings do not leak into the run
+- Do NOT rely on a dev marketplace entry in `~/.claude/settings.json` — that mechanism is gone; `--plugin-dir` is the supported way to test a working copy
+- **Caveat (measured 2026-08-15):** `--plugin-dir` does NOT replace an installed plugin of the same name. Both load, so old and new definitions coexist in `slash_commands` and `skills`. If you are testing a rename or a removal, uninstall the plugin first or load the copy under a different plugin name — otherwise the stale definition can satisfy your assertion. See `docs/features/2026-08-15-skill-eval-harness/사전실측-노트.md` §4
 
 ## Integration Test: subagent-driven-development
 
