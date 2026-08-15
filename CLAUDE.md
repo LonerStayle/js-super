@@ -1527,3 +1527,81 @@ grep -cF "## 구현계획서 용어집 + 정리/검증 순서 교체 결합" CLA
 - `scripts/plan_byte_check.py` 영향 0 — 용어집은 `**원본**` 라벨을 쓰지 않아 검사 대상 밖
 - v2.0.0+ byte-copy 룰 / v2.9+ plan 테스트 자연어 축약 — 영향 0 (용어집은 계획서를 읽기만 함)
 - `docs/features/**/*-glossary.md` 는 git 추적 대상 (계획서와 같은 폴더, `.html` 과 달리 gitignore 아님)
+
+## 무맥락 검증자 병렬 결합
+
+`verifying-spec` 이 메인 자체 검증(A + C)과 **동시에** 맥락 없는 보조 에이전트 둘을 백그라운드로 띄운다. 단독(solo)은 대상 MD 경로만, 대조(cross)는 대상 + upstream 경로를 받는다. 메인이 두 결과를 중재해 보고서 하나로 낸다. spec: `docs/features/2026-08-15-무맥락-검증자-병렬/`.
+
+### 왜 검증자가 둘인가 (핵심)
+
+읽기 순서를 **프롬프트 지시가 아니라 구조로** 강제하기 위해서다. 한 에이전트에게 "먼저 대상 문서만 읽고 그 다음 상위 문서를 열어라" 라고 지시하면 지켰는지 확인할 방법이 없다 — 지시 위반이 결과물에 흔적을 남기지 않는다. 단독 검증자에게 upstream 경로를 아예 안 주면 그 위반이 성립하지 않는다. 이 구조를 "에이전트 1개로 합치면 싸다" 는 이유로 되돌리면 피처의 존재 이유가 사라진다.
+
+### 적용 범위
+
+- `skills/verifying-spec/SKILL.md` — HARD-GATE EXCEPTION 2 / Procedure dot / Clean-Context Verifiers 섹션 / Report Format 확장 / Anti-Patterns / Acceptance 4~6
+- `skills/verifying-spec/clean-solo-prompt.md`, `clean-cross-prompt.md` — 신규
+- `commands/{tech-design,write-plan,auto-tech-design,auto-write-plan}.md` — `--no-clean-verify` 안내
+- fixture `skills/js-super-sub-driven/tests/H16-clean-verify/README.md`
+
+### 변경하지 않는 것 (의도)
+
+호출 지점 4곳(`skills/{tech-design,writing-plans,auto-tech-design,auto-writing-plans}/SKILL.md`)의 본문 변경 **0**. 이들은 `verifying-spec` 을 이름으로만 부르므로 절차를 안쪽에 넣으면 자동으로 따라온다. 호출 지점에 dispatch 를 복제하면 한 곳만 고쳤을 때 흐름별 동작이 갈리는 회귀가 난다.
+
+코드 실행 단계(`skills/js-super-sub-driven/spec-reviewer-prompt.md`)는 이번 범위 밖 — 문서 단계 전용이다.
+
+### 회귀 패턴
+
+| 누락 / 변경 | 증상 |
+|---|---|
+| HARD-GATE 에서 EXCEPTION 2 삭제 | 다음 세션이 "보조 에이전트 금지" 만 읽고 기능을 지움 |
+| Acceptance 4~6 누락 | 검증자를 안 띄워도 통과 판정 |
+| 단독 검증자에 upstream 경로 주입 | 순서 보장 붕괴 — 문서 자체 문제를 못 잡음 |
+| 두 dispatch 를 별도 메시지로 분리 | 대기 시간 합산, 병렬 설계 무의미 |
+| 고정 모델 지정 | 판정 불일치를 모델 등급 차이로 변명 가능 |
+| 기각 사유 미기록 | 무맥락 검증을 돌린 의미 소실 |
+| 조건부 자동 게이팅 도입 | 건너뛴 사실이 사용자에게 안 보임 |
+| 4축 헤더 제거 | 바깥 5개 파일의 "4축 보고서" 표현이 전부 부정확해짐 |
+
+### 회귀 탐지 grep
+
+```bash
+# HARD-GATE 예외 조항 존재 + 옛 금지 문구 소멸
+grep -cF "EXCEPTION 2" skills/verifying-spec/SKILL.md
+# expected: >= 1
+grep -cF "NEVER dispatch a code-reviewer subagent for this skill" skills/verifying-spec/SKILL.md
+# expected: 0
+
+# 두 프롬프트 파일 존재
+test -f skills/verifying-spec/clean-solo-prompt.md && test -f skills/verifying-spec/clean-cross-prompt.md && echo OK
+# expected: OK
+
+# 단독 검증자에 upstream 경로 주입 금지
+grep -cF "<UPSTREAM_PATHS>" skills/verifying-spec/clean-solo-prompt.md
+# expected: 0
+grep -cF "<UPSTREAM_PATHS>" skills/verifying-spec/clean-cross-prompt.md
+# expected: >= 1
+
+# 4축 보존
+grep -cF "## A. Consistency" skills/verifying-spec/SKILL.md
+# expected: >= 1
+grep -cF "## C. Code Impact" skills/verifying-spec/SKILL.md
+# expected: >= 1
+
+# Acceptance 확장 (홑따옴표 필수 — 큰따옴표 안 백틱은 셸이 명령으로 해석)
+grep -cF 'no `model` argument' skills/verifying-spec/SKILL.md
+# expected: >= 1
+
+# 커맨드 4곳 플래그 안내
+grep -lF -- "--no-clean-verify" commands/tech-design.md commands/write-plan.md commands/auto-tech-design.md commands/auto-write-plan.md
+# expected: 4 lines
+
+# 호출 지점에 dispatch 복제 금지 (브랜치 무관하게 성립하는 불변식)
+grep -l "clean-solo-prompt\|clean-cross-prompt\|no-clean-verify" skills/tech-design/SKILL.md skills/writing-plans/SKILL.md skills/auto-tech-design/SKILL.md skills/auto-writing-plans/SKILL.md
+# expected: (없음) — 네 호출 지점은 verifying-spec 을 이름으로만 부른다.
+# 여기에 프롬프트 경로나 플래그가 등장하면 절차가 복제된 것이고, 한 곳만 고쳤을 때 흐름별 동작이 갈린다.
+# (git diff main 비교는 머지 후 항상 비어 무의미하고, 무관한 브랜치에서 거짓 실패를 낸다)
+
+# fixture 존재
+test -f skills/js-super-sub-driven/tests/H16-clean-verify/README.md && echo OK
+# expected: OK
+```
