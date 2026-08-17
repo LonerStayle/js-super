@@ -964,7 +964,7 @@ v2.7+ 에서 skill 빌더 3종 고도화. `/new-skill` 생성 스코프(프로�
 
 ### 핵심 룰
 
-- **D-1 마커 = 출처 표식** — frontmatter 필드(로더 호환 리스크) / 중앙 manifest(desync + FR-2 "다른 프로젝트 안 보임" 충돌) 대신 디렉토리 안 마커 파일 채택. `test -f` 만으로 deterministic 판별
+- **D-1 마커 = 출처 표식** — frontmatter 필드(로더 호환 리스크) / 중앙 manifest(desync) 대신 디렉토리 안 마커 파일 채택. `test -f` 만으로 deterministic 판별. (당시 근거였던 FR-2 "다른 프로젝트 안 보임" 은 스킬목록-전체프로젝트조회 피처에서 폐지됐지만, 마커 채택 결론은 그대로 유효하다 — 오히려 홈 전체 조회의 판별 기준이 된다)
 - **D-2 생성 스코프 미지정 시 질문** — 조용한 기본값 없음 (사용자가 매번 프로젝트/전체 선택)
 - **D-3 삭제 범위 = 현재 프로젝트 cwd `.claude/skills` + 전체** — 조회는 스킬목록-전체프로젝트조회 피처 (2026-08-16) 로 홈 전체로 확장됨 (아래 "스킬목록 홈 전체 조회 결합" 참조). 삭제는 그대로 두 스코프 (중앙 레지스트리 없음)
 - **D-4 삭제 차단은 `--force` 로도 우회 X** — 마커 부재 = 무조건 차단 (핵심 안전 게이트)
@@ -1807,17 +1807,22 @@ test -f scripts/skill_scan.py && grep -cF "skill_scan.py" commands/list-skills.m
 grep -c '다른 프로젝트의 `.claude/skills/` 스캔 금지' commands/list-skills.md
 # expected: 0
 
-# 세 그룹 JSON 계약 (커맨드 ↔ 스크립트 동기)
-grep -cF "other_projects" commands/list-skills.md scripts/skill_scan.py
-# expected: 각 >= 1
+# JSON 계약 전수 — 키 9개가 커맨드와 스크립트 양쪽에 다 있어야 한다.
+# 한쪽에서만 이름을 바꾸면 빠진 키 수가 0 을 넘는다.
+for k in current_project global other_projects root skills slug path description created; do grep -qF "$k" commands/list-skills.md || echo "cmd:$k"; grep -qF "\"$k\"" scripts/skill_scan.py || echo "py:$k"; done | wc -l
+# expected: 0
 
 # 폴백 존재
 grep -cF "홈 전체 스캔을 사용할 수 없어" commands/list-skills.md
 # expected: >= 1
 
-# 단위 테스트 존재 + import 가능
-test -f scripts/tests/test_skill_scan.py && python3 -c "from scripts.skill_scan import scan; print('OK')"
-# expected: OK
+# 커맨드가 환경변수로 스크립트를 부르면 안 된다 (슬래시 커맨드에서 안 채워짐)
+grep -c '${CLAUDE_PLUGIN_ROOT}/scripts/skill_scan.py' commands/list-skills.md
+# expected: 0
+
+# 스크립트 공개 함수 3개가 그대로 있는가 (import 가능 + 시그니처 유지)
+python3 -c "import scripts.skill_scan as m; print(len([f for f in ('scan','collect_skills','find_current_project') if hasattr(m,f)]))"
+# expected: 3
 
 # 결합 메모 본문 존재
 grep -cF "## 스킬목록 홈 전체 조회 결합" CLAUDE.md
