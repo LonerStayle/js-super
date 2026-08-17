@@ -245,16 +245,18 @@ D1 (3 조건 AND — 같은 파일 / test 경계 X / mechanical) 룰 은 두 ski
 
 구현계획서에서 테스트 코드 블록을 없애고 task 헤더 `**검증**:` 필드 (자연어 1~2줄 — 무엇을 + 성공 기준) 로 대체. 실제 테스트 작성·실행은 실행 단계가 TDD 순서 그대로 수행. 하위 호환 — task 에 테스트 코드 블록이 있으면 기존 룰 (byte-copy) 우선, task 단위 분기. spec: `docs/features/2026-08-09-plan-test-자연어축약/`.
 
-### 적용 8 영역 (atomic)
+### 적용 7 영역 (atomic)
 
 1. `skills/writing-plans/SKILL.md` — 검증 필드 스키마 + 템플릿 + placeholder 룰 반전 + Model sonnet floor
 2. `skills/auto-writing-plans/SKILL.md` — mirror 3곳 동기 (페어 atomic)
 3. `skills/js-super-sub-driven/implementer-prompt.md` — 구현=byte-copy / 테스트=자체 작성 분리 + 하위 호환 분기
 4. `skills/js-super-sub-driven/SKILL.md` — 조건부 dispatch (신규 테스트 포함 task = `**Model**:` 값, 최소 sonnet / 순수 byte-copy = haiku)
 5. `skills/executing-plans/SKILL.md` — 테스트 소스 분기 섹션 + 룰 2 dispatch row
-6. `PROMPT_KO.md` — writing-plans 한국어 mirror
-7. `CLAUDE.md` — v2.0.0 결합 메모 갱신 + 본 섹션
-8. fixtures — H12 갱신 + H15 신규 (H15-natural-lang-verify — H14 는 depth-select 가 선점) + G5/G6 기대값 갱신
+6. `CLAUDE.md` — v2.0.0 결합 메모 갱신 + 본 섹션
+7. fixtures — H12 갱신 + H15 신규 (H15-natural-lang-verify — H14 는 depth-select 가 선점) + G5/G6 기대값 갱신
+
+> 옛 8번째 영역이던 `PROMPT_KO.md` (writing-plans 한국어 대응본) 는 v3.1.0 에서
+> 저장소에서 제거됐다. 포크 시점 스냅숏이라 스킬 12~14개 기준으로 뒤처져 있었다.
 
 ### 회귀 패턴 (한쪽만 변경 시)
 
@@ -281,7 +283,7 @@ grep -n '항상 haiku 고정' skills/js-super-sub-driven/SKILL.md
 # expected: 0 (조건부 룰로 대체)
 grep -cF '테스트 소스 분기 (v2.9+' skills/executing-plans/SKILL.md
 # expected: 1
-grep -cF '**검증**' skills/writing-plans/SKILL.md skills/auto-writing-plans/SKILL.md PROMPT_KO.md
+grep -cF '**검증**' skills/writing-plans/SKILL.md skills/auto-writing-plans/SKILL.md
 # expected: 각 >= 2
 ```
 
@@ -1709,9 +1711,10 @@ grep -c "js-super:worktree-remove" commands/remove-worktree.md
 # 옛 슬래시 표기 잔존.
 # 대상에서 CLAUDE.md 를 뺀다 — 바로 위 매핑 표와 이 검사 명령 자신이 매치돼
 # 저장소가 정상일 때도 상시 5줄이 나오던 문제가 있었다 (2026-08-15 실측).
-# HANDOFF.md / PROMPT_KO.md 도 사용자가 읽는 표면이라 범위에 넣는다.
+# HANDOFF.md 도 사용자가 읽는 표면이라 범위에 넣는다.
+# (PROMPT_KO.md 는 v3.1.0 에서 저장소에서 제거돼 대상에서 뺐다.)
 grep -rn '/tech-design\|/auto-tech-design\|/worktree-merge-back\|/worktree-remove' \
-  skills/ commands/ README.md HANDOFF.md PROMPT_KO.md \
+  skills/ commands/ README.md HANDOFF.md \
   | grep -v 'skills/tech-design\|skills/auto-tech-design\|skills/worktree-merge-back\|skills/worktree-remove' \
   | grep -v 'commands/tech-design\|commands/auto-tech-design\|commands/worktree-merge-back\|commands/worktree-remove' \
   | grep -v '<slug>-tech-design' | grep -v 'brainstorming/tech-design' \

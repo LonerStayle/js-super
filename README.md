@@ -10,7 +10,7 @@
 <br/>
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-3.0.0-7c3aed?style=for-the-badge&labelColor=0d1117">
+  <img alt="Version" src="https://img.shields.io/badge/version-3.1.0-7c3aed?style=for-the-badge&labelColor=0d1117">
   <img alt="Upstream" src="https://img.shields.io/badge/upstream-superpowers%205.0.7-f97316?style=for-the-badge&labelColor=0d1117">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge&labelColor=0d1117">
   <img alt="Language" src="https://img.shields.io/badge/lang-한국어-3b82f6?style=for-the-badge&labelColor=0d1117">
@@ -18,7 +18,7 @@
 </p>
 
 <p>
-  <img alt="Commands" src="https://img.shields.io/badge/commands-24-06b6d4?style=flat-square&labelColor=0d1117">
+  <img alt="Commands" src="https://img.shields.io/badge/commands-29-06b6d4?style=flat-square&labelColor=0d1117">
   <img alt="Skills" src="https://img.shields.io/badge/skills-27-06b6d4?style=flat-square&labelColor=0d1117">
   <img alt="Zero deps" src="https://img.shields.io/badge/dependencies-zero-22c55e?style=flat-square&labelColor=0d1117">
 </p>
@@ -824,6 +824,7 @@ og-* 흐름은 변경이력 / 위험 주석 / 검증 게이트가 **안 따라�
 
 | 버전 | 무엇이 바뀌었나요 |
 |---|---|
+| **v3.1.0** | `/understand` 계열 5 개 신규 — 코드베이스를 지식 그래프로 분석해 질의응답·영향 범위·딥다이브·온보딩 문서까지 + `/list-skills` 가 홈 전체(다른 프로젝트 포함)를 훑도록 확장 |
 | **v3.0.0** | **이름이 바뀐 슬래시 4 개** (아래 표 참고) + `/brainstorm` 이 대화형 한 갈래로 통일 (PRD 양식 폐지) + 구현계획서 **용어집** 자동 생성 + 사양 검증에 **맥락 없는 검증자** 병렬 + `/audit-risk` 마크다운 재작성 + `/tech-teach-me` 신규 + 스킬 3 종 정리 (`.html` 사본 기능 제거) |
 | **v2.9.0** | 산출물 깊이 선택 (2~3 문서) + 구현계획서 테스트 자연어 축약 + `/goodmorning` 단일화 (goodnight 통합) + 워크트리 재분기·심링크 훅 안정화 |
 | **v2.8** | `/goodnight` · `/goodmorning` 세션 핸드오프 + og 흐름 커맨드 전용화 |
