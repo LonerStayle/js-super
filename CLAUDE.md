@@ -1772,3 +1772,60 @@ ls evals/run.py evals/runner/coupling.py evals/baseline.json | wc -l
 - 본 파일의 코드 블록 형식이나 `# expected:` 주석 형식을 바꾸면 러너가 조용히 룰을 놓친다. 러너는 파싱된 룰 수가 직전 실행보다 줄면 경고한다. 절대 수치를 assert 로 박지는 않는다 (자산이 계속 늘어나는 저장소에서 절대값 검사는 매 릴리즈에 마찰을 부과한다)
 - fixture README (`skills/*/tests/**/*.md`) 도 같은 형식으로 읽힌다. 두 원천을 합쳐 111건이다
 - `evals/` 는 Claude Code 의 자동 로드 경로 밖이라 사용자 세션에 안 올라간다
+
+## 스킬목록 홈 전체 조회 결합 (스킬목록-전체프로젝트조회)
+
+`/list-skills` 의 조회 범위를 홈 전체로 확장 — 현재 프로젝트 / 글로벌 / 다른 프로젝트 세 그룹. 탐색은 `scripts/skill_scan.py` (표준 라이브러리만, 읽기 전용) 가 수행하고 커맨드는 렌더링만 한다. v2.7 의 FR-2 "다른 프로젝트 안 보임" 은 이 피처로 **공식 폐지** (사용자 결정). spec: `docs/features/2026-08-16-스킬목록-전체프로젝트조회/`.
+
+### 핵심 룰
+
+- **L-1 커맨드 ↔ 스크립트 JSON 계약** — 스크립트 출력 키 (`current_project` / `global` / `other_projects`, 각 그룹 `root` + `skills[]`, 항목 `slug`/`path`/`description`/`created`) 를 바꾸면 커맨드 본문 § 2 도 동시 수정. 한쪽만 바꾸면 목록이 조용히 빈다
+- **L-2 표식 필터 유지** — `.js-super-skill.json` 있는 것만 목록에. 갈래 C (표식 없는 skill 표시) 는 미채택
+- **L-3 원격 삭제 금지** — 다른 프로젝트 skill 은 안내만 (해당 프로젝트에서 `/remove-skill` 실행)
+- **L-4 스크립트 실패 폴백** — 기존 두 스코프 (cwd + 글로벌) LS 조회로 격하 + 안내 한 줄. 스크립트 실패가 조회 커맨드를 죽이면 안 됨
+- **L-5 현재 프로젝트 = 상향 탐지 + 직접 열거** — cwd 에서 위로 올라가 `.claude/skills` 보유 첫 디렉토리 (홈 자체 제외). 숨김 경로 (워크트리) 아래여도 현재 그룹에는 나옴
+- **L-6 읽기 전용** — 스크립트·커맨드 모두 파일 변경 없음
+
+### 회귀 패턴
+
+| 누락 | 증상 |
+|---|---|
+| 스크립트 JSON 키만 변경 (커맨드 미동기) | 목록이 조용히 빔 (L-1) |
+| 커맨드가 옛 "다른 프로젝트 스캔 금지" 로 회귀 | 홈 전체 조회 무력화 — 본 피처 무화 |
+| 표식 필터 제거 | 갈래 C 무단 도입 — `/remove-skill` 로 못 지우는 항목 노출 |
+| 프루닝 (숨김·무거운 폴더) 제거 | 스캔이 분 단위로 느려짐 + 워크트리 사본 중복 노출 |
+| 폴백 제거 | 플러그인 루트 변수 미지원 하네스에서 조회 커맨드 전체 사망 |
+
+### 회귀 catch grep
+
+```bash
+# 스크립트 존재 + 커맨드가 호출
+test -f scripts/skill_scan.py && grep -cF "skill_scan.py" commands/list-skills.md
+# expected: >= 1
+
+# 옛 금지 조항 잔존 catch
+grep -c '다른 프로젝트의 `.claude/skills/` 스캔 금지' commands/list-skills.md
+# expected: 0
+
+# 세 그룹 JSON 계약 (커맨드 ↔ 스크립트 동기)
+grep -cF "other_projects" commands/list-skills.md scripts/skill_scan.py
+# expected: 각 >= 1
+
+# 폴백 존재
+grep -cF "홈 전체 스캔을 사용할 수 없어" commands/list-skills.md
+# expected: >= 1
+
+# 단위 테스트 존재 + import 가능
+test -f scripts/tests/test_skill_scan.py && python3 -c "from scripts.skill_scan import scan; print('OK')"
+# expected: OK
+
+# 결합 메모 본문 존재
+grep -cF "## 스킬목록 홈 전체 조회 결합" CLAUDE.md
+# expected: >= 1
+```
+
+### 영향 범위
+
+- `commands/list-skills.md` + `scripts/skill_scan.py` (신규) + `scripts/tests/test_skill_scan.py` (신규) + `README.md` 2곳 + `CLAUDE.md` (v2.7 메모 개정 + 본 섹션). 버전 bump 는 main 전용 룰에 따라 main 에서
+- `commands/new-skill.md` / `commands/remove-skill.md` — 변경 0 (출처 표식 규약 그대로. 3 커맨드 동시 수정 룰은 규약 변경 시에만 발동)
+- og-* / auto-* / worktree 계열 / `scripts/preflight.py` / hooks 영향 0
