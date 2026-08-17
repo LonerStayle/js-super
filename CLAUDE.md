@@ -966,7 +966,7 @@ v2.7+ 에서 skill 빌더 3종 고도화. `/new-skill` 생성 스코프(프로�
 
 - **D-1 마커 = 출처 표식** — frontmatter 필드(로더 호환 리스크) / 중앙 manifest(desync + FR-2 "다른 프로젝트 안 보임" 충돌) 대신 디렉토리 안 마커 파일 채택. `test -f` 만으로 deterministic 판별
 - **D-2 생성 스코프 미지정 시 질문** — 조용한 기본값 없음 (사용자가 매번 프로젝트/전체 선택)
-- **D-3 조회/삭제 범위 = 현재 프로젝트 cwd `.claude/skills` + 전체** — 다른 프로젝트 스캔 X (중앙 레지스트리 없음)
+- **D-3 삭제 범위 = 현재 프로젝트 cwd `.claude/skills` + 전체** — 조회는 스킬목록-전체프로젝트조회 피처 (2026-08-16) 로 홈 전체로 확장됨 (아래 "스킬목록 홈 전체 조회 결합" 참조). 삭제는 그대로 두 스코프 (중앙 레지스트리 없음)
 - **D-4 삭제 차단은 `--force` 로도 우회 X** — 마커 부재 = 무조건 차단 (핵심 안전 게이트)
 - **D-5 빌더 3종 모두 command** — `skills/` 아래 변환 X (자동 발동 사고 방지, META-BUILDER 룰 답습)
 - **D-6 마커는 신뢰 신호일 뿐 보안 경계 아님** — 수동 복사 위조 가능, 낮은 빈도 수용
@@ -978,7 +978,7 @@ v2.7+ 에서 skill 빌더 3종 고도화. `/new-skill` 생성 스코프(프로�
 | new-skill 마커 작성 누락 | 생성한 skill 이 `/list-skills` 에 안 뜨고 `/remove-skill` 로도 못 지움 |
 | remove-skill § 4-0 차단 게이트 약화 | 비-js-super skill 삭제 가능 → v2.7 핵심 안전성 손상 |
 | `--force` 가 마커 게이트 우회 | 동일 — 안전성 손상 |
-| list-skills 다른 프로젝트 스캔 추가 | FR-2 "다른 프로젝트 안 보임" 위반 + 빌더 단순성 손상 |
+| list-skills 조회가 두 스코프 (cwd + 글로벌) 로 회귀 | 홈 전체 조회 피처 (2026-08-16, FR-2 공식 폐지) 무력화 — "스킬목록 홈 전체 조회 결합" 참조 |
 | 마커 규약 키(`generated_by`) 한 command 만 변경 | 생성 마커와 조회/삭제 판별 desync |
 
 ### 회귀 catch grep
@@ -1010,7 +1010,7 @@ grep -cF "## new-skill-enhanced — 스코프 분기 + 출처 표식 결합 (v2.
 - 3 command 본문 + CLAUDE.md + 6 manifest. 다른 skill / scripts / hooks / settings 영향 0
 - 사용자 환경 출력 — `<project-root>/.claude/skills/` 또는 `~/.claude/skills/` (js-super 저장소 외)
 - `using-superpowers` 본문 변경 X
-- 범위 밖: 비-js-super 강제 삭제 우회 / 옛 마커 없는 skill 마이그레이션 / 다른 프로젝트 조회·삭제
+- 범위 밖: 비-js-super 강제 삭제 우회 / 옛 마커 없는 skill 마이그레이션 / 다른 프로젝트 삭제 (조회는 스킬목록-전체프로젝트조회 피처로 이후 채택됨)
 
 요약: 3 command 본문 + CLAUDE.md 결합 메모 + 6 manifest = 10 파일 atomic patch (Wave 0~5 + spec + [log] 묶음 commit).
 
