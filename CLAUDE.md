@@ -1772,3 +1772,61 @@ ls evals/run.py evals/runner/coupling.py evals/baseline.json | wc -l
 - 본 파일의 코드 블록 형식이나 `# expected:` 주석 형식을 바꾸면 러너가 조용히 룰을 놓친다. 러너는 파싱된 룰 수가 직전 실행보다 줄면 경고한다. 절대 수치를 assert 로 박지는 않는다 (자산이 계속 늘어나는 저장소에서 절대값 검사는 매 릴리즈에 마찰을 부과한다)
 - fixture README (`skills/*/tests/**/*.md`) 도 같은 형식으로 읽힌다. 두 원천을 합쳐 111건이다
 - `evals/` 는 Claude Code 의 자동 로드 경로 밖이라 사용자 세션에 안 올라간다
+
+## understand 커맨드 5종 결합 (Understand-Anything 이식)
+
+Understand-Anything v2.9.4 의 그래프 생성(`/understand`)과 조회 4종(chat / diff / explain / onboard)을 커맨드 전용으로 이식. 엔진·스크립트·보조 에이전트 프롬프트는 저장소에 없고, 최초 실행 시 원저장소를 `~/.understand-anything-plugin` 에 버전 고정 clone 해 재사용한다. spec: `docs/features/2026-08-16-understand-anything-command/`.
+
+### 핵심 룰
+
+- 5 커맨드 모두 `disable-model-invocation: true` — 자동 발동 경로 0
+- 엔진 확보는 런타임 clone (태그 v2.9.4) — 저장소에 엔진 코드·바이너리·빌드 파이프라인 반입 금지
+- 원저장소는 저장소 루트 아래에 플러그인 폴더가 한 겹 더 있다. clone 대상(사본 루트)과 엔진 기준 경로가 다르므로, 경로를 줄일 때 한 겹을 빠뜨리지 말 것
+- 조회 4종의 공통 블록 (Graph Structure Reference + 최신성 검사) 은 4파일 복붙 동기 — 한 곳 수정 시 4곳 동시 수정
+- 버전 고정 문자열 (clone 태그 / viewer 릴리즈 URL) 은 등장하는 파일 전체에서 일치 유지 — 한쪽만 올리면 엔진과 viewer 의 스키마가 어긋난다
+- `/understand` 의 덮어쓰기 표 (O-1~O-5) 밖 원본 절차는 무수정 — 특히 배치 파일명 규약을 변형하면 병합에서 조용히 유실된다
+- 훅 미도입 — 증분 갱신은 `/understand` 재실행만. hooks/ 에 understand 관련 항목을 넣지 않는다
+
+### 회귀 패턴 (한쪽만 변경 시)
+
+| 누락 | 증상 |
+|---|---|
+| 조회 4종 공통 블록 한 곳만 수정 | 커맨드별 최신성 판정이 갈림 — 같은 그래프에 다른 경고 |
+| clone 태그만 올리고 viewer URL 미동기 | 새 스키마 그래프를 옛 viewer 가 못 읽음 (또는 반대) |
+| 엔진 기준 경로에서 중첩 한 겹 누락 | 사본은 있는데 절차 본문을 못 찾아 매번 재clone 시도 |
+| 스킬 디렉토리 신설 (skills/understand*) | 커맨드가 스킬을 가려 호출 불가 — 이름 충돌 룰 위반 |
+| 훅에 자동 갱신 추가 | 요구사항 범위 밖 재유입 — 컨텍스트 상주 제거 취지 위배 |
+
+### 회귀 catch grep
+
+```bash
+# 5 커맨드 존재 + 명시 호출 전용
+grep -lF "disable-model-invocation: true" commands/understand.md commands/understand-chat.md commands/understand-diff.md commands/understand-explain.md commands/understand-onboard.md | wc -l
+# expected: 5
+
+# 커맨드 ↔ 스킬 이름 충돌 없음
+ls -d skills/understand* 2>/dev/null | wc -l
+# expected: 0
+
+# 버전 고정 문자열 (clone 태그 + viewer URL)
+grep -c "v2.9.4" commands/understand.md
+# expected: >= 2
+
+# 조회 4종 공통 최신성 블록 동기
+grep -lF "GRAPH_COMMIT_RAW" commands/understand-chat.md commands/understand-diff.md commands/understand-explain.md commands/understand-onboard.md | wc -l
+# expected: 4
+
+# viewer URL 등장 파일 일치 (understand + understand-diff)
+grep -rlF "releases/download/v2.9.4/understand-anything-viewer.tgz" commands/ | wc -l
+# expected: 2
+
+# 훅 미도입
+grep -rln "understand-anything" hooks/ | wc -l
+# expected: 0
+```
+
+### 영향 범위
+
+- commands 5 신규 + README 1곳 + fixture 1 (`commands/understand-tests/H24-e2e/`). skills/ / scripts/ / hooks/ / agents/ 영향 0
+- 버전 bump 는 main 전용 룰에 따라 main 에서
+- 원본 플러그인과 동시 설치는 비전제 (커맨드 이름 동일) — README 주의 문단이 사용자 안내 캐리어
