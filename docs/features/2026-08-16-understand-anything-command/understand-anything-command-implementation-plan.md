@@ -614,7 +614,7 @@ git commit -m "feat(understand): /understand-onboard 온보딩 가이드 커맨�
 
 Run:
 ```bash
-grep -cE '^\| .`/understand' README.md
+grep -cE '^\| `/understand' README.md
 grep -c '네트워크 1회' README.md
 grep -c '토큰을 씁니다' README.md
 grep -c '동시 설치는 권장하지 않습니다' README.md
@@ -834,3 +834,29 @@ Expected: `5` / `0` / `2` 이상 / `4` / `2` / `0`
 - **무엇이**: understand-anything-command-implementation-plan.md 전체 (§1 Task 1~9, §2 위험 코드 지점 8건, §3 롤백 전략)
 - **영향범위**: understand-anything-command-tech-design.md — D-3 근거 수정이 같은 검증에서 함께 발생 (CH-20260817-003). 코드 변경은 아직 없음 (실행 단계에서 발생)
 - **연관 항목**: CH-20260817-002, CH-20260817-003
+
+### [2026-08-17 20:59] [코드-수정] (batch: tasks 1..8)
+- **id**: CH-20260817-005
+- **이유**: Understand-Anything v2.9.4 의 그래프 생성 + 조회 4종을 js-super 명시 호출 전용 커맨드로 이식 완료. 엔진은 저장소에 넣지 않고 최초 실행 시 버전 고정으로 내려받는 구조
+- **무엇이**: commands/understand.md, commands/understand-chat.md, commands/understand-diff.md, commands/understand-explain.md, commands/understand-onboard.md, README.md, CLAUDE.md, commands/understand-tests/H24-e2e/README.md
+- **영향범위**: 신규 커맨드 5종이라 기존 호출자 0. README 유틸리티 표와 CLAUDE.md 결합 메모가 늘어남. skills / scripts / hooks / agents / 6 manifest 변경 0. eval 러너가 CLAUDE.md 에서 새 회귀 규칙 6건을 수집함(실측 확인)
+- **위험 카테고리**: breaking, side-effect, race
+- **task별 세부 (8건)**:
+  - Task 1: `commands/understand.md` (신규 113줄) — 도구 검사 4종 + 사본 확보 + 원본 절차 참조 + 덮어쓰기 5조항 + 종료 안내 (`breaking`: 원저장소·버전 의존 / `side-effect`: 도구 미충족·작업 파일 커밋 / `race`: 배치 파일명 규약 명문) — commits: `b4660df`
+  - Task 2: `commands/understand-chat.md` (신규) — 그래프 질의응답 (`none`) — commits: `3c3f827`
+  - Task 3: `commands/understand-diff.md` (신규) — 변경 영향 분석, 원본의 대시보드 자동 호출을 viewer 안내로 교체 (`none`) — commits: `fb3a19c`
+  - Task 4: `commands/understand-explain.md` (신규) — 파일·함수 딥다이브 (`none`) — commits: `473df43`
+  - Task 5: `commands/understand-onboard.md` (신규) — 온보딩 가이드 생성 (`none`) — commits: `3354e7b`
+  - Task 6: `README.md:533-539` — 유틸리티 표 5행 + 요구·비용·동시 설치 주의 문단 (`side-effect`: 비용 미인지 완화) — commits: `c16e9b0`
+  - Task 7: `CLAUDE.md:1776-1836` — 결합 메모 + 회귀 catch grep 6종 (`breaking`: 4파일 공통 블록 동기 룰) — commits: `495806a`
+  - Task 8: `commands/understand-tests/H24-e2e/README.md` (신규) — 수동 E2E 시나리오 10단계 — commits: `5d48d57`
+- **연관 commits**: `b4660df`, `3c3f827`, `fb3a19c`, `473df43`, `3354e7b`, `c16e9b0`, `495806a`, `5d48d57`
+- **변경 전/후 코드**: 생략 — `git show <SHA>` 로 조회
+
+### [2026-08-17 20:59] [검증] (task: Task 9 — 회귀 검사 일괄 실행)
+- **id**: CH-20260817-006
+- **이유**: 릴리즈 전 정적 회귀 규칙 6종이 실제 저장소 상태에서 통과하는지 확인
+- **무엇이**: 5 커맨드 명시 호출 전용 플래그 / 커맨드↔스킬 이름 충돌 / 버전 고정 문자열 / 조회 4종 공통 블록 동기 / viewer URL 등장 파일 일치 / 훅 미도입
+- **결과**: PASS — 실측 5 / 0 / 5 / 4 / 2 / 0 (기대 5 / 0 / 2 이상 / 4 / 2 / 0). 커맨드↔스킬 충돌 전수 검사도 출력 없음. Task 6 실행 중 계획서의 검증 정규식 오류 1건(백틱 앞 여분 문자)을 발견해 계획서를 교정함
+- **연관 commit**: 위 batch entry 의 8개 커밋
+- **연관 항목**: CH-20260817-005
