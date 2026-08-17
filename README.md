@@ -530,6 +530,13 @@ flowchart TD
 | `/remove-skill <이름>` | js-super 가 만든 skill 안전 정리 |
 | `/pretty-md` | `.md` 본문 다듬기 (의미는 안 바꿈) |
 | `/tech-teach-me` | 요구사항·기술설계·구현계획 문서를 강의로 쪼개 한 강씩 설명 |
+| `/understand [path]` | 코드베이스 분석 → 지식 그래프 생성 (재실행 시 변경분만 증분) |
+| `/understand-chat <질문>` | 그래프 기반 코드베이스 질의응답 |
+| `/understand-diff` | 현재 변경분의 영향 범위 분석 |
+| `/understand-explain <파일>` | 특정 파일·함수 딥다이브 설명 |
+| `/understand-onboard` | 온보딩 가이드 문서 생성 |
+
+> `/understand` 계열은 Understand-Anything v2.9.4 이식판입니다. 최초 실행 때 분석 엔진을 사용자 홈에 내려받아 준비하고 (git · Node 22 · pnpm 10 · Python 3 필요, 네트워크 1회), 전체 분석은 프로젝트 크기에 비례해 토큰을 씁니다 — 실행 전에 규모를 보고하고 큰 프로젝트면 범위 축소를 먼저 제안합니다. 원본 Understand-Anything 플러그인과 커맨드 이름이 겹치므로 동시 설치는 권장하지 않습니다.
 
 <br/>
 
