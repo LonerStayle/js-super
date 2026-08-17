@@ -30,6 +30,11 @@
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
    "verdict": "PENDING"
   },
+  "coupling/0939f3c9efd3": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
   "coupling/09dd05f88678": {
    "label": "confirmed",
    "reason": "",
@@ -161,6 +166,11 @@
    "verdict": "PASS"
   },
   "coupling/30aa86d2a0f5": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
+  "coupling/352ecf078d64": {
    "label": "confirmed",
    "reason": "",
    "verdict": "PASS"
@@ -375,6 +385,11 @@
    "reason": "/audit-risk 를 실제로 돌린 뒤 생긴 보고서를 사람이 확인하는 항목. 저장소 상태만으로는 판정 불가 (fixture 본문이 'dogfood 시 수행' 이라 명시).",
    "verdict": "PENDING"
   },
+  "coupling/704328bafcde": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
   "coupling/705c115c8cbc": {
    "label": "confirmed",
    "reason": "",
@@ -575,6 +590,11 @@
    "reason": "",
    "verdict": "PASS"
   },
+  "coupling/a6de2a909f17": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
   "coupling/ab0653c161fa": {
    "label": "confirmed",
    "reason": "",
@@ -649,6 +669,11 @@
    "label": "regression-open",
    "reason": "main 의 룰 자체가 틀림. 흐름도에서 블록 이름이 반복되어 grep -c 가 18을 내는데 기대값은 4. main 원본에서도 같은 결과. 룰 작성자가 기대값을 고치거나 명령을 좁혀야 한다.",
    "verdict": "FAIL"
+  },
+  "coupling/c082d6a52ea4": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
   },
   "coupling/c1a7ecd2032a": {
    "label": "confirmed",
@@ -800,6 +825,11 @@
    "reason": "자연어 기대값. 숫자 뒤 조건을 사람이나 모델이 읽어야 판정된다. 모델 판정 대상 (2차).",
    "verdict": "PENDING"
   },
+  "coupling/edf90dc4cd5d": {
+   "label": "confirmed",
+   "reason": "",
+   "verdict": "PASS"
+  },
   "coupling/eed6263bdf89": {
    "label": "confirmed",
    "reason": "",
@@ -862,7 +892,7 @@
   },
   "pytest/scripts+evals": {
    "label": "confirmed",
-   "reason": "203 passed in 1.90s",
+   "reason": "203 passed in 2.01s",
    "verdict": "PASS"
   },
   "self/command-skill-name-collision": {
