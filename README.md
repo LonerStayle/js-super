@@ -479,7 +479,7 @@ flowchart TD
 **그래서 뭐가 좋아요?**
 
 - `/new-skill` — 설명 한 줄 → skill 자동 생성, **스코프(프로젝트 / 전체) 선택**
-- `/list-skills` — **js-super 가 만든 skill 만** 모아 보기 (현재 프로젝트 + 전체)
+- `/list-skills` — **js-super 가 만든 skill 만** 홈 전체에서 모아 보기 (현재 프로젝트 / 글로벌 / 다른 프로젝트)
 - `/remove-skill` — 기본은 안전한 rename 정리, **js-super 가 만든 것만** 대상
 - 출처 표식이 있어 **다른 플러그인 / 직접 만든 skill 은 못 건드려요**
 
@@ -526,7 +526,7 @@ flowchart TD
 | `/merge-back-worktree` | feature 워크트리 안에서 안전한 main 머지 |
 | `/remove-worktree` | 현재 워크트리 + 브랜치 안전 정리 |
 | `/new-skill <설명>` | 자유 텍스트 한 줄 → skill 자동 생성 (프로젝트 / 전체 선택) |
-| `/list-skills` | js-super 가 만든 skill 만 조회 (프로젝트 + 전체) |
+| `/list-skills` | js-super 가 만든 skill 만 홈 전체 조회 (현재 / 글로벌 / 다른 프로젝트) |
 | `/remove-skill <이름>` | js-super 가 만든 skill 안전 정리 |
 | `/pretty-md` | `.md` 본문 다듬기 (의미는 안 바꿈) |
 | `/tech-teach-me` | 요구사항·기술설계·구현계획 문서를 강의로 쪼개 한 강씩 설명 |

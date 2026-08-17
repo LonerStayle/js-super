@@ -964,9 +964,9 @@ v2.7+ 에서 skill 빌더 3종 고도화. `/new-skill` 생성 스코프(프로�
 
 ### 핵심 룰
 
-- **D-1 마커 = 출처 표식** — frontmatter 필드(로더 호환 리스크) / 중앙 manifest(desync + FR-2 "다른 프로젝트 안 보임" 충돌) 대신 디렉토리 안 마커 파일 채택. `test -f` 만으로 deterministic 판별
+- **D-1 마커 = 출처 표식** — frontmatter 필드(로더 호환 리스크) / 중앙 manifest(desync) 대신 디렉토리 안 마커 파일 채택. `test -f` 만으로 deterministic 판별. (당시 근거였던 FR-2 "다른 프로젝트 안 보임" 은 스킬목록-전체프로젝트조회 피처에서 폐지됐지만, 마커 채택 결론은 그대로 유효하다 — 오히려 홈 전체 조회의 판별 기준이 된다)
 - **D-2 생성 스코프 미지정 시 질문** — 조용한 기본값 없음 (사용자가 매번 프로젝트/전체 선택)
-- **D-3 조회/삭제 범위 = 현재 프로젝트 cwd `.claude/skills` + 전체** — 다른 프로젝트 스캔 X (중앙 레지스트리 없음)
+- **D-3 삭제 범위 = 현재 프로젝트 cwd `.claude/skills` + 전체** — 조회는 스킬목록-전체프로젝트조회 피처 (2026-08-16) 로 홈 전체로 확장됨 (아래 "스킬목록 홈 전체 조회 결합" 참조). 삭제는 그대로 두 스코프 (중앙 레지스트리 없음)
 - **D-4 삭제 차단은 `--force` 로도 우회 X** — 마커 부재 = 무조건 차단 (핵심 안전 게이트)
 - **D-5 빌더 3종 모두 command** — `skills/` 아래 변환 X (자동 발동 사고 방지, META-BUILDER 룰 답습)
 - **D-6 마커는 신뢰 신호일 뿐 보안 경계 아님** — 수동 복사 위조 가능, 낮은 빈도 수용
@@ -978,7 +978,7 @@ v2.7+ 에서 skill 빌더 3종 고도화. `/new-skill` 생성 스코프(프로�
 | new-skill 마커 작성 누락 | 생성한 skill 이 `/list-skills` 에 안 뜨고 `/remove-skill` 로도 못 지움 |
 | remove-skill § 4-0 차단 게이트 약화 | 비-js-super skill 삭제 가능 → v2.7 핵심 안전성 손상 |
 | `--force` 가 마커 게이트 우회 | 동일 — 안전성 손상 |
-| list-skills 다른 프로젝트 스캔 추가 | FR-2 "다른 프로젝트 안 보임" 위반 + 빌더 단순성 손상 |
+| list-skills 조회가 두 스코프 (cwd + 글로벌) 로 회귀 | 홈 전체 조회 피처 (2026-08-16, FR-2 공식 폐지) 무력화 — "스킬목록 홈 전체 조회 결합" 참조 |
 | 마커 규약 키(`generated_by`) 한 command 만 변경 | 생성 마커와 조회/삭제 판별 desync |
 
 ### 회귀 catch grep
@@ -1010,7 +1010,7 @@ grep -cF "## new-skill-enhanced — 스코프 분기 + 출처 표식 결합 (v2.
 - 3 command 본문 + CLAUDE.md + 6 manifest. 다른 skill / scripts / hooks / settings 영향 0
 - 사용자 환경 출력 — `<project-root>/.claude/skills/` 또는 `~/.claude/skills/` (js-super 저장소 외)
 - `using-superpowers` 본문 변경 X
-- 범위 밖: 비-js-super 강제 삭제 우회 / 옛 마커 없는 skill 마이그레이션 / 다른 프로젝트 조회·삭제
+- 범위 밖: 비-js-super 강제 삭제 우회 / 옛 마커 없는 skill 마이그레이션 / 다른 프로젝트 삭제 (조회는 스킬목록-전체프로젝트조회 피처로 이후 채택됨)
 
 요약: 3 command 본문 + CLAUDE.md 결합 메모 + 6 manifest = 10 파일 atomic patch (Wave 0~5 + spec + [log] 묶음 commit).
 
@@ -1830,3 +1830,65 @@ grep -rln "understand-anything" hooks/ | wc -l
 - commands 5 신규 + README 1곳 + fixture 1 (`commands/understand-tests/H24-e2e/`). skills/ / scripts/ / hooks/ / agents/ 영향 0
 - 버전 bump 는 main 전용 룰에 따라 main 에서
 - 원본 플러그인과 동시 설치는 비전제 (커맨드 이름 동일) — README 주의 문단이 사용자 안내 캐리어
+
+## 스킬목록 홈 전체 조회 결합 (스킬목록-전체프로젝트조회)
+
+`/list-skills` 의 조회 범위를 홈 전체로 확장 — 현재 프로젝트 / 글로벌 / 다른 프로젝트 세 그룹. 탐색은 `scripts/skill_scan.py` (표준 라이브러리만, 읽기 전용) 가 수행하고 커맨드는 렌더링만 한다. v2.7 의 FR-2 "다른 프로젝트 안 보임" 은 이 피처로 **공식 폐지** (사용자 결정). spec: `docs/features/2026-08-16-스킬목록-전체프로젝트조회/`.
+
+### 핵심 룰
+
+- **L-1 커맨드 ↔ 스크립트 JSON 계약** — 스크립트 출력 키 (`current_project` / `global` / `other_projects`, 각 그룹 `root` + `skills[]`, 항목 `slug`/`path`/`description`/`created`) 를 바꾸면 커맨드 본문 § 2 도 동시 수정. 한쪽만 바꾸면 목록이 조용히 빈다
+- **L-2 표식 필터 유지** — `.js-super-skill.json` 있는 것만 목록에. 갈래 C (표식 없는 skill 표시) 는 미채택
+- **L-3 원격 삭제 금지** — 다른 프로젝트 skill 은 안내만 (해당 프로젝트에서 `/remove-skill` 실행)
+- **L-4 스크립트 실패 폴백** — 기존 두 스코프 (cwd + 글로벌) LS 조회로 격하 + 안내 한 줄. 스크립트 실패가 조회 커맨드를 죽이면 안 됨
+- **L-5 현재 프로젝트 = 상향 탐지 + 직접 열거** — cwd 에서 위로 올라가 `.claude/skills` 보유 첫 디렉토리 (홈 자체 제외). 숨김 경로 (워크트리) 아래여도 현재 그룹에는 나옴
+- **L-6 읽기 전용** — 스크립트·커맨드 모두 파일 변경 없음
+
+### 회귀 패턴
+
+| 누락 | 증상 |
+|---|---|
+| 스크립트 JSON 키만 변경 (커맨드 미동기) | 목록이 조용히 빔 (L-1) |
+| 커맨드가 옛 "다른 프로젝트 스캔 금지" 로 회귀 | 홈 전체 조회 무력화 — 본 피처 무화 |
+| 표식 필터 제거 | 갈래 C 무단 도입 — `/remove-skill` 로 못 지우는 항목 노출 |
+| 프루닝 (숨김·무거운 폴더) 제거 | 스캔이 분 단위로 느려짐 + 워크트리 사본 중복 노출 |
+| 폴백 제거 | 플러그인 루트 변수 미지원 하네스에서 조회 커맨드 전체 사망 |
+
+### 회귀 catch grep
+
+```bash
+# 스크립트 존재 + 커맨드가 호출
+test -f scripts/skill_scan.py && grep -cF "skill_scan.py" commands/list-skills.md
+# expected: >= 1
+
+# 옛 금지 조항 잔존 catch
+grep -c '다른 프로젝트의 `.claude/skills/` 스캔 금지' commands/list-skills.md
+# expected: 0
+
+# JSON 계약 전수 — 키 9개가 커맨드와 스크립트 양쪽에 다 있어야 한다.
+# 한쪽에서만 이름을 바꾸면 빠진 키 수가 0 을 넘는다.
+for k in current_project global other_projects root skills slug path description created; do grep -qF "$k" commands/list-skills.md || echo "cmd:$k"; grep -qF "\"$k\"" scripts/skill_scan.py || echo "py:$k"; done | wc -l
+# expected: 0
+
+# 폴백 존재
+grep -cF "홈 전체 스캔을 사용할 수 없어" commands/list-skills.md
+# expected: >= 1
+
+# 커맨드가 환경변수로 스크립트를 부르면 안 된다 (슬래시 커맨드에서 안 채워짐)
+grep -c '${CLAUDE_PLUGIN_ROOT}/scripts/skill_scan.py' commands/list-skills.md
+# expected: 0
+
+# 스크립트 공개 함수 3개가 그대로 있는가 (import 가능 + 시그니처 유지)
+python3 -c "import scripts.skill_scan as m; print(len([f for f in ('scan','collect_skills','find_current_project') if hasattr(m,f)]))"
+# expected: 3
+
+# 결합 메모 본문 존재
+grep -cF "## 스킬목록 홈 전체 조회 결합" CLAUDE.md
+# expected: >= 1
+```
+
+### 영향 범위
+
+- `commands/list-skills.md` + `scripts/skill_scan.py` (신규) + `scripts/tests/test_skill_scan.py` (신규) + `README.md` 2곳 + `CLAUDE.md` (v2.7 메모 개정 + 본 섹션). 버전 bump 는 main 전용 룰에 따라 main 에서
+- `commands/new-skill.md` / `commands/remove-skill.md` — 변경 0 (출처 표식 규약 그대로. 3 커맨드 동시 수정 룰은 규약 변경 시에만 발동)
+- og-* / auto-* / worktree 계열 / `scripts/preflight.py` / hooks 영향 0
