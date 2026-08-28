@@ -1357,6 +1357,8 @@ CLAUDE.md 의 "AskUserQuestion 도구 우선 (v2.3.5+)" 전역 룰에 대한 **�
 
 옛 룰 중 "코드가 있어야 이해되는 경우 다섯 줄 이내 발췌 허용" 과 "표는 항목 네 개 이하일 때만" 은 폐지 — 부활하면 회귀.
 
+강 수 고정 상한 (150줄 미만 최대 3강, 그 이상 최대 5강) 도 폐지 (사용자 결정 — 긴 문서가 상한 때문에 과압축되는 것 방지). 묶고 남는 항목 수가 그대로 강 수. "적을수록 좋다 + 묶기 우선" 룰은 유지 — 상한만 없어진 것이지 잘게 쪼개라는 뜻이 아님.
+
 ### 영향 범위
 
 - 커맨드 1 신규 + README 유틸리티 표 1행 + 본 섹션. skill / scripts / hooks 영향 0
@@ -1388,6 +1390,12 @@ grep -c "표는 항목이 네 개 이하일 때만" commands/tech-teach-me.md
 # expected: 0
 
 grep -cF "잔말을 쓰지 않습니다" commands/tech-teach-me.md
+# expected: 1
+
+grep -c "최대 3강\|최대 5강" commands/tech-teach-me.md
+# expected: 0
+
+grep -cF "강 수에 고정 상한은 없습니다" commands/tech-teach-me.md
 # expected: 1
 ```
 
