@@ -1344,6 +1344,19 @@ CLAUDE.md 의 "AskUserQuestion 도구 우선 (v2.3.5+)" 전역 룰에 대한 **�
 - **Why**: 강마다 팝업이 뜨면 학습 흐름이 끊기고 피로하다 (사용자 결정). 알람 fire 를 포기하는 대신 대화 리듬을 택함.
 - **회귀 catch**: 본문에 AskUserQuestion 호출 지시가 생기면 회귀. 금지 섹션의 catch 라인만 허용.
 
+### 강의 문체 — 자연어 + 도표 우선 (2026-08-29+)
+
+강의 본문의 문체를 다음 방향으로 고정 (사용자 결정):
+
+- 코드 발췌 금지 — 코드가 하는 일은 자연어로 풀어 쓰고, 파일 이름은 위치를 짚어줄 때만
+- 구조·비교·흐름·관계는 표나 도식으로 먼저 보여주고 문장은 보충
+- 문장 안 부호 금지 (화살표·체크·빗금 나열) — 화살표는 도식 안에서만
+- 문서의 관리용 번호 (요구 항목 번호·결정 번호·이력 번호) 는 강의에 노출하지 않고 내용을 풀어 말함
+- 위에서 아래로 한 번만 읽으면 이해되게 — 아직 설명 안 한 용어 선사용 금지, 뒤 내용 예고 금지
+- 비유·은유 금지 (기존 룰 유지) + 잔말 금지 (인사·예고·감상 없이 내용만)
+
+옛 룰 중 "코드가 있어야 이해되는 경우 다섯 줄 이내 발췌 허용" 과 "표는 항목 네 개 이하일 때만" 은 폐지 — 부활하면 회귀.
+
 ### 영향 범위
 
 - 커맨드 1 신규 + README 유틸리티 표 1행 + 본 섹션. skill / scripts / hooks 영향 0
@@ -1361,6 +1374,21 @@ grep -n "AskUserQuestion" commands/tech-teach-me.md
 
 test ! -d skills/tech-teach-me && echo "OK: 커맨드 전용 유지"
 # expected: OK
+
+grep -cF "표나 도식으로 먼저" commands/tech-teach-me.md
+# expected: 1
+
+grep -c "다섯 줄 이내로 발췌" commands/tech-teach-me.md
+# expected: 0
+
+grep -cF "관리용 번호" commands/tech-teach-me.md
+# expected: 2
+
+grep -c "표는 항목이 네 개 이하일 때만" commands/tech-teach-me.md
+# expected: 0
+
+grep -cF "잔말을 쓰지 않습니다" commands/tech-teach-me.md
+# expected: 1
 ```
 
 ## 기술설계 서술 수준 룰 결합 (tech-design ↔ auto-tech-design)
