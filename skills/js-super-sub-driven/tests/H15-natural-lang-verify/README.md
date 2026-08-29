@@ -17,7 +17,7 @@ plan 의 task 에 테스트 코드 블록 존재 (v2.8 이전 형식).
 
 **기대:**
 - 블록 존재 = 기존 룰 우선 — 테스트도 byte-copy, 자체 작성 금지
-- implementer dispatch 모델 = haiku (byte-copy)
+- implementer dispatch 모델 = sonnet (byte-copy — haiku 사용 금지)
 
 ## 시나리오 C (혼재 plan)
 

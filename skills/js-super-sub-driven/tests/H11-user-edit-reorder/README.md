@@ -5,7 +5,7 @@
 1. plan 작성 + 저장. plan_byte_check ✅ 통과 (작성 시점 byte-equal).
 2. **사용자가 plan 실행 전 직접 `<file>` 편집** (한 줄 추가, 다른 위치).
 3. `/auto-execute-plan` 또는 메인 wave-parallel dispatch 발화.
-4. Wave 진입 → Implementer (haiku, byte-copy) 시도.
+4. Wave 진입 → Implementer (sonnet, byte-copy) 시도.
 5. Edit "old_string not found" — 사용자 추가 한 줄 때문에 file 이 plan 의 `**원본**` 과 다름.
 6. Implementer Status: BLOCKED — 원본 mismatch at <file>.
 7. 메인이 자동으로 Reorder dispatch (sonnet, ./reorder-prompt.md).
