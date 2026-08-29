@@ -1344,6 +1344,21 @@ CLAUDE.md 의 "AskUserQuestion 도구 우선 (v2.3.5+)" 전역 룰에 대한 **�
 - **Why**: 강마다 팝업이 뜨면 학습 흐름이 끊기고 피로하다 (사용자 결정). 알람 fire 를 포기하는 대신 대화 리듬을 택함.
 - **회귀 catch**: 본문에 AskUserQuestion 호출 지시가 생기면 회귀. 금지 섹션의 catch 라인만 허용.
 
+### 강의 문체 — 자연어 + 도표 우선 (2026-08-29+)
+
+강의 본문의 문체를 다음 방향으로 고정 (사용자 결정):
+
+- 코드 발췌 금지 — 코드가 하는 일은 자연어로 풀어 쓰고, 파일 이름은 위치를 짚어줄 때만
+- 구조·비교·흐름·관계는 표나 도식으로 먼저 보여주고 문장은 보충
+- 문장 안 부호 금지 (화살표·체크·빗금 나열) — 화살표는 도식 안에서만
+- 문서의 관리용 번호 (요구 항목 번호·결정 번호·이력 번호) 는 강의에 노출하지 않고 내용을 풀어 말함
+- 위에서 아래로 한 번만 읽으면 이해되게 — 아직 설명 안 한 용어 선사용 금지, 뒤 내용 예고 금지
+- 비유·은유 금지 (기존 룰 유지) + 잔말 금지 (인사·예고·감상 없이 내용만)
+
+옛 룰 중 "코드가 있어야 이해되는 경우 다섯 줄 이내 발췌 허용" 과 "표는 항목 네 개 이하일 때만" 은 폐지 — 부활하면 회귀.
+
+강 수 고정 상한 (150줄 미만 최대 3강, 그 이상 최대 5강) 도 폐지 (사용자 결정 — 긴 문서가 상한 때문에 과압축되는 것 방지). 묶고 남는 항목 수가 그대로 강 수. "적을수록 좋다 + 묶기 우선" 룰은 유지 — 상한만 없어진 것이지 잘게 쪼개라는 뜻이 아님.
+
 ### 영향 범위
 
 - 커맨드 1 신규 + README 유틸리티 표 1행 + 본 섹션. skill / scripts / hooks 영향 0
@@ -1361,6 +1376,27 @@ grep -n "AskUserQuestion" commands/tech-teach-me.md
 
 test ! -d skills/tech-teach-me && echo "OK: 커맨드 전용 유지"
 # expected: OK
+
+grep -cF "표나 도식으로 먼저" commands/tech-teach-me.md
+# expected: 1
+
+grep -c "다섯 줄 이내로 발췌" commands/tech-teach-me.md
+# expected: 0
+
+grep -cF "관리용 번호" commands/tech-teach-me.md
+# expected: 2
+
+grep -c "표는 항목이 네 개 이하일 때만" commands/tech-teach-me.md
+# expected: 0
+
+grep -cF "잔말을 쓰지 않습니다" commands/tech-teach-me.md
+# expected: 1
+
+grep -c "최대 3강\|최대 5강" commands/tech-teach-me.md
+# expected: 0
+
+grep -cF "강 수에 고정 상한은 없습니다" commands/tech-teach-me.md
+# expected: 1
 ```
 
 ## 기술설계 서술 수준 룰 결합 (tech-design ↔ auto-tech-design)
@@ -1895,6 +1931,37 @@ grep -cF "## 스킬목록 홈 전체 조회 결합" CLAUDE.md
 - `commands/list-skills.md` + `scripts/skill_scan.py` (신규) + `scripts/tests/test_skill_scan.py` (신규) + `README.md` 2곳 + `CLAUDE.md` (v2.7 메모 개정 + 본 섹션). 버전 bump 는 main 전용 룰에 따라 main 에서
 - `commands/new-skill.md` / `commands/remove-skill.md` — 변경 0 (출처 표식 규약 그대로. 3 커맨드 동시 수정 룰은 규약 변경 시에만 발동)
 - og-* / auto-* / worktree 계열 / `scripts/preflight.py` / hooks 영향 0
+
+## 워크트리 브랜치 네이밍 제안 결합 (재분기 `부모__자식`)
+
+`/worktree` 에서 이름 없이 작업 설명만 주면 AI 가 브랜치 이름을 제안한다. 재분기 판별은 브랜치 비교 (`BASE_BRANCH` ≠ `MAIN_BRANCH`) — 스택 구조 안내 (v2.9.0+) 와 동일 기준. 재분기면 `<부모브랜치>__<자식이름>` 형식으로 누적되고, 사용자 명시 이름은 그대로 존중한다. spec: `docs/features/2026-08-29-워크트리-재분기-네이밍/`.
+
+### 핵심 룰
+
+- **N-1 명시 이름 존중** — 사용자가 이름을 주면 개명 · 제안 없이 그대로 (FR-4). 제안은 이름 미지정일 때만
+- **N-2 판별 = 브랜치 비교** — 경로 (워크트리 안인지) 가 아니라 분기 기준 브랜치 ≠ 메인 브랜치. 메인 워크트리에서 feature 브랜치 체크아웃 상태로 분기해도 접두어가 붙는다 (의도)
+- **N-3 생성 이름 제약** — AI 가 새로 짓는 부분에 `__` 금지 (구분자 예약). `/` 는 자식 이름에 금지 (새 중첩 층 방지 — 부모에게서 물려받은 `/` 는 수용), 메인 기준 이름은 저장소 관례를 따름. 명시 이름에는 미적용
+- **N-4 skill ↔ commands 동기** — 마커 리터럴 `부모브랜치__자식이름` 이 양쪽에 존재해야 함. 한쪽만 고치면 안내와 동작이 어긋난다
+- **N-5 훅 · Step 4 불변** — 이름 해석은 Step 1 에서 끝난다. `git worktree add ` 개별 호출 규칙 (v2.9.0) 과 `hooks/worktree-memory-symlink` 변경 0
+
+### 회귀 catch grep
+
+```bash
+grep -cF "부모브랜치__자식이름" skills/setting-up-worktrees/SKILL.md commands/worktree.md
+# expected: 각 1 이상
+
+grep -c "Parse branch names" skills/setting-up-worktrees/SKILL.md
+# expected: 0
+
+test -f skills/js-super-sub-driven/tests/H20-worktree-naming/README.md && echo OK
+# expected: OK
+```
+
+### 영향 범위
+
+- skill 본문 1 + commands 1 + fixture 2 (신규 README + 인덱스) + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
+- `worktree-merge-back` / `worktree-remove` — 변경 0 (`__` 파싱 부모 판별은 범위 밖, tech-design §2 승계)
+- `hooks/` / `scripts/` / og-* / auto-* 영향 0. 기존 워크트리 · 브랜치 이름 소급 변경 없음
 
 ## 서브에이전트 sonnet 하한 결합 (haiku 사용 금지)
 
