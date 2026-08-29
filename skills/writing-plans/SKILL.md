@@ -74,9 +74,9 @@ You MUST create a TaskCreate task for each of these items and complete them in o
 3. **구현계획서 task 목록 작성** — each task = one TDD cycle (계획서에는 `**검증**:` 자연어 설명만, 실행 단계에서 test → fail → impl → pass → commit), 2-5 minutes per step
 4. **위험 코드 지점 (§2) 채우기** — every risk category from <slug>-tech-design.md §6 mapped to a concrete location + mitigation
 5. **자체 점검** — spec coverage / placeholder scan / type consistency / 위험 coverage
-6. **코드 정리 + 용어집 작성 (병렬)** — dispatch `code-pretty` (Sonnet subagent, prettifies `**수정 후**` blocks) and `glossary` (Sonnet subagent, writes `<slug>-glossary.md`) in the SAME message so they run concurrently. Both run BEFORE verifying-spec and stop once the first change-history entry is logged.
+6. **코드 정리** — dispatch `code-pretty` (Sonnet subagent, prettifies `**수정 후**` blocks). It runs BEFORE verifying-spec and stops once the first change-history entry is logged.
 7. **사양 정합성 검증** — main agent runs A+C verification on the prettified plan via `verifying-spec` (Tolerance for missing skill)
-8. **사용자 검토 (구현계획서)** — show the plan (code-pretty applied) + `<slug>-glossary.md` + verifying-spec report + code-pretty diff summary; get approval (loop until OK; on changes → revise → back to step 6 코드 정리 + 용어집)
+8. **사용자 검토 (구현계획서)** — show the plan (code-pretty applied) + verifying-spec report + code-pretty diff summary; get approval (loop until OK; on changes → revise → back to step 6 코드 정리)
 9. **변경이력 기록** — append first `[구현계획서-수정]` entry via `change-history` skill
 10. **구현 단계 핸드오프** — count tasks first, then offer the choice using the Execution Handoff message below (`executing-plans` or `js-super-sub-driven`). Upstream `subagent-driven-development` is NOT offered here; only invoke it if the user explicitly asks for the upstream original.
 
@@ -92,7 +92,8 @@ If you find yourself skipping ahead, stop and create the missing task.
 ## Output
 
 - `docs/features/<date>-<slug>/<slug>-implementation-plan.md` — 정본 산출물
-- `docs/features/<date>-<slug>/<slug>-glossary.md` — 계획서를 처음 읽는 사람을 위한 용어집 (`glossary` skill 이 생성하는 파생 문서, `## 변경이력` footer 없음)
+
+계획서를 처음 읽는 사람을 위한 용어집이 필요하면 이 흐름과 별개로 `/glossary` 를 직접 부릅니다. 자동으로 만들어지지 않습니다.
 
 ## Schema (<slug>-implementation-plan.md)
 
@@ -287,20 +288,20 @@ digraph plan_flow {
     "File structure outline" [shape=box];
     "Decompose into bite-sized tasks" [shape=box];
     "Self-review (internal)" [shape=box];
-    "Dispatch code-pretty + glossary\n(parallel, same message)" [shape=box];
+    "Dispatch code-pretty" [shape=box];
     "Run verifying-spec\n(on the prettified plan)" [shape=box];
-    "Single combined approval gate\n(plan + glossary + verify + code-pretty diff)" [shape=diamond];
+    "Single combined approval gate\n(plan + verify + code-pretty diff)" [shape=diamond];
     "Invoke change-history" [shape=box];
     "Hand off to /execute-plan" [shape=doublecircle];
 
     "Read <slug>-requirements.md + <slug>-tech-design.md" -> "File structure outline";
     "File structure outline" -> "Decompose into bite-sized tasks";
     "Decompose into bite-sized tasks" -> "Self-review (internal)";
-    "Self-review (internal)" -> "Dispatch code-pretty + glossary\n(parallel, same message)";
-    "Dispatch code-pretty + glossary\n(parallel, same message)" -> "Run verifying-spec\n(on the prettified plan)";
-    "Run verifying-spec\n(on the prettified plan)" -> "Single combined approval gate\n(plan + glossary + verify + code-pretty diff)";
-    "Single combined approval gate\n(plan + glossary + verify + code-pretty diff)" -> "Self-review (internal)" [label="no — re-prettify + re-verify"];
-    "Single combined approval gate\n(plan + glossary + verify + code-pretty diff)" -> "Invoke change-history" [label="approve"];
+    "Self-review (internal)" -> "Dispatch code-pretty";
+    "Dispatch code-pretty" -> "Run verifying-spec\n(on the prettified plan)";
+    "Run verifying-spec\n(on the prettified plan)" -> "Single combined approval gate\n(plan + verify + code-pretty diff)";
+    "Single combined approval gate\n(plan + verify + code-pretty diff)" -> "Self-review (internal)" [label="no — re-prettify + re-verify"];
+    "Single combined approval gate\n(plan + verify + code-pretty diff)" -> "Invoke change-history" [label="approve"];
     "Invoke change-history" -> "Hand off to /execute-plan";
 }
 ```
@@ -420,11 +421,11 @@ If exit 1 (mismatches found):
 
 This summarizes the corrected order (matches Checklist + Process Flow above):
 
-1. **Dispatch code-pretty + glossary in parallel FIRST** (before verifying-spec, before any user prompt) — issue BOTH `Agent` calls in the SAME message so they run concurrently:
+1. **Dispatch code-pretty FIRST** (before verifying-spec, before any user prompt):
    - `code-pretty` → Target: `<slug>-implementation-plan.md` (only `**수정 후**`-labeled blocks). Output: diff summary text (preserved for the approval gate).
-   - `glossary` → Reads the plan (read-only) + the codebase, writes `<slug>-glossary.md`. Output: 항목 수 + 확인 못 한 이름 요약.
    - **Why this order**: verifying-spec then runs against the code blocks the user will actually read, and it doubles as a safety net for anything code-pretty disturbed. Running verify first meant re-verifying nothing after the prettify pass.
-   - **Tolerance**: if `code-pretty` is not installed, skip it and emit "ℹ️ code-pretty 가 설치되지 않았습니다. 코드 블록은 그대로 표시됩니다." If `glossary` is not installed or its run fails, skip it and emit "ℹ️ 용어집을 만들지 못했습니다. 구현계획서만으로 검토를 진행합니다." — a missing glossary NEVER blocks the gate.
+   - **Tolerance**: if `code-pretty` is not installed, skip it and emit "ℹ️ code-pretty 가 설치되지 않았습니다. 코드 블록은 그대로 표시됩니다."
+   - **용어집은 여기서 만들지 않습니다.** 사용자가 원할 때 `/glossary` 커맨드로 직접 부릅니다.
 
 2. **Run verifying-spec** (after both subagents return):
    - Target: `<slug>-implementation-plan.md` (post-prettify state)
@@ -434,7 +435,6 @@ This summarizes the corrected order (matches Checklist + Process Flow above):
 
 3. **Single combined approval gate** — present in ONE message:
    - The full `<slug>-implementation-plan.md` (code-pretty applied to code blocks) (or summary if very long, with link)
-   - `<slug>-glossary.md` — 계획서에 나오는 이름들을 처음 보는 사람 기준으로 정리한 표 (링크 또는 본문)
    - The verify-spec 4-axis report
    - The code-pretty diff summary
    - **Gate #13 — plan + verify 결합 승인**
@@ -445,7 +445,7 @@ This summarizes the corrected order (matches Checklist + Process Flow above):
 
      ```json
      {
-       "question": "<slug>-implementation-plan.md (+ 용어집 + verify-spec 보고서) 승인하고 진행? (plan + 용어집 + 4축 보고서 한 메시지로 노출)",
+       "question": "<slug>-implementation-plan.md (+ verify-spec 보고서) 승인하고 진행? (plan + 4축 보고서 한 메시지로 노출)",
        "header": "구현계획서 승인",
        "multiSelect": false,
        "options": [
@@ -504,8 +504,7 @@ The upstream `subagent-driven-development` is NOT offered in this handoff. Invok
 
 - `brainstorming` — upstream input (<slug>-requirements.md)
 - `tech-design` — upstream input (<slug>-tech-design.md)
-- `code-pretty` — prettifies `수정 후` blocks; dispatched in parallel with `glossary`, before verifying-spec
-- `glossary` — writes `<slug>-glossary.md` (handover reference); dispatched in parallel with `code-pretty`, before verifying-spec
+- `code-pretty` — prettifies `수정 후` blocks; dispatched before verifying-spec
 - `verifying-spec` — verification gate (active from Phase 2), runs on the prettified plan
 - `change-history` — entry recording on save
 - `executing-plans` / `js-super-sub-driven` — downstream execution (js-super-sub-driven 이 권장 subagent 모드; upstream `subagent-driven-development` 는 사용자가 명시 요청할 때만)

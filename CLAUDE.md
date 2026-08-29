@@ -1462,110 +1462,96 @@ test -f skills/js-super-sub-driven/tests/H16-tech-design-abstraction/README.md &
 - `brainstorming` / `writing-plans` / `verifying-spec` / og-* / worktree 계열 영향 0
 - 버전 bump 는 main 전용 룰에 따라 main 에서
 
-## 구현계획서 용어집 + 정리/검증 순서 교체 결합
+## 용어집 커맨드 전환 + code-pretty 순서 결합
 
-구현계획서 흐름에서 두 가지를 동시에 바꿨다. (1) `code-pretty` 를 `verifying-spec` **앞** 으로 이동, (2) 같은 시점에 `glossary` 신규 skill 을 **병렬** 로 붙여 `<slug>-glossary.md` 생성. 버전 표기는 main 에서 bump 시 확정 (워크트리 bump 금지 룰).
+용어집은 원래 `glossary` 스킬이었고 `/write-plan` 흐름에서 `code-pretty` 와 나란히 자동으로 돌았다. 사용자가 원할 때만 부르는 쪽으로 바꾸면서 스킬을 지우고 `commands/glossary.md` 한 파일로 옮겼다. `code-pretty` 를 `verifying-spec` **앞** 에 두는 순서 교체는 그대로 유지된다.
 
-### 새 순서 (정식 `/write-plan` 흐름 전용)
+### 현재 순서 (정식 `/write-plan` 흐름)
 
 ```
-자체 점검 → [code-pretty ‖ glossary] 병렬 → verifying-spec → 사용자 검토 게이트 → change-history
+자체 점검 → code-pretty → verifying-spec → 사용자 검토 게이트 → change-history
 ```
 
-옛 순서는 `verifying-spec → code-pretty → 사용자 검토`. 뒤집은 이유: 검증이 사용자가 실제로 읽을 코드 블록을 대상으로 돌고, prettify 가 건드린 것까지 잡는다. 역방향 의존은 없다 — code-pretty 는 verifying-spec 산출물을 쓰지 않는다.
+`code-pretty` 가 먼저인 이유는 그대로다. 검증이 사용자가 실제로 읽을 코드 블록을 대상으로 돌고, prettify 가 건드린 것까지 잡는다. 역방향 의존은 없다 — code-pretty 는 verifying-spec 산출물을 쓰지 않는다.
 
-### 적용 범위 (6 본문 + helper + 단위 테스트 + fixture)
+### 왜 스킬이 아니라 커맨드인가
 
-1. `skills/writing-plans/SKILL.md` — Checklist 6/7/8 재배열 + dot 흐름도 + Output 2 산출물 + After Save 1/2 재배열 + Gate #13 질문 문구 + Related Skills
-2. `skills/code-pretty/SKILL.md` — description / HARD-GATE / When-to-Use 표 / Step 1 Caller 책임 / Anti-Patterns / Acceptance 2 / Related Skills 6곳
-3. `skills/glossary/SKILL.md` — 신규
-4. `skills/auto-writing-plans/SKILL.md` — description + Step 4 + Anti-Patterns 표에 glossary 미호출 명시
-5. `commands/write-plan.md` — 산출물 3종 + 순서 안내
-6. `README.md` — 문서 분류 (2) → (3)
-7. `scripts/preflight.py` — `glossary_check()` **추가 전용** (기존 함수 시그니처 무변경 → 4 skill bash one-liner 동기 불필요)
-8. `scripts/tests/test_preflight.py` — `glossary_check` 단위 테스트 4건 추가. 그중 `test_glossary_check_passes_without_modified_blocks` 는 `code_pretty_check` 와의 의도적 조건 차이를 고정하는 회귀 테스트 (아래 G-8)
-9. `skills/js-super-sub-driven/tests/H18-glossary-parallel-order/` — 신규 fixture (5 시나리오) + tests/README.md 인덱스 등록
+스킬은 description 이 매 세션 컨텍스트에 상주한다. 자동으로 돌지 않을 기능이면 그 상주 비용이 순손실이다. og-* 3종을 커맨드로 옮길 때와 같은 판단이다. 커맨드 파일명과 스킬 디렉토리명이 같으면 커맨드가 스킬을 가리는 문제도, 스킬이 없어지면서 함께 사라진다.
 
 ### 핵심 룰
 
-- **G-1 병렬 dispatch 강제** — `code-pretty` 와 `glossary` 의 `Agent` 호출은 **한 메시지** 에. 두 subagent 는 서로 다른 파일을 쓰므로 (plan vs glossary) 충돌 없음. 직렬화하면 대기 시간만 2배
-- **G-2 glossary 는 계획서 읽기 전용** — 구현계획서를 단 1바이트도 수정하지 않는다. `## 변경이력` footer 포함
-- **G-3 용어집에 변경이력 footer 없음** — 리비전마다 재생성되는 파생 문서. js-super 피처 폴더 MD 중 유일하게 change-history footer 룰 예외
-- **G-4 용어집 실패는 게이트를 막지 않음** — 읽기 보조 자료지 검증 관문이 아님. 실패 시 한 줄 안내 후 계획서만으로 검토 진행
-- **G-5 추측 금지** — 보조 에이전트는 Grep 으로 찾아 실제 파일을 연 심볼만 설명. 못 찾으면 "확인 못 한 이름" 표에 남긴다
-- **G-6 auto-flow 미적용** — `auto-writing-plans` 는 `code-pretty` 도 `glossary` 도 호출 X (D-T12 일관). auto-flow 엔 사용자 검토 게이트가 없어 사람이 읽기 좋게 다듬는 단계 자체가 무의미
-- **G-7 초안 단계 전용** — 첫 change-history entry 가 찍히면 두 skill 모두 발화 정지. `glossary_check` 가 deterministic 하게 차단
-- **G-8 두 helper 의 조건 차이는 의도적** — `code_pretty_check` 는 `**수정 후**` 블록 존재를 요구하지만 `glossary_check` 는 요구하지 않는다. 문서만 고치는 계획서에서도 용어집은 값어치가 있기 때문. `test_glossary_check_passes_without_modified_blocks` 가 이 차이를 고정한다
-- **G-9 용어집 문체** — 설명 칸은 이어지는 문장으로. 백틱은 "이름" / "위치" 칸에만, 가운뎃점 나열 금지. 문서 작성 규약이나 필드 형식(`**검증**` 필드 등)은 수집 대상 밖 — 코드에 실재하는 이름만 다룬다 (사용자 catch 반영)
-- **G-10 사실 관찰은 허용, 설계 비평은 금지** — 계획서가 쓰는데 선언 diff 가 없는 이름, 검증 문구가 가리키는데 Task 에 없는 대상은 설명 칸에 그대로 적는다. 실제 dogfood 에서 이 동작이 계획서 결함 3건을 잡았다 (선언 없는 `_CACHE` / `feature_depth` 문구-diff 불일치 / 테스트 경로 오기)
+- **G-1 명시 호출 전용** — `commands/glossary.md` 는 `disable-model-invocation: true`. 어떤 흐름도 자동으로 부르지 않는다
+- **G-2 대상 문서 읽기 전용** — 대상 문서를 단 1바이트도 수정하지 않는다. `## 변경이력` 꼬리말 포함
+- **G-3 용어집에 변경이력 꼬리말 없음** — 재생성되는 파생 문서. js-super 피처 폴더 MD 중 유일하게 change-history 꼬리말 룰 예외
+- **G-4 보조 에이전트 필수, 모델 sonnet** — 이름을 코드베이스에서 찾는 작업이 메인 컨텍스트를 넘친다. 더 낮은 등급은 열어보지 않은 심볼의 설명을 지어낸다
+- **G-5 추측 금지** — Grep 으로 찾아 실제 파일을 연 심볼만 설명. 못 찾으면 "확인 못 한 이름" 표에 남긴다
+- **G-6 대상·시점 제약 없음** — 문서 종류를 가리지 않고, 변경이력이 쌓인 뒤에도 만든다. 옛 `glossary_check` 게이트는 폐지됐고 `scripts/preflight.py` 에서 함수째 제거됐다
+- **G-7 인자 없이 부르면 후보를 묻는다** — 최근 수정된 피처 폴더를 `AskUserQuestion` 으로 제시. 임의로 고르지 않는다
+- **G-8 사실 관찰은 허용, 설계 비평은 금지** — 문서가 쓰는데 선언이 없는 이름, 검증 문구가 가리키는데 본문에 없는 대상은 설명 칸에 그대로 적는다. 실제 dogfood 에서 이 동작이 계획서 결함 3건을 잡았다
+- **G-9 용어집 문체** — 설명 칸은 이어지는 문장으로. 백틱은 "이름" / "위치" 칸에만, 가운뎃점 나열 금지. 문서 작성 규약이나 필드 형식은 수집 대상 밖 — 코드에 실재하는 이름만 다룬다
 
-### 회귀 패턴 (한쪽만 변경 시)
+### 회귀 패턴
 
-| 누락 | 증상 |
+| 누락 / 변경 | 증상 |
 |---|---|
-| writing-plans 만 순서 교체 (code-pretty 본문 미동기) | code-pretty HARD-GATE 가 "verifying-spec 통과 후" 를 계속 요구 → 메인이 순서 판단 충돌 |
-| code-pretty 만 변경 (writing-plans 미동기) | 흐름은 옛 순서 그대로 — 교체 무효 |
-| dot 흐름도만 갱신, Checklist/After Save 미동기 | TaskCreate 항목과 실제 실행 순서 불일치 (사용자 시야에 잘못된 진행 노출) |
-| glossary dispatch 를 code-pretty 뒤로 직렬화 | 대기 시간 2배 — 병렬 의도 무화 |
-| glossary 가 계획서를 수정 | 정본 오염. code-pretty 의 `원본` byte-immutable 검사와 충돌 가능 |
-| 용어집에 변경이력 footer 추가 | 재생성마다 이력 중복 누적 + `glossary_check` 가 다음 리비전을 live 로 오판해 차단 |
-| 용어집 실패를 게이트 blocker 로 처리 | 읽기 보조 자료 때문에 승인 흐름이 멈춤 |
-| auto-writing-plans 에 glossary 호출 추가 | D-T12 (auto-flow 는 사람 검토용 산출물 미생성) 위반 |
-| `glossary_check` 에 `**수정 후**` 블록 존재 조건 추가 | 코드 블록 없는 계획서에서 용어집이 통째로 스킵됨 (code_pretty_check 와 의도적으로 다른 지점) |
+| `/write-plan` 흐름에 용어집 dispatch 부활 | 커맨드 전환 무효 — 안 부탁한 산출물이 매번 생김 |
+| `skills/glossary/` 재신설 | 커맨드가 스킬을 가려 스킬 호출 불가 + description 상주 비용 부활 |
+| 커맨드에서 `disable-model-invocation` 제거 | 대화 중 자동 발동 부활 |
+| 보조 에이전트 없이 메인이 직접 작성 | 코드 탐색이 메인 컨텍스트를 넘침 |
+| 용어집에 변경이력 꼬리말 추가 | 재생성마다 이력 중복 누적 |
+| 대상·시점 게이트 재도입 | 사용자가 원할 때 못 부름 — 전환 의도와 정면 충돌 |
+| code-pretty 를 verifying-spec 뒤로 되돌림 | 검증이 사용자가 읽지 않을 코드 블록을 대상으로 돎 |
 
 ### 회귀 catch grep
 
 ```bash
-# 순서 교체 — code-pretty 가 verifying-spec 앞
+test -f commands/glossary.md && test ! -d skills/glossary && echo OK
+# expected: OK
+```
+
+```bash
+grep -c "disable-model-invocation: true" commands/glossary.md
+# expected: 1
+```
+
+```bash
+grep -ci "dispatch.*glossary\|glossary.*subagent\|code-pretty + glossary" skills/writing-plans/SKILL.md skills/code-pretty/SKILL.md skills/auto-writing-plans/SKILL.md
+# expected: 각 0
+```
+
+```bash
 grep -F "MUST run BEFORE \`verifying-spec\`" skills/code-pretty/SKILL.md
 # expected: >= 1
-grep -n "AFTER verifying-spec passes" skills/code-pretty/SKILL.md
-# expected: 0 (옛 룰 잔존 catch)
+```
 
-# writing-plans 3곳 동기 (Checklist / dot / After Save)
-grep -cF "code-pretty + glossary" skills/writing-plans/SKILL.md
-# expected: >= 2
-grep -F "Dispatch code-pretty + glossary" skills/writing-plans/SKILL.md
-# expected: >= 1 (dot 노드)
-
-# glossary skill 존재 + 읽기 전용 룰
-test -f skills/glossary/SKILL.md && echo OK
-# expected: OK
-grep -cF "NEVER modifies the plan" skills/glossary/SKILL.md
-# expected: >= 1
-
-# 용어집 = 변경이력 footer 예외
-grep -F "No \`## 변경이력\` footer" skills/glossary/SKILL.md
-# expected: >= 1
-
-# helper 추가 전용 (기존 함수 시그니처 무변경)
-python3 -c "from scripts.preflight import glossary_check, code_pretty_check; print('OK')"
-# expected: OK
-
-# auto-flow 미적용
-grep -cF "glossary 호출" skills/auto-writing-plans/SKILL.md
-# expected: >= 1
-
-# 단위 테스트 — 두 helper 조건 차이 고정 (G-8)
-grep -cF "test_glossary_check_passes_without_modified_blocks" scripts/tests/test_preflight.py
-# expected: 1
-
-# 용어집 문체 룰 (G-9) — 제거한 섹션 부활 catch
-grep -c "프로젝트에서만 통하는" skills/glossary/SKILL.md
+```bash
+grep -c "AFTER verifying-spec passes" skills/code-pretty/SKILL.md
 # expected: 0
+```
 
-# 결합 메모 본문 존재
-grep -cF "## 구현계획서 용어집 + 정리/검증 순서 교체 결합" CLAUDE.md
+```bash
+grep -c "glossary" scripts/preflight.py scripts/tests/test_preflight.py
+# expected: 각 0
+```
+
+```bash
+test -f skills/js-super-sub-driven/tests/H18-glossary-command/README.md && echo OK
+# expected: OK
+```
+
+```bash
+grep -c "## 용어집 커맨드 전환 + code-pretty 순서 결합" CLAUDE.md
 # expected: >= 1
 ```
 
 ### 영향 범위
 
-- 정식 `/write-plan` 흐름만. `executing-plans` / `js-super-sub-driven` / `verifying-spec` skill 본문 변경 0
+- `commands/glossary.md` (신규) + `commands/write-plan.md` + 스킬 3 (`writing-plans` / `code-pretty` / `auto-writing-plans`) + `change-history` 파생 문서 예외 문구 + `scripts/preflight.py` + `scripts/tests/test_preflight.py` + fixture H18 + `README.md` + 본 섹션
+- `skills/glossary/` 삭제. `executing-plans` / `js-super-sub-driven` / `verifying-spec` 본문 변경 0
 - `og-*` / `fast-tasks` / worktree 계열 / `change-propagation` 영향 0
 - `scripts/plan_byte_check.py` 영향 0 — 용어집은 `**원본**` 라벨을 쓰지 않아 검사 대상 밖
-- v2.0.0+ byte-copy 룰 / v2.9+ plan 테스트 자연어 축약 — 영향 0 (용어집은 계획서를 읽기만 함)
-- `docs/features/**/*-glossary.md` 는 git 추적 대상 (계획서와 같은 폴더, `.html` 과 달리 gitignore 아님)
+- `docs/features/**/*-glossary.md` 는 git 추적 대상 (계획서와 같은 폴더). 이미 만들어진 용어집 파일은 그대로 둔다
+- 버전 bump 는 main 전용 룰에 따라 main 에서
 
 ## 무맥락 검증자 병렬 결합
 
@@ -2011,7 +1997,7 @@ test -f skills/js-super-sub-driven/tests/H20-worktree-naming/README.md && echo O
 
 - **작성 층 (writing-plans / auto-writing-plans) 본문에서 haiku 단어 소멸** — enum 2값 + 판정표 sonnet 흡수. executing-plans 룰 2 row 도 haiku 단어 없이 js-super-sub-driven 참조로 위임
 - **실행 층 (js-super-sub-driven SKILL.md + implementer-prompt.md) 만 격상 문구에서 haiku 언급 허용** — dispatch 패턴 (`model: "haiku"` / `model='haiku'`) 은 0
-- **금지-언급 무변경 — spec-reviewer-prompt / code-pretty / glossary 3파일 + reorder-prompt L10 의 "NOT haiku." 주석** — "Haiku 쓰지 마라" 류 문구는 새 룰과 정합이라 잔존 허용
+- **금지-언급 무변경 — spec-reviewer-prompt / code-pretty 2파일 + reorder-prompt L10 의 "NOT haiku." 주석** — "Haiku 쓰지 마라" 류 문구는 새 룰과 정합이라 잔존 허용
 - **STRICT BYTE-COPY 룰은 모델 무관 유지** — sonnet implementer 도 구현 코드는 byte-copy
 
 ### 회귀 패턴 (한쪽만 변경 시)
@@ -2048,5 +2034,5 @@ grep -cF "sonnet | opus" skills/writing-plans/SKILL.md
 ### 영향 범위
 
 - 스킬 본문 6 (writing-plans / auto-writing-plans / js-super-sub-driven SKILL+implementer+reorder / executing-plans) + fixture 6 + CLAUDE.md. `scripts/` / `hooks/` / og-* / `auto-executing-plans` (dispatch 룰을 js-super-sub-driven 에 위임) 영향 0
-- reorder / spec-reviewer / code-pretty / glossary 의 sonnet 고정 — 동작 변경 0
+- reorder / spec-reviewer / code-pretty 의 sonnet 고정 — 동작 변경 0
 - 버전 bump 는 main 전용 룰에 따라 main 에서

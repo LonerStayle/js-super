@@ -72,7 +72,7 @@
 | H15-natural-lang-verify | 구현계획서 테스트 자연어 축약 — `**검증**` 필드 / 구현 byte-copy 와 테스트 자체 작성 분리 |
 | H16-tech-design-abstraction | 기술설계 서술 수준 — 이름보다 역할 (통과 사례 + 위반 사례 대조) |
 | H17-socratic-single-track | 모드 질문 부재 (A) / 요구 항목 + FR-N 계약 (B) / 제외 항목 취합 (C) / '모르겠다' 3단 사다리 (D) / 옛 6섹션 문서 하위호환 (E) |
-| H18-glossary-parallel-order | code-pretty ‖ glossary 병렬 dispatch → verifying-spec → 사용자 검토 순서. 용어집 실패 non-blocking / 두 helper 조건 차이 / live doc 차단 / auto-flow 미적용 5 시나리오 |
+| H18-glossary-command | `/glossary` 명시 호출 전용 전환. 대상 문서 종류 무관 / 시점 제약 없음 / 인자 없을 때 후보 질문 / `/write-plan` 흐름에서 미발화 5 시나리오 |
 | H19-clean-verify | 무맥락 검증자 2종 병렬 — 단독(대상 MD 만) / 대조(대상 + upstream) / 중재 / `--no-clean-verify` skip |
 | H20-worktree-naming | `/worktree` 이름 해석 — AI 네이밍 제안 + 재분기 `부모__자식` 누적 / 명시 이름 존중 / detached HEAD fallback 5 시나리오 |
 

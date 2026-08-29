@@ -15,7 +15,7 @@ NEVER skip this. The history is the only audit trail outside git.
 </HARD-GATE>
 
 
-**파생 문서 예외 (용어집)**: `<slug>-glossary.md` 는 리비전마다 통째로 재생성되는 파생 문서라 `## 변경이력` footer 를 갖지 않는다. 이 파일의 생성·갱신은 본 skill 의 트리거 대상이 아니다 (`glossary` skill 본문의 동일 룰과 쌍).
+**파생 문서 예외 (용어집)**: `<slug>-glossary.md` 는 대상 문서가 바뀔 때마다 통째로 재생성되는 파생 문서라 `## 변경이력` footer 를 갖지 않는다. 이 파일의 생성·갱신은 본 skill 의 트리거 대상이 아니다 (`/glossary` 커맨드 본문의 동일 룰과 쌍).
 
 ## When to Use
 

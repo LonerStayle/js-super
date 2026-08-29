@@ -529,6 +529,7 @@ flowchart TD
 | `/list-skills` | js-super 가 만든 skill 만 홈 전체 조회 (현재 / 글로벌 / 다른 프로젝트) |
 | `/remove-skill <이름>` | js-super 가 만든 skill 안전 정리 |
 | `/pretty-md` | `.md` 본문 다듬기 (의미는 안 바꿈) |
+| `/glossary [문서]` | 문서에 나오는 이름들을 실제 코드에서 확인해 용어집으로 정리 |
 | `/tech-teach-me` | 요구사항·기술설계·구현계획 문서를 강의로 쪼개 한 강씩 설명 |
 | `/understand [path]` | 코드베이스 분석 → 지식 그래프 생성 (재실행 시 변경분만 증분) |
 | `/understand-chat <질문>` | 그래프 기반 코드베이스 질의응답 |
@@ -586,14 +587,14 @@ PR 리뷰 시 `grep "# RISK"` 한 줄로 catch.
 
 <br/>
 
-한 피처가 한 폴더 안에서 단계별 `.md` 로 나뉘어 있어요. 기술설계 단계에서 2 개(요구사항 + 기술설계)로 끝낼지 3 개(구현계획까지)로 갈지 고를 수 있고, 구현계획서를 쓰면 용어집이 함께 만들어집니다.
+한 피처가 한 폴더 안에서 단계별 `.md` 로 나뉘어 있어요. 기술설계 단계에서 2 개(요구사항 + 기술설계)로 끝낼지 3 개(구현계획까지)로 갈지 고를 수 있습니다. 용어집은 `/glossary` 로 필요할 때 따로 만듭니다.
 
 ```
 docs/features/2026-05-23-잔액-출금/
 ├── 잔액-출금-requirements.md      ← /brainstorm
 ├── 잔액-출금-tech-design.md       ← /design-tech
 ├── 잔액-출금-implementation-plan.md ← /write-plan (3 개 선택 시)
-└── 잔액-출금-glossary.md            ← /write-plan 이 함께 생성
+└── 잔액-출금-glossary.md            ← /glossary (필요할 때 직접 호출)
 ```
 
 - 날짜는 **생성일** — 작업이 길어져도 폴더명은 안 바뀝니다
@@ -748,7 +749,7 @@ flowchart LR
 
 **upstream 원본 (커맨드 전용, v2.8.1+)** — `/og-brainstorm` / `/og-write-plan` / `/og-execute-plan` (스킬 → 커맨드 본문 인라인, 컨텍스트 미상주)
 
-**문서 (3)** — code-pretty / glossary *(구현계획서 용어집)* / change-history
+**문서 (2)** — code-pretty / change-history *(용어집은 `/glossary` 커맨드)*
 
 **검증·거버넌스 (4)** — verifying-spec / verification-before-completion / change-propagation / risk-annotation
 
