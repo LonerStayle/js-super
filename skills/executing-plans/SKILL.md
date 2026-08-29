@@ -33,9 +33,10 @@ Load plan, review critically, execute all tasks task-by-task, with strict per-ed
 
 ### Step 1: Load and Review Plan
 1. Read `docs/features/<date>-<slug>/<slug>-implementation-plan.md`
-2. Review critically — list any gaps or concerns
-3. If concerns exist: raise them with the user before starting
-4. If clean: create TaskCreate tasks (one per plan task) and proceed
+2. **분할 구조 분기** — 같은 폴더에 `plan/tasks-*.md` 가 있으면 그 계획서는 인덱스다. 인덱스에는 task 헤더 필드(`**상세**` 링크 / Files / Model / 검증)만 있고 step 목록과 코드 블록은 하위 문서에 있다. 여기서 하위 문서를 전부 읽지 마라 — **각 task 를 시작하는 시점에 그 task 의 `**상세**` 문서만 읽는다.** 미리 다 읽으면 나눠 놓은 의미가 없다.
+3. Review critically — list any gaps or concerns
+4. If concerns exist: raise them with the user before starting
+5. If clean: create TaskCreate tasks (one per plan task) and proceed
 
 ## Code Edit Discipline (REQUIRED — js-superpowers extension)
 

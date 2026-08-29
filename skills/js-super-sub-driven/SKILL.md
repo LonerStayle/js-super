@@ -79,7 +79,7 @@ sys.exit(0 if result.ok else 1)
 
 Per-wave loop 보다 먼저 1회만 실행. 모든 task 완료까지 wave 구조는 immutable.
 
-1. **Read plan tasks** — `<slug>-implementation-plan.md` 의 §1 단계별 작업 모든 task block.
+1. **Read plan tasks** — `<slug>-implementation-plan.md` 의 §1 단계별 작업 모든 task block. 같은 폴더에 `plan/tasks-*.md` 가 있으면 그 파일은 인덱스다 — DAG 분석에 필요한 헤더 필드 (`**Files:**` / `**Model**` / `**검증**` / `**상세**` 링크) 가 인덱스에 다 있으므로 **여기서는 인덱스만 읽는다**. 각 task 의 step 목록과 코드 블록은 wave dispatch 직전 (W-2 Stage 1) 에 그 task 의 `**상세**` 문서에서 읽어 프롬프트에 붙여넣는다. 보조 에이전트는 계획서 파일을 직접 열지 않으므로 프롬프트 3종은 분할 여부와 무관하게 그대로다.
 2. **Parse files + deps** — 각 task block 의 `**Files:**` (Create/Modify/Test) 섹션 + step 본문에서 task ID 참조 추출 (예: "Task 1 의 helper 사용" → deps=[1]). `Test:` 경로도 files 집합에 포함 — wave file-disjoint 판정이 테스트 파일 충돌까지 커버한다 (v2.9+ 계획서에 테스트 코드 블록이 없어도 `Test:` 경로 줄을 유지하는 이유).
 3. **Parse model hint** — task block 의 `**Model**:` 줄 파싱. DAG 복잡도 표시 + v2.9+ 조건부 dispatch 판정에 사용 (신규 테스트 작성 포함 task 는 이 값으로 dispatch, 최소 sonnet — Model Selection 참조). 없으면 DAG 표시상 `sonnet` (`scripts/dag_builder.py` 의 `Task.model` 기본값).
 4. **Build waves** — `scripts/dag_builder.py:build_waves` 호출:
