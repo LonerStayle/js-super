@@ -84,29 +84,6 @@ def code_pretty_check(file_path: Path) -> PreflightResult:
     return PreflightResult(True, "ok", "정상")
 
 
-def glossary_check(file_path: Path) -> PreflightResult:
-    if not file_path.exists():
-        return PreflightResult(
-            False,
-            f"file not found: {file_path}",
-            f"대상 파일이 존재하지 않습니다: {file_path}",
-        )
-    if not _PLAN_MD_PATTERN.match(str(file_path)):
-        return PreflightResult(
-            False,
-            "glossary target must be implementation-plan.md",
-            "용어집 대상은 -implementation-plan.md 파일이어야 합니다",
-        )
-    text = file_path.read_text(encoding="utf-8")
-    if _has_changelog_entries(text):
-        return PreflightResult(
-            False,
-            "변경이력 footer not empty (doc is live)",
-            "이미 변경이력 entry 가 존재합니다 (live doc). 용어집은 최초 생성 단계에서만 발화합니다",
-        )
-    return PreflightResult(True, "ok", "정상")
-
-
 def execute_plan_mode_check(plan_path: Path) -> PreflightResult:
     if not plan_path.exists():
         hint = ""

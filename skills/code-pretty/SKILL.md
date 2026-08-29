@@ -1,6 +1,6 @@
 ---
 name: code-pretty
-description: Use BEFORE verifying-spec and before user review, dispatched in parallel with glossary, during the initial-creation iteration loop of <slug>-implementation-plan.md ONLY. Dispatches a Sonnet subagent that performs a strict format + 자명한 정리 + 중복 통합 pass on every "수정 후" code block in the plan. NEVER touches "원본" blocks, prose, or tables. Stops firing once the first change-history entry is logged. Idempotent on already-clean blocks (no-op rule).
+description: Use BEFORE verifying-spec and before user review, during the initial-creation iteration loop of <slug>-implementation-plan.md ONLY. Dispatches a Sonnet subagent that performs a strict format + 자명한 정리 + 중복 통합 pass on every "수정 후" code block in the plan. NEVER touches "원본" blocks, prose, or tables. Stops firing once the first change-history entry is logged. Idempotent on already-clean blocks (no-op rule).
 ---
 
 # Code Pretty (Pre-Review Code Block Formatting)
@@ -10,9 +10,9 @@ This skill prettifies the "수정 후" code blocks inside a freshly written or r
 **Announce at start:** "I'm using the code-pretty skill to format `수정 후` code blocks in `<file>` before user review."
 
 <HARD-GATE>
-This skill MUST run BEFORE `verifying-spec` and BEFORE the user review gate in the writing-plans flow, dispatched **in parallel with `glossary`** (both `Agent` calls in one message). It runs as many times as the writing-plans review loop iterates (initial draft + each user-fix revision).
+This skill MUST run BEFORE `verifying-spec` and BEFORE the user review gate in the writing-plans flow. It runs as many times as the writing-plans review loop iterates (initial draft + each user-fix revision).
 
-**Order reversed (glossary 도입 릴리즈).** It used to run after verifying-spec. Running it first means verifying-spec inspects the exact code blocks the user will read, and catches anything the prettify pass disturbed. There is no dependency in the other direction — code-pretty needs nothing from verifying-spec.
+**Order reversed.** It used to run after verifying-spec. Running it first means verifying-spec inspects the exact code blocks the user will read, and catches anything the prettify pass disturbed. There is no dependency in the other direction — code-pretty needs nothing from verifying-spec.
 
 It STOPS firing the moment the first `change-history` entry has been logged. That boundary marks the doc as "live" — from then on, no code-pretty.
 
@@ -66,7 +66,7 @@ sys.exit(0 if result.ok else 1)
 - **exit ≠ 0,1** (invocation 실패) → stderr 전문 + `AskUserQuestion` 게이트:
   - `"직접 디버깅"` / `"skill 단계 스킵"`.
 
-**Caller 책임 (helper 가 검증 X)**: 이 dispatch 가 verifying-spec 보다 **앞** 이고 `glossary` dispatch 와 같은 메시지에 실려 병렬로 도는지 — 이건 writing-plans 흐름의 책임이고 helper 가 검사할 수 없음. 호출자가 보장.
+**Caller 책임 (helper 가 검증 X)**: 이 dispatch 가 verifying-spec 보다 **앞** 인지 — 이건 writing-plans 흐름의 책임이고 helper 가 검사할 수 없음. 호출자가 보장.
 
 helper 의 검사: file 존재 / 변경이력 footer 비어있음 / filename `*-implementation-plan.md` / 최소 1개 `**수정 후**` 블록 존재. 자세히는 `scripts/preflight.py:code_pretty_check`.
 
@@ -224,7 +224,6 @@ digraph code_pretty {
 | Modify "원본" blocks even slightly | NEVER. Bytes-equal preservation. |
 | Extract magic numbers to const | Forbidden by the prompt. Allowed: comment label only. |
 | Run code-pretty after verifying-spec (the old order) | Prettify first, then verify — so verification reads what the user reads. |
-| Serialize the glossary dispatch after this one | Both `Agent` calls go in ONE message. They write different files. |
 | Re-run code-pretty after change-history entry exists | HARD-GATE blocks this — pre-flight 변경이력 empty check. |
 | Use Opus or Haiku | Sonnet only. |
 
@@ -241,14 +240,13 @@ digraph code_pretty {
 A code-pretty run is correct when ALL hold:
 
 1. Pre-flight checks all passed (file exists, target = implementation-plan.md, 변경이력 empty, ≥1 "수정 후" block)
-2. Subagent was dispatched with `model: sonnet` and the strict prompt above, in the same message as the `glossary` dispatch, before verifying-spec ran
+2. Subagent was dispatched with `model: sonnet` and the strict prompt above, before verifying-spec ran
 3. Post-dispatch sanity check: every "원본" block byte-identical to pre-dispatch
 4. Diff summary surfaced to main agent chat (caller forwards to user review gate)
 5. No `## 변경이력` entry was added by code-pretty itself
 
 ## Related Skills
 
-- `writing-plans` — dispatches this (with `glossary`) right after self-review, before verifying-spec
-- `glossary` — the parallel sibling; writes `<slug>-glossary.md` and never touches the plan
+- `writing-plans` — dispatches this right after self-review, before verifying-spec
 - `verifying-spec` — runs AFTER this skill, on the prettified plan
 - `change-history` — invoked by caller AFTER code-pretty + user review approval

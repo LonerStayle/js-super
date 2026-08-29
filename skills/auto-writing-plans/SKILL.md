@@ -1,6 +1,6 @@
 ---
 name: auto-writing-plans
-description: auto-flow 3단계 — /auto-write-plan 커맨드 또는 앞 단계 auto-tech-design 의 명시 invoke 로만 진입, 사용자 자유 요청에서 자동 선택 금지. requirements + tech-design 읽기 + AI 자동 task 분해 (TDD bite-sized + Model hint 자동) + RISK 코드 지점 §2 자동 + verifying-spec 자동 + code-pretty / glossary 호출 X (D-T12 와 일관) + change-history 자동 + auto-executing-plans 자동 invoke. AskUserQuestion 호출 X.
+description: auto-flow 3단계 — /auto-write-plan 커맨드 또는 앞 단계 auto-tech-design 의 명시 invoke 로만 진입, 사용자 자유 요청에서 자동 선택 금지. requirements + tech-design 읽기 + AI 자동 task 분해 (TDD bite-sized + Model hint 자동) + RISK 코드 지점 §2 자동 + verifying-spec 자동 + code-pretty 호출 X (D-T12 와 일관) + change-history 자동 + auto-executing-plans 자동 invoke. AskUserQuestion 호출 X.
 ---
 
 # Auto Writing Plans → <slug>-implementation-plan.md (auto)
@@ -51,7 +51,7 @@ tech-design §6 R-N → file:line + mitigation 매핑. 모든 R-N 이 §2 에 en
 
 ### Step 4 — 산출물 자동 작성
 
-`<slug>-implementation-plan.md` schema 따라 작성. frontmatter `commit_policy: per-task`. RAW 본문, code-pretty / glossary 호출 X (D-T12 일관 — auto-flow 는 사용자 검토 게이트가 없어서 사람이 읽기 좋게 다듬는 단계 자체가 의미 없음).
+`<slug>-implementation-plan.md` schema 따라 작성. frontmatter `commit_policy: per-task`. RAW 본문, code-pretty 호출 X (D-T12 일관 — auto-flow 는 사용자 검토 게이트가 없어서 사람이 읽기 좋게 다듬는 단계 자체가 의미 없음).
 
 ### Step 4.5 — plan_guard 자동 (3회 재시도)
 
@@ -106,7 +106,6 @@ sys.exit(0)
 |---|---|
 | AskUserQuestion 호출 | NEVER. |
 | code-pretty 호출 | NEVER. D-T12 일관. |
-| glossary 호출 (`<slug>-glossary.md` 생성) | NEVER. code-pretty 와 같은 이유 — 사람 검토용 산출물이라 auto-flow 대상 밖. 정식 `/write-plan` 흐름 전용. |
 | 일반 writing-plans skill body 호출 | NEVER. self-contained mirror (D-T1). |
 
 ## Related Skills

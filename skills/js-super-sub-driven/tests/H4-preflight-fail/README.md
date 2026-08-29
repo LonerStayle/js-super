@@ -2,7 +2,7 @@
 
 ## 시나리오
 
-`<slug>-implementation-plan.md` 에 가짜 변경이력 entry 박은 채로 code-pretty 호출. preflight 가 `변경이력 footer not empty` 로 fail (exit 1) → 게이트 발화. (v2.8.2 에서 docs-pretty/generating-html 계열이 제거돼 현행 preflight 게이트 소비자인 code-pretty 로 대상 교체 — glossary 도 같은 패턴)
+`<slug>-implementation-plan.md` 에 가짜 변경이력 entry 박은 채로 code-pretty 호출. preflight 가 `변경이력 footer not empty` 로 fail (exit 1) → 게이트 발화. (v2.8.2 에서 docs-pretty/generating-html 계열이 제거돼 현행 preflight 게이트 소비자인 code-pretty 로 대상 교체)
 
 ## 입력 (시뮬레이션 setup)
 

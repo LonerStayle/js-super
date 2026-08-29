@@ -8,13 +8,14 @@ description: <slug>-requirements.md + <slug>-tech-design.md를 기반으로 <slu
 
 전제: 동일한 피처 폴더에 `<slug>-requirements.md` 와 `<slug>-tech-design.md` 가 모두 있어야 합니다.
 
-산출물은 세 가지입니다.
+산출물은 두 가지입니다.
 
 - `docs/features/<날짜>-<slug>/<slug>-implementation-plan.md` — 구현계획서 (정본). task 가 10개 이상이면 이 파일은 인덱스가 되고, task 상세와 코드는 같은 폴더의 `plan/tasks-*.md` 로 나뉩니다.
-- `docs/features/<날짜>-<slug>/<slug>-glossary.md` — 용어집. 계획서에 나오는 클래스·함수·변수 이름 중 처음 보는 사람이 멈출 만한 것들을 표로 정리합니다. 실제 코드까지 찾아보고 씁니다.
 - 메인 에이전트 검증 보고서 (대화로 출력)
 
-계획서를 다 쓰면 코드 블록 정리와 용어집 작성이 동시에 돌고, 그 다음 사양 검증을 거쳐, 세 가지를 한 번에 보여드립니다.
+계획서를 다 쓰면 코드 블록 정리가 돌고, 그 다음 사양 검증을 거쳐, 두 가지를 한 번에 보여드립니다.
+
+계획서에 나오는 이름들을 정리한 용어집이 필요하면 `/glossary` 를 따로 부르세요. 이 흐름에서 자동으로 만들지 않습니다.
 
 다음 단계는 `/execute-plan` 입니다.
 
