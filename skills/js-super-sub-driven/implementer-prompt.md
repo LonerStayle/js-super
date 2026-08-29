@@ -4,7 +4,7 @@ Use this template when dispatching an implementer subagent under `js-super-sub-d
 
 ```
 Task tool (general-purpose):
-  model: "haiku"   # v2.0.0+ 기본 haiku (순수 byte-copy task). v2.9+: 신규 테스트 작성 포함 task (`**검증**:` 필드 + Test: 경로 + 테스트 코드 블록 없음) 는 plan 의 `**Model**:` 값 (최소 sonnet) 으로 dispatch. (See CLAUDE.md "plan 테스트 자연어 축약 결합" + "implementer-prompt + reorder-prompt + plan_byte_check" sections.)
+  model: "sonnet"   # 기본 sonnet — plan 의 `**Model**:` 값으로 dispatch (생략 시 sonnet, 하한 sonnet). 옛 계획서의 haiku 값은 sonnet 으로 격상. (See CLAUDE.md "plan 테스트 자연어 축약 결합" + "implementer-prompt + reorder-prompt + plan_byte_check" sections.)
   description: "Implement Task N: [task name]"
   prompt: |
     You are implementing Task N: [task name]

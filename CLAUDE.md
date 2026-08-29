@@ -145,7 +145,7 @@ Before proposing changes to skill design, workflow philosophy, or architecture, 
 
 `writing-plans` 의 task block 신규 `**Model**:` 필드 (v1.1.14+) 는 `js-super-sub-driven` 의 implementer dispatch model 결정에 직접 사용된다 (`skills/js-super-sub-driven/SKILL.md` Plan Analysis & Wave Build 단계). 즉:
 
-- writing-plans 의 평가 룰 (haiku/sonnet/opus 분기) 변경 시 `js-super-sub-driven` 의 dispatch 단계도 동시 수정
+- writing-plans 의 평가 룰 (sonnet/opus 분기) 변경 시 `js-super-sub-driven` 의 dispatch 단계도 동시 수정
 - 한쪽만 건드리면 다음 회귀 발생: plan 작성 시 의도한 모델과 실제 dispatch 모델 불일치
 
 요약: 이 두 skill 의 `**Model**:` 룰 변경은 atomic 하게 묶어 처리할 것.
@@ -250,7 +250,7 @@ D1 (3 조건 AND — 같은 파일 / test 경계 X / mechanical) 룰 은 두 ski
 1. `skills/writing-plans/SKILL.md` — 검증 필드 스키마 + 템플릿 + placeholder 룰 반전 + Model sonnet floor
 2. `skills/auto-writing-plans/SKILL.md` — mirror 3곳 동기 (페어 atomic)
 3. `skills/js-super-sub-driven/implementer-prompt.md` — 구현=byte-copy / 테스트=자체 작성 분리 + 하위 호환 분기
-4. `skills/js-super-sub-driven/SKILL.md` — 조건부 dispatch (신규 테스트 포함 task = `**Model**:` 값, 최소 sonnet / 순수 byte-copy = haiku)
+4. `skills/js-super-sub-driven/SKILL.md` — dispatch 모델 단일 룰 (plan `**Model**:` 값, 하한 sonnet — "서브에이전트 sonnet 하한 결합" 섹션으로 조건부 분기 폐지)
 5. `skills/executing-plans/SKILL.md` — 테스트 소스 분기 섹션 + 룰 2 dispatch row
 6. `CLAUDE.md` — v2.0.0 결합 메모 갱신 + 본 섹션
 7. fixtures — H12 갱신 + H15 신규 (H15-natural-lang-verify — H14 는 depth-select 가 선점) + G5/G6 기대값 갱신
@@ -1344,6 +1344,21 @@ CLAUDE.md 의 "AskUserQuestion 도구 우선 (v2.3.5+)" 전역 룰에 대한 **�
 - **Why**: 강마다 팝업이 뜨면 학습 흐름이 끊기고 피로하다 (사용자 결정). 알람 fire 를 포기하는 대신 대화 리듬을 택함.
 - **회귀 catch**: 본문에 AskUserQuestion 호출 지시가 생기면 회귀. 금지 섹션의 catch 라인만 허용.
 
+### 강의 문체 — 자연어 + 도표 우선 (2026-08-29+)
+
+강의 본문의 문체를 다음 방향으로 고정 (사용자 결정):
+
+- 코드 발췌 금지 — 코드가 하는 일은 자연어로 풀어 쓰고, 파일 이름은 위치를 짚어줄 때만
+- 구조·비교·흐름·관계는 표나 도식으로 먼저 보여주고 문장은 보충
+- 문장 안 부호 금지 (화살표·체크·빗금 나열) — 화살표는 도식 안에서만
+- 문서의 관리용 번호 (요구 항목 번호·결정 번호·이력 번호) 는 강의에 노출하지 않고 내용을 풀어 말함
+- 위에서 아래로 한 번만 읽으면 이해되게 — 아직 설명 안 한 용어 선사용 금지, 뒤 내용 예고 금지
+- 비유·은유 금지 (기존 룰 유지) + 잔말 금지 (인사·예고·감상 없이 내용만)
+
+옛 룰 중 "코드가 있어야 이해되는 경우 다섯 줄 이내 발췌 허용" 과 "표는 항목 네 개 이하일 때만" 은 폐지 — 부활하면 회귀.
+
+강 수 고정 상한 (150줄 미만 최대 3강, 그 이상 최대 5강) 도 폐지 (사용자 결정 — 긴 문서가 상한 때문에 과압축되는 것 방지). 묶고 남는 항목 수가 그대로 강 수. "적을수록 좋다 + 묶기 우선" 룰은 유지 — 상한만 없어진 것이지 잘게 쪼개라는 뜻이 아님.
+
 ### 영향 범위
 
 - 커맨드 1 신규 + README 유틸리티 표 1행 + 본 섹션. skill / scripts / hooks 영향 0
@@ -1361,6 +1376,27 @@ grep -n "AskUserQuestion" commands/tech-teach-me.md
 
 test ! -d skills/tech-teach-me && echo "OK: 커맨드 전용 유지"
 # expected: OK
+
+grep -cF "표나 도식으로 먼저" commands/tech-teach-me.md
+# expected: 1
+
+grep -c "다섯 줄 이내로 발췌" commands/tech-teach-me.md
+# expected: 0
+
+grep -cF "관리용 번호" commands/tech-teach-me.md
+# expected: 2
+
+grep -c "표는 항목이 네 개 이하일 때만" commands/tech-teach-me.md
+# expected: 0
+
+grep -cF "잔말을 쓰지 않습니다" commands/tech-teach-me.md
+# expected: 1
+
+grep -c "최대 3강\|최대 5강" commands/tech-teach-me.md
+# expected: 0
+
+grep -cF "강 수에 고정 상한은 없습니다" commands/tech-teach-me.md
+# expected: 1
 ```
 
 ## 기술설계 서술 수준 룰 결합 (tech-design ↔ auto-tech-design)
@@ -1895,6 +1931,125 @@ grep -cF "## 스킬목록 홈 전체 조회 결합" CLAUDE.md
 - `commands/list-skills.md` + `scripts/skill_scan.py` (신규) + `scripts/tests/test_skill_scan.py` (신규) + `README.md` 2곳 + `CLAUDE.md` (v2.7 메모 개정 + 본 섹션). 버전 bump 는 main 전용 룰에 따라 main 에서
 - `commands/new-skill.md` / `commands/remove-skill.md` — 변경 0 (출처 표식 규약 그대로. 3 커맨드 동시 수정 룰은 규약 변경 시에만 발동)
 - og-* / auto-* / worktree 계열 / `scripts/preflight.py` / hooks 영향 0
+
+## 워크트리 부모브랜치 기록 결합
+
+`/merge-back-worktree` 의 머지 대상을 "워크트리 목록 첫 entry = 최상위" 추론에서 **생성 시 기록된 직계 부모 브랜치** 로 교체. 재분기 워크트리 (워크트리 A 안에서 만든 워크트리 B) 가 A 가 아니라 최상위로 머지하려던 문제를 없앤다. spec: `docs/features/2026-08-29-머지백-부모브랜치기준/`.
+
+### 핵심 룰
+
+- **기록 키 2개 규약** — `branch.<BR>.js-super-parent` (부모 브랜치 이름) + `branch.<BR>.js-super-parent-base` (분기 SHA). 생성 (`setting-up-worktrees` Step 4, 신규 `-b` 분기 직후) 과 판독 (`worktree-merge-back` Step 2) 이 공유한다. 키 이름이나 값 형식을 한쪽만 바꾸면 desync — 두 스킬 동시 수정
+- **판별 = 검증 4건 전부 통과 시에만 자동 진행** — 기록 존재·자기 자신 아님 / 부모 브랜치 실존 / 부모가 워크트리에 체크아웃됨 / 기록된 분기점이 현재 히스토리의 조상. 하나라도 실패하면 `AskUserQuestion` 게이트로 머지 대상을 확인받는다. 조용한 최상위 fallback 과 히스토리 추정 자동 진행은 금지 (사용자 결정). 게이트에는 "중단" 옵션을 항상 포함해 부모 미체크아웃 케이스의 탈출 경로를 남긴다
+- **기록 명령은 `git worktree add` 와 별도 Bash 호출** — `worktree-memory-symlink` 훅은 명령 문자열이 `git worktree add ` 로 시작할 때만 발화한다. 한 호출로 묶으면 접두사가 바뀌어 심링크가 조용히 사라진다
+- **게이트 1건 재도입** — `worktree-merge-back` 의 "게이트 0건" 서술과 Other / 모호 응답 룰 (v2.1.1+) 비활성 서술이 함께 갱신됐다. 게이트를 다시 없애면 이 서술도 되돌려야 한다
+- **기존 워크트리 소급 기록 없음** — 이 개선 이전에 만든 워크트리는 기록이 없고, 게이트가 흡수한다. v2.5.1 D-1 의 "머지 대상 = parent 의 로컬 브랜치" 는 유지되되 parent 의 의미가 최상위에서 직계 부모로 좁혀졌다
+
+### 회귀 패턴
+
+| 누락 | 증상 |
+|---|---|
+| 한쪽 스킬만 변경 (키 규약 desync) | 생성 기록과 머지백 판독 불일치 — 매번 판별 실패 게이트 |
+| 기록 명령을 `git worktree add` 호출에 합침 | 훅 프리픽스 미매치 → 메모리 심링크 미생성 |
+| 게이트 제거 + 최상위 fallback 부활 | 재분기 워크트리가 최상위로 잘못 머지 — 본 피처 무화 |
+| 검증 4번 (분기점 조상) 제거 | 스킬 밖 동명 재생성 시 stale 기록 상속 → 잘못된 부모로 자동 머지 |
+
+### 회귀 catch grep
+
+```bash
+grep -lF "js-super-parent" skills/setting-up-worktrees/SKILL.md skills/worktree-merge-back/SKILL.md
+# expected: 2 lines
+grep -c "MAIN_INFO" skills/worktree-merge-back/SKILL.md
+# expected: 0
+grep -cF "판별 실패" skills/worktree-merge-back/SKILL.md
+# expected: >= 1
+test -f skills/worktree-merge-back/tests/H18-parent-branch/README.md && echo OK
+# expected: OK
+```
+
+### 영향 범위
+
+- 스킬 2 (`setting-up-worktrees` / `worktree-merge-back`) + 커맨드 2 (`worktree` / `merge-back-worktree`) + fixture 1 (H18) + CLAUDE.md
+- `worktree-remove` / og-* / auto-* / `scripts/preflight.py` / hooks 본문 영향 0 — 훅은 접두사 계약 재확인만
+- 버전 bump 는 main 전용 룰에 따라 main 에서
+
+## 워크트리 브랜치 네이밍 제안 결합 (재분기 `부모__자식`)
+
+`/worktree` 에서 이름 없이 작업 설명만 주면 AI 가 브랜치 이름을 제안한다. 재분기 판별은 브랜치 비교 (`BASE_BRANCH` ≠ `MAIN_BRANCH`) — 스택 구조 안내 (v2.9.0+) 와 동일 기준. 재분기면 `<부모브랜치>__<자식이름>` 형식으로 누적되고, 사용자 명시 이름은 그대로 존중한다. spec: `docs/features/2026-08-29-워크트리-재분기-네이밍/`.
+
+### 핵심 룰
+
+- **N-1 명시 이름 존중** — 사용자가 이름을 주면 개명 · 제안 없이 그대로 (FR-4). 제안은 이름 미지정일 때만
+- **N-2 판별 = 브랜치 비교** — 경로 (워크트리 안인지) 가 아니라 분기 기준 브랜치 ≠ 메인 브랜치. 메인 워크트리에서 feature 브랜치 체크아웃 상태로 분기해도 접두어가 붙는다 (의도)
+- **N-3 생성 이름 제약** — AI 가 새로 짓는 부분에 `__` 금지 (구분자 예약). `/` 는 자식 이름에 금지 (새 중첩 층 방지 — 부모에게서 물려받은 `/` 는 수용), 메인 기준 이름은 저장소 관례를 따름. 명시 이름에는 미적용
+- **N-4 skill ↔ commands 동기** — 마커 리터럴 `부모브랜치__자식이름` 이 양쪽에 존재해야 함. 한쪽만 고치면 안내와 동작이 어긋난다
+- **N-5 훅 · Step 4 불변** — 이름 해석은 Step 1 에서 끝난다. `git worktree add ` 개별 호출 규칙 (v2.9.0) 과 `hooks/worktree-memory-symlink` 변경 0
+
+### 회귀 catch grep
+
+```bash
+grep -cF "부모브랜치__자식이름" skills/setting-up-worktrees/SKILL.md commands/worktree.md
+# expected: 각 1 이상
+
+grep -c "Parse branch names" skills/setting-up-worktrees/SKILL.md
+# expected: 0
+
+test -f skills/js-super-sub-driven/tests/H20-worktree-naming/README.md && echo OK
+# expected: OK
+```
+
+### 영향 범위
+
+- skill 본문 1 + commands 1 + fixture 2 (신규 README + 인덱스) + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
+- `worktree-merge-back` / `worktree-remove` — 본 네이밍 피처의 변경 0 (`__` 파싱 부모 판별은 범위 밖, tech-design §2 승계). 머지백의 부모 판별은 이름이 아니라 위 "워크트리 부모브랜치 기록 결합" 의 config 기록으로 한다 — 두 피처는 독립
+- `hooks/` / `scripts/` / og-* / auto-* 영향 0. 기존 워크트리 · 브랜치 이름 소급 변경 없음
+
+## 서브에이전트 sonnet 하한 결합 (haiku 사용 금지)
+
+서브에이전트 dispatch 전 경로에서 haiku 사용 금지. implementer dispatch = plan `**Model**:` 값 (생략 시 sonnet, 하한 sonnet). 계획서 작성 층의 `**Model**:` 필드는 `sonnet | opus` 2값. 옛 계획서에 남은 haiku 값은 실행 층이 sonnet 으로 격상해 dispatch (계획서 수정 요구 없음, dispatch log 에 격상 표기). v2.9 의 조건부 분기 (순수 byte-copy = haiku) 는 폐지. spec: `docs/features/2026-08-29-서브에이전트-sonnet-기본/`.
+
+### 핵심 룰
+
+- **작성 층 (writing-plans / auto-writing-plans) 본문에서 haiku 단어 소멸** — enum 2값 + 판정표 sonnet 흡수. executing-plans 룰 2 row 도 haiku 단어 없이 js-super-sub-driven 참조로 위임
+- **실행 층 (js-super-sub-driven SKILL.md + implementer-prompt.md) 만 격상 문구에서 haiku 언급 허용** — dispatch 패턴 (`model: "haiku"` / `model='haiku'`) 은 0
+- **금지-언급 무변경 — spec-reviewer-prompt / code-pretty / glossary 3파일 + reorder-prompt L10 의 "NOT haiku." 주석** — "Haiku 쓰지 마라" 류 문구는 새 룰과 정합이라 잔존 허용
+- **STRICT BYTE-COPY 룰은 모델 무관 유지** — sonnet implementer 도 구현 코드는 byte-copy
+
+### 회귀 패턴 (한쪽만 변경 시)
+
+| 누락 | 증상 |
+|---|---|
+| 작성 층만 변경 (실행 층 미동기) | 실행 층이 옛 조건부 룰로 haiku dispatch 부활 |
+| 실행 층만 변경 (작성 층 미동기) | 계획서에 haiku 값 재유입 — plan 모델 ↔ dispatch 모델 불일치 (v1.1.14 결합 회귀) |
+| 격상 룰 제거 | 옛 계획서 (`**Model**: haiku` 잔존) 실행 시 금지 값 그대로 dispatch |
+| 판정표에 haiku 행 부활 | 금지 무력화 — 작성 세션이 다시 haiku 배정 |
+
+### 회귀 catch grep
+
+```bash
+grep -ni "haiku" skills/writing-plans/SKILL.md skills/auto-writing-plans/SKILL.md skills/executing-plans/SKILL.md
+# expected: 0
+
+grep -n 'model: "haiku"' skills/js-super-sub-driven/SKILL.md skills/js-super-sub-driven/implementer-prompt.md
+# expected: 0
+
+grep -n "model='haiku'" skills/js-super-sub-driven/SKILL.md
+# expected: 0
+
+grep -cF "haiku 격상" skills/js-super-sub-driven/SKILL.md
+# expected: >= 1
+
+grep -cF "하한 sonnet" skills/js-super-sub-driven/SKILL.md skills/executing-plans/SKILL.md
+# expected: 각 >= 1
+
+grep -cF "sonnet | opus" skills/writing-plans/SKILL.md
+# expected: >= 1
+```
+
+### 영향 범위
+
+- 스킬 본문 6 (writing-plans / auto-writing-plans / js-super-sub-driven SKILL+implementer+reorder / executing-plans) + fixture 6 + CLAUDE.md. `scripts/` / `hooks/` / og-* / `auto-executing-plans` (dispatch 룰을 js-super-sub-driven 에 위임) 영향 0
+- reorder / spec-reviewer / code-pretty / glossary 의 sonnet 고정 — 동작 변경 0
+- 버전 bump 는 main 전용 룰에 따라 main 에서
 
 ## 산출물 문서 스타일 + 요구 항목 번호 교체 결합
 

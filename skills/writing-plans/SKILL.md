@@ -198,7 +198,7 @@ Every implementation plan MUST start with:
 - Modify: `exact/path/to/existing.py:123-145`
 - Test: `tests/exact/path/to/test.py`
 
-**Model**: haiku
+**Model**: sonnet
 
 **검증**: <이 task 의 테스트가 무엇을 검증하는지 + 성공 기준 — 자연어 1~2줄. 테스트 코드는 싣지 않는다 (v2.9+)>
 
@@ -231,20 +231,20 @@ git commit -m "feat: add specific feature"
 
 ## Task Model Hint (v1.1.14+ · v2.9+ dispatch 결합 복원)
 
-Each task block MAY include `**Model**: haiku | sonnet | opus`. v2.9+ 부터 이 필드는 신규 테스트 작성이 포함된 task 에 한해 dispatch 에 직접 쓰인다: `js-super-sub-driven` 은 **신규 테스트 작성 포함 task** (`**검증**:` 필드 + `Test:` 경로 존재 + 테스트 코드 블록 없음) 의 implementer 를 이 필드 값 (**최소 sonnet floor**) 으로 dispatch 하고, 순수 byte-copy task 는 haiku 고정을 유지한다. Spec-reviewer is always sonnet. task 가 byte-copy 로 감당 안 되면 implementer 가 `BLOCKED` 보고 → 메인이 reorder(sonnet) dispatch.
+Each task block MAY include `**Model**: sonnet | opus`. 이보다 낮은 모델 값은 쓰지 않는다 (sonnet 하한). 이 필드는 `js-super-sub-driven` 의 implementer dispatch 모델로 직접 쓰인다 — 필드 생략 시 sonnet 기본값. Spec-reviewer is always sonnet. task 가 byte-copy 로 감당 안 되면 implementer 가 `BLOCKED` 보고 → 메인이 reorder(sonnet) dispatch.
 
 값 산정 기준:
 
 | 신호 | Model 값 |
 |---|---|
-| 1-2 파일 + mechanical implementation + 명확 spec (신규 테스트 없음) | haiku |
+| 1-2 파일 + mechanical implementation + 명확 spec | sonnet |
 | 다중 파일 통합 / 디버깅 / 패턴 매칭 | sonnet |
 | Korean prose 조작 (skill 본문 / MD 편집) | sonnet |
-| 신규 테스트 작성 포함 (`**검증**:` + `Test:` 경로) | 최소 sonnet (floor) |
+| 신규 테스트 작성 포함 (`**검증**:` + `Test:` 경로) | sonnet (하한) |
 | 설계 / 광범위 코드베이스 이해 | opus |
 | 누락 / 모호 | sonnet |
 
-Backward compat: 필드 생략 시 — 신규 테스트 포함 task 는 sonnet floor, 그 외 haiku. 테스트 코드 블록이 있는 기존 계획서 (v2.8 이전) 는 기존 룰 (테스트 포함 전체 byte-copy + haiku) 그대로.
+Backward compat: 필드 생략 시 sonnet. 금지된 옛 하위 모델 값이 남은 기존 계획서는 실행 층이 sonnet 으로 격상해 dispatch 한다 (`js-super-sub-driven` Model Selection 참조 — 계획서 수정을 요구하지 않는다). 테스트 코드 블록이 있는 기존 계획서 (v2.8 이전) 는 테스트 포함 전체 byte-copy 룰 그대로 (모델은 sonnet 하한).
 
 Note: 구현 코드 블록의 STRICT BYTE-COPY 룰은 dispatch 모델과 무관하게 적용된다 (sonnet implementer 도 구현 코드는 byte-copy). 한국어 prose 를 만지는 task 는 byte-copy 정확성 (`**원본**`/`**수정 후**` 페어) 에 특히 의존하며, byte-copy 로 감당 안 되면 BLOCKED → reorder(sonnet) 로 처리된다.
 

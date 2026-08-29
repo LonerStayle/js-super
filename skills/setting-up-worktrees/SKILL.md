@@ -1,6 +1,6 @@
 ---
 name: setting-up-worktrees
-description: Use when the user asks to create one or more git worktrees ("워크트리 만들어줘", "<티켓명> 워크트리"). Default location is <main-repo-root>/.worktrees/<branch-name>; creates the branch from current HEAD if it doesn't exist, then auto-copies the project's 로컬 빌드 환경 파일 (LLM-judged per platform — Node `.env*`, Android `local.properties`/keystore, iOS `*.xcconfig`, etc.) AND symlinks the main repo's Claude Code memory folder so the worktree shares user/feedback/project memory from the start. NEVER asks the user which files to copy — detects candidates, notifies, and copies (honoring explicit excludes). Invoked from inside a worktree, it places the new worktree under the MAIN repo root's .worktrees/ (no nesting) and branches from the invoking worktree's current HEAD.
+description: Use when the user asks to create one or more git worktrees ("워크트리 만들어줘", "<티켓명> 워크트리"). Default location is <main-repo-root>/.worktrees/<branch-name>; creates the branch from current HEAD if it doesn't exist, then auto-copies the project's 로컬 빌드 환경 파일 (LLM-judged per platform — Node `.env*`, Android `local.properties`/keystore, iOS `*.xcconfig`, etc.) AND symlinks the main repo's Claude Code memory folder so the worktree shares user/feedback/project memory from the start. NEVER asks the user which files to copy — detects candidates, notifies, and copies (honoring explicit excludes). Invoked from inside a worktree, it places the new worktree under the MAIN repo root's .worktrees/ (no nesting) and branches from the invoking worktree's current HEAD. 이름 없이 작업 설명만 주면 브랜치 이름을 AI 가 제안한다 — 재분기 시 `<부모브랜치>__<자식이름>` 형식 (누적 가능), 사용자가 명시한 이름은 그대로 존중.
 ---
 
 # Setting Up Worktrees (Quick Batch Creation)
@@ -28,7 +28,8 @@ NEVER ask the user which 로컬 빌드 환경 파일 to copy. 메인 에이전�
 | Knob | Default behavior |
 |---|---|
 | Worktree root | `<메인 저장소 루트>/.worktrees/` — 워크트리 안에서 호출해도 메인 루트 기준, 중첩 생성 금지 (override only if user explicitly asks) |
-| Branch creation | If branch missing → `-b <name>` from **호출 위치 HEAD** (워크트리 안이면 그 워크트리의 커밋이 시작점; 사용자가 베이스 명시 시 그 브랜치). Existing local → use as-is. Remote-only → `-B <name> origin/<name>` |
+| Branch creation | If branch missing → `-b <name>` from **호출 위치 HEAD** (워크트리 안이면 그 워크트리의 커밋이 시작점; 사용자가 베이스 명시 시 그 브랜치). Existing local → use as-is. Remote-only → `-B <name> origin/<name>`. 신규 생성 시 분기 부모를 공유 git config 에 기록 (`js-super-parent` / `js-super-parent-base`) |
+| 브랜치 네이밍 제안 | 이름 미지정 (설명만) 시 메인이 이름 생성 제안 — 재분기 (`BASE_BRANCH` ≠ `MAIN_BRANCH`) 면 `<부모>__<자식>` (누적), 메인 기준이면 접두어 없이 저장소 관례. 사용자 명시 이름은 그대로 (Step 1) |
 | Dirty 워크트리에서 분기 (v2.9.0+) | Step 3.5 게이트 — "WIP 커밋 후 분기" / "마지막 커밋 시점 기준 분기" 선택. stash 금지 |
 | 로컬 빌드 환경 파일 복사 | **메인 에이전트가 프로젝트 컨텍스트 기반 후보 판단** (Node/Web → `.env*` / Android → `local.properties`, keystore 류 / iOS → `*.xcconfig` 등 / Desktop → `secrets.*`). 후보 list 사용자 노출 후 자동 복사. committed templates / build artifacts 자동 제외. |
 | Claude memory folder | **Symlink handled by `worktree-memory-symlink` PostToolUse hook** — fires automatically on `git worktree add`. Skips if main has no memory yet or if worktree's memory dir already exists. The skill body does NOT perform this step. |
@@ -86,9 +87,18 @@ If not in a repo, abort with: "현재 디렉터리가 git repo 아닙니다. `gi
 
 호출 위치가 워크트리 안이어도 (`git rev-parse --show-toplevel` ≠ `$MAIN_ROOT`) 새 워크트리는 항상 **메인 루트의 `.worktrees/`** 아래에 생성된다 (중첩 금지). 사용자가 위치를 신경 쓰거나 별도 지시할 필요 없다 — 자동 판정.
 
-**Step 1 — Parse branch names from user's message**
+**Step 1 — 이름 해석 (명시 이름 / AI 제안 분기)**
 
-Extract `BRANCHES=(...)` from the user's message. Korean ticket-style names like `<TICKET>-<번호>-<설명>` are fine (UTF-8 OK). Do NOT ask about env files — those are auto-detected.
+사용자 메시지에서 브랜치 이름 또는 작업 설명을 추출해 `BRANCHES=(...)` 를 확정한다. Korean ticket-style names like `<TICKET>-<번호>-<설명>` are fine (UTF-8 OK). Do NOT ask about env files — those are auto-detected.
+
+1. **이름 명시** — 사용자가 브랜치 이름을 줬으면 그대로 쓴다. 네이밍 규칙을 덮어씌우거나 "더 좋은 이름" 을 제안하지 않는다.
+2. **설명만 있고 이름 없음** — 메인이 이름을 생성해 제안한다. **부모브랜치__자식이름 규칙**:
+   - `BASE_BRANCH` ≠ `MAIN_BRANCH` (재분기) → `<BASE_BRANCH>__<자식이름>`. 구분자는 밑줄 두 개 (`__`). 부모 이름에 이미 `__` 가 있으면 그대로 누적된다 (`a__b` 에서 분기 → `a__b__c`).
+   - `BASE_BRANCH` = `MAIN_BRANCH` → 접두어 없이, 저장소의 기존 브랜치 관례 (언어 · 스타일 · 접두어 유무) 를 참고해 짓는다.
+   - `BASE_BRANCH` 가 비어 있으면 (detached HEAD) → 접두어 생략 + 한 줄 안내: "부모 브랜치를 알 수 없어 접두어를 생략했습니다".
+   - AI 가 새로 짓는 부분 (재분기면 자식 이름, 메인 기준이면 이름 전체) 에는 `__` 를 넣지 않는다 — 부모 구분자로 예약 (공백 → 하이픈). `/` 는 자식 이름에 넣지 않는다 (새 폴더 중첩 층 방지 — 부모에게서 물려받은 `/` 는 그대로 수용). 메인 기준 이름은 저장소 관례가 슬래시 접두어를 쓰는 경우에만 `/` 허용.
+   - AI 가 짓는 이름의 언어 · 스타일은 저장소의 기존 브랜치 관례를 따른다 (재분기 자식 부분 포함).
+3. **확정** — AI 가 이름을 생성한 경우 기본은 `AskUserQuestion` 으로 제안 이름 (후보 1~3개) 을 확인받고 생성한다. 사용자가 "바로 만들어 / 알아서 해줘" 류 속행 신호를 이미 준 상황이면 확인 없이 생성하고 결과 이름을 알린다. 명시 이름은 질문 없이 그대로.
 
 **Step 2 — LLM-judged 로컬 빌드 환경 파일 후보 결정 (NO bash glob, NO user prompt)**
 
@@ -161,6 +171,22 @@ git worktree add -b <BR> <MAIN_ROOT>/.worktrees/<BR> <BASE>        # 사용자�
 
 신규 브랜치 생성 직전 `BASE_SHA` / `BASE_BRANCH` (Step 0 캡처값) 를 그대로 두고, 생성 후 Step 6 보고에 사용한다.
 
+**분기 부모 기록 (`-b` 신규 생성 케이스만)**: 신규 분기 (`-b`) 로 워크트리를 만든 경우에만, `git worktree add` 성공 직후 **별도의 후속 Bash 호출**로 분기 부모를 공유 git config 에 기록한다 (`git worktree add` 와 한 Bash 호출로 묶으면 `worktree-memory-symlink` 훅의 프리픽스 매치가 깨져 심링크가 생성되지 않는다):
+
+```bash
+git config "branch.<BR>.js-super-parent" "$BASE_BRANCH"
+git config "branch.<BR>.js-super-parent-base" "$BASE_SHA"
+```
+
+`worktree-merge-back` 은 이 기록으로 직계 부모를 판별해 그 브랜치로 머지한다. 같은 이름 브랜치를 이 스킬로 다시 만들면 (기존 워크트리 제거 후 재생성 등) 기록은 덮어쓴다.
+
+기록을 생략하는 케이스 (정상 동작, 에러 아님):
+- 기존 로컬 브랜치를 attach 한 경우 (`git worktree add <path> <BR>`) — 그 브랜치의 분기 이력을 이 스킬이 모른다
+- remote-only 브랜치를 attach 한 경우 (`git worktree add -B <BR> <path> origin/<BR>`) — 마찬가지로 분기 이력 미상
+- `BASE_BRANCH` 가 빈 값인 경우 (detached HEAD 에서 호출) — 기록할 부모 브랜치명이 없다
+
+기록이 없으면 `worktree-merge-back` 실행 시점에 사용자 확인 게이트가 이를 흡수한다 (머지 대상을 사용자에게 되묻는다).
+
 **Step 5 — Copy ALL detected env files into each worktree (no prompts)**
 
 복사 소스는 **호출 위치 워크트리 루트 우선** (base 워크트리에서 갱신된 env 가 최신일 가능성이 높다), 후보 파일이 호출 위치에 없으면 메인 루트에서 fallback:
@@ -202,13 +228,17 @@ Claude 메모리 폴더: 메인 → 워크트리 심링크 (n개)
 
 - feature-a   → .worktrees/feature-a   (.env ✓ .env.local ✓ .env.production ✓ | 🔗 memory)
   분기 기준: <BASE_BRANCH> @ <BASE_SHA 앞 7자리>
+  부모 기록: ✓ (머지백이 이 브랜치로 머지)
 - feature-b   → .worktrees/feature-b   (.env ✓ .env.local ✓ .env.production ✓ | 🔗 memory)
   분기 기준: <BASE_BRANCH> @ <BASE_SHA 앞 7자리>
+  부모 기록: ✓ (머지백이 이 브랜치로 머지)
 
 각 워크트리에서 바로 빌드·서버 실행 가능합니다.
 워크트리 첫 세션부터 메인 레포의 Claude 메모리(user/feedback/project) 즉시 활용됩니다.
 정리: `git worktree remove <path>` — 메모리 심링크는 워크트리 디렉터리 밖이라 메인 메모리에 영향 없음.
 ```
+
+기존 로컬/remote 브랜치를 attach 한 케이스는 "부모 기록: ✓" 대신 "부모 기록: 없음 (기존 브랜치 attach — 머지백 시 대상 확인)" 으로 표기한다.
 
 분기 베이스가 메인 브랜치가 아니면 (`BASE_BRANCH` ≠ `MAIN_BRANCH`) 다음 주의를 함께 출력한다 (v2.9.0+):
 
@@ -231,9 +261,12 @@ Claude 메모리 폴더: 메인 → 워크트리 심링크 (n개)
 | 워크트리 안에서 호출 시 호출 위치 루트 아래 `.worktrees/` 중첩 생성 | 항상 `MAIN_ROOT` (worktree list 첫 entry) 기준 배치. |
 | for-loop 한 방에 `git worktree add` 묶기 | 훅 프리픽스 미매치 → 심링크 미생성. 브랜치별 개별 Bash 호출. |
 | dirty 워크트리에서 말없이 분기 (또는 stash 로 넘기기) | Step 3.5 게이트 — WIP 커밋 / 커밋 시점 분기 선택. stash 금지. |
+| 기록 명령을 `git worktree add` 와 한 Bash 호출로 묶기 | 훅 프리픽스 미매치 → 심링크 미생성. 기록은 add 이후 별도 호출. |
 | Performing the memory symlink yourself in this skill | Forbidden — handled by `worktree-memory-symlink` PostToolUse hook. The agent must not run any path-mutating shell command (directory creation, symlink, or string substitution) against the Claude memory location. Past versions failed because agents mentally simulated the encoding rule and produced folder names Claude Code never reads. |
 | Clobber worktree's existing memory dir with a symlink | Forbidden. If `$WT_MEMORY` already exists, skip and tell user to migrate manually. |
 | Skip the symlink because "user didn't ask for it" | Always attempt. The whole point is zero-friction worktree start. Only skip when main memory missing or WT memory already there. |
+| 사용자가 명시한 브랜치 이름을 개명하거나 "더 좋은 이름" 을 제안 | 명시 이름은 그대로 쓴다. 제안은 이름 미지정 (설명만) 일 때만. |
+| AI 제안 자식 이름에 `__` 또는 `/` 포함 | `__` 는 부모 구분자로 예약. `/` 는 새 폴더 중첩 층 유발 (부모에게서 물려받은 `/` 는 수용). 공백은 하이픈으로. |
 
 ## Red Flags
 
@@ -243,6 +276,7 @@ Claude 메모리 폴더: 메인 → 워크트리 심링크 (n개)
 | "Should I confirm which env files?" | NO. HARD-GATE forbids it. Auto-glob always. |
 | ".gitignore is annoying to update" | Idempotent: only append if not already there. One-time cost. |
 | "User has secrets in .env, scary to copy automatically" | Files are already on disk; copying within the same machine doesn't expand exposure. The .worktrees/ folder is gitignored. |
+| "사용자가 준 이름이 아쉽다 — 더 좋은 이름을 제안하자" | 명시 이름은 그대로 쓴다. 제안은 이름 미지정일 때만 (Step 1). |
 
 ## Cleanup (separate operation)
 
@@ -268,6 +302,8 @@ After running this skill:
 8. 워크트리 안에서 호출된 경우에도 새 워크트리는 메인 루트 `.worktrees/` 아래에 있고, 호출 위치 워크트리 내부에 `.worktrees/` 중첩이 생기지 않았다. (v2.9.0+)
 9. 보고에 분기 기준 커밋 해시가 포함됐고, 베이스가 메인 브랜치가 아니면 스택 구조 주의가 함께 출력됐다. (v2.9.0+)
 10. 호출 위치가 dirty 였다면 Step 3.5 게이트 (WIP 커밋 / 커밋 시점 분기) 가 발화했다. (v2.9.0+)
+11. 신규 분기로 만든 워크트리마다 분기 부모 기록 (`js-super-parent` + `js-super-parent-base`) 이 남았고, attach 케이스는 기록 없이 보고에 그 사실이 표기됐다.
+12. 이름 미지정 호출에서는 AI 이름 제안이 이뤄졌고 (재분기면 `<부모>__<자식>` 형식), 사용자가 명시한 이름은 개명 없이 그대로 쓰였다.
 
 ## Related Skills
 
