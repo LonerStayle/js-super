@@ -43,34 +43,8 @@ from scripts.code_gate import (
     _forbidden_arg,
     _js_outcome,
     _match_glob,
-    _merge_mutation_languages,
-    _ko_topic,
-    _mutation_budget,
-    _mutation_changed_files,
-    _mutation_changed_python_files,
     _mutation_detail_line,
-    _mutation_distribution,
-    _mutation_gaps,
-    _mutation_no_report,
-    _mutation_outcome,
-    _mutation_partial,
-    _mutation_targets,
-    _mutation_timing,
-    _mutmut_incremental_guard,
-    _mutmut_link,
-    _mutmut_reclaim,
-    _mutmut_link_name,
-    _mutmut_no_result,
-    _mutmut_partial,
-    _mutmut_source_roots,
-    _mutmut_targets,
-    _mutmut_test_roots,
     _run,
-    _stryker_glob,
-    _stryker_project_config,
-    _write_mutmut_config,
-    _write_stryker_config,
-    build_mutmut_records,
     build_parser,
     check_complexity,
     check_layers,
@@ -81,23 +55,60 @@ from scripts.code_gate import (
     crap_score,
     detect_languages,
     load_config,
-    mutation_score,
+    parse_diff,
+    parse_lizard_csv,
+    resolve_coverage,
+    resolve_python,
+    run_checks,
+)
+from scripts.mutation import javascript as mutation_javascript
+from scripts.mutation import python as mutation_python
+from scripts.mutation import score as mutation_score_mod
+from scripts.mutation import (
+    _merge_mutation_languages,
+)
+from scripts.mutation.javascript import (
+    _mutation_changed_files,
+    _mutation_no_report,
+    _mutation_partial,
+    _mutation_targets,
+    _stryker_glob,
+    _stryker_project_config,
+    _write_stryker_config,
     mutation_state_file,
+    parse_mutation_events,
+    parse_mutation_report,
+)
+from scripts.mutation.python import (
+    _mutation_changed_python_files,
+    _mutmut_incremental_guard,
+    _mutmut_link,
+    _mutmut_link_name,
+    _mutmut_no_result,
+    _mutmut_partial,
+    _mutmut_reclaim,
+    _mutmut_source_roots,
+    _mutmut_targets,
+    _mutmut_test_roots,
+    _write_mutmut_config,
+    build_mutmut_records,
     mutmut_change,
     mutmut_def_lines,
     mutmut_function_name,
     mutmut_gate_status,
     mutmut_status,
     mutmut_work_dir,
-    parse_diff,
-    parse_lizard_csv,
-    parse_mutation_events,
-    parse_mutation_report,
     parse_mutmut_run,
     python_decorated_skips,
-    resolve_coverage,
-    resolve_python,
-    run_checks,
+)
+from scripts.mutation.score import (
+    _ko_topic,
+    _mutation_budget,
+    _mutation_distribution,
+    _mutation_gaps,
+    _mutation_outcome,
+    _mutation_timing,
+    mutation_score,
     slice_lines,
     slice_source,
     summarize_mutants,
@@ -1542,8 +1553,8 @@ def test_scope_note_says_the_whole_file_is_mutated(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
     _write(tmp_path / "src" / "a.js", "export const x = 1;\n")
     ctx = _ctx(tmp_path, files=["src/a.js"], tools=_with_stryker(tmp_path))
-    paths = code_gate._mutation_paths(ctx)
-    _, notes = code_gate._mutation_command(ctx, paths, ("src/a.js",))
+    paths = mutation_javascript._mutation_paths(ctx)
+    _, notes = mutation_javascript._mutation_command(ctx, paths, ("src/a.js",))
     joined = " ".join(notes)
     assert "파일 단위로" in joined
     assert "바뀌지 않은 줄도 함께" in joined
@@ -1623,10 +1634,10 @@ def test_reported_seconds_cover_the_parsing_too(tmp_path, monkeypatch):
 
     def slow_parse(report, targets=None):
         _time.sleep(0.25)
-        return code_gate.summarize_mutants([])
+        return mutation_score_mod.summarize_mutants([])
 
     monkeypatch.setattr(code_gate, "_run", fake_run)
-    monkeypatch.setattr(code_gate, "parse_mutation_report", slow_parse)
+    monkeypatch.setattr(mutation_javascript, "parse_mutation_report", slow_parse)
     outcome = check_mutation(_ctx(tmp_path, files=["src/a.js"], tools=_with_stryker(tmp_path)))
     assert "실행 0.0초" not in outcome["human_reason"]
 
@@ -1648,15 +1659,15 @@ def test_incremental_note_does_not_claim_a_previous_run_on_the_first_one(tmp_pat
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
     _write(tmp_path / "src" / "a.js", "export const x = 1;\n")
     ctx = _ctx(tmp_path, files=["src/a.js"], tools=_with_stryker(tmp_path))
-    paths = code_gate._mutation_paths(ctx)
+    paths = mutation_javascript._mutation_paths(ctx)
 
-    _, first = code_gate._mutation_command(ctx, paths, ("src/a.js",))
+    _, first = mutation_javascript._mutation_command(ctx, paths, ("src/a.js",))
     assert any("아직 없어" in n for n in first)
     assert not any("지난 회차 결과가 리포트에 섞여" in n for n in first)
 
-    state = code_gate.mutation_state_file(tmp_path, [])
+    state = mutation_javascript.mutation_state_file(tmp_path, [])
     state.write_text("{}", encoding="utf-8")
-    _, second = code_gate._mutation_command(ctx, paths, ("src/a.js",))
+    _, second = mutation_javascript._mutation_command(ctx, paths, ("src/a.js",))
     assert any("지난 회차 결과가 리포트에 섞여" in n for n in second)
 
 
@@ -2759,7 +2770,7 @@ def _work_with_mutants(tmp_path, targets):
     work = tmp_path / "work"
     (work / "mutants" / "src").mkdir(parents=True)
     _write(work / "mutants" / "src" / "a.py.meta", "{}")
-    _write(work / code_gate._MUTMUT_STATE_NAME, json.dumps({"targets": list(targets)}))
+    _write(work / mutation_python._MUTMUT_STATE_NAME, json.dumps({"targets": list(targets)}))
     return work
 
 
@@ -2886,12 +2897,12 @@ def test_the_budget_belongs_to_the_check_not_to_each_language(tmp_path, monkeypa
         return {"language": "javascript", "label": "자바스크립트", "summary": None,
                 "outcome": _skip_outcome()}
 
-    monkeypatch.setattr(code_gate, "_check_mutation_javascript", burn)
+    monkeypatch.setattr(mutation_javascript, "_check_mutation_javascript", burn)
     # 준비 단계에서 예산이 바닥나도 같은 문장이 나간다 — 0초로 띄우면 "중간 결과가 없다" 가
     # 되어 재지 못한 이유가 바뀐다.
     exhausted = _ctx(tmp_path)
     exhausted.mutation_deadline = time.perf_counter() - 1
-    outcome, summary = code_gate._mutmut_run(exhausted, tmp_path, ["true"], (), [])
+    outcome, summary = mutation_python._mutmut_run(exhausted, tmp_path, ["true"], (), [])
     assert summary is None and "앞 언어가 뮤테이션 예산" in outcome["human_reason"]
 
     ctx = _ctx(project, files=[REL, "src/a.js"], tools=_with_mutmut())
