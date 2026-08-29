@@ -63,7 +63,7 @@ You MUST create a TaskCreate task for each of these items and complete them in o
 1. **입력 확인** — confirm <slug>-requirements.md exists (HARD-GATE if not)
 2. **기존 코드 둘러보기** — `<slug>-requirements.md` 의 `## 요구 항목` 을 먼저 Read. 추가 grep/Read 는 tech-design 결정 (아키텍처 / data flow / pattern) 깊이 부족할 때만. (v1.1.15+ slim)
 3. **적응형 7-토픽 질의응답** — `<slug>-requirements.md` 읽고 활성/비활성 토픽 판정 후 한 줄 announce. 항상 활성 4개 (1 아키텍처 / 2 컴포넌트 / 5 결정+대안 / 6 위험), 조건부 3개 (3 데이터 모델 / 4 외부 인터페이스 / 7 테스트 전략). 자세한 룰은 "Adaptive Topics" 섹션 참조. (v1.1.15+, FR-1)
-4. **자체 점검** — FR mapping coverage, alternatives present, risk categorization (no user prompt yet)
+4. **자체 점검** — 요구 항목 mapping coverage, alternatives present, risk categorization, 산출물 문서 스타일 + 도면 형식 (no user prompt yet)
 5. **사양 정합성 검증 (사전)** — main agent runs A+C verification via `verifying-spec`, produces 4-axis report internally (Tolerance for missing skill)
 6. **초안 검토 및 승인** — show the full RAW `<slug>-tech-design.md` AND the verify-spec report in one message; ask once "Approve and proceed? — yes / no". On `no` → revise → loop back to step 4 (Self-review → re-verify → re-show RAW).
 7. **변경이력 기록** — append first `[개발방향-수정]` entry via `change-history` skill
@@ -88,7 +88,7 @@ If you find yourself skipping ahead, stop and create the missing task.
 
 > **다음 단계 안내**: 이 문서는 기술 설계서입니다 (아키텍처 / 컴포넌트 / 데이터 / 인터페이스 / 결정 / 위험 / 테스트 전략). `<slug>-requirements.md` 를 기반으로 작성됩니다. 3개 트랙이면 다음 단계 `<slug>-implementation-plan.md` (단계별 계획) 의 입력이 됩니다 (`writing-plans` skill 또는 `/write-plan` 슬래시). 2개 확정 트랙 (frontmatter `depth: 2`) 이면 이 문서가 마지막 산출물입니다. 단계별 구현 task 는 여기 박지 마세요 — 그건 다음 산출물 (plan) 에 들어갑니다.
 
-## 1. 아키텍처 개요 (diagram + prose)
+## 1. 아키텍처 개요 (도면 + 짧은 산문 — "도면 형식" 참조)
 ## 2. 영향 받는 컴포넌트/파일
 ## 3. 데이터 모델/스키마 변경
 ## 4. 외부 인터페이스 (API, events)
@@ -99,6 +99,34 @@ If you find yourself skipping ahead, stop and create the missing task.
 ---
 ## 변경이력
 ```
+
+## 산출물 문서 스타일
+
+이 규칙은 이 skill 이 만드는 산출물 문서에 적용된다. 이 skill 본문 자체는 대상이 아니다.
+
+**위에서 아래로 읽힌다.** 용어는 처음 쓰는 자리에서 뜻을 밝힌다. 뒤 섹션을 먼저 읽어야 이해되는 문장을 쓰지 않는다. 앞 섹션이 뒤 섹션의 결론에 기대고 있으면 순서를 바꾼다.
+
+**간결한 자연어로 쓴다.** 한 문장에 하나를 말한다. 비유를 쓰지 않는다 — 무엇에 빗대지 말고 그것이 무엇인지 그대로 쓴다. 배경 반복, 다짐, 같은 말 되풀이는 넣지 않는다.
+
+**나열과 비교와 구조는 표나 도면으로 보인다.** 항목이 셋 이상이면 표로 만든다. 구성 요소들의 관계나 배치를 설명해야 하면 도면을 그린다. 산문은 배경과 판단 근거에 쓴다.
+
+**항목 코드를 만들지 않는다.** 본문에 알파벳-숫자 코드를 붙이지 않는다. 결정이나 위험을 가리켜야 하면 짧은 한국어 제목을 쓴다 (`### 결정 1 — 요구 항목 번호를 바꾼다`). 유일한 예외는 요구 항목 번호 (`요구 N`) 다 — 상위 문서가 정한 번호라 그대로 인용한다.
+
+도면 안에 붙이는 번호 (①②③) 는 표에서 설명하기 위한 도면 표기법이지 항목 코드가 아니다. 금지 대상이 아니다.
+
+### 도면 형식
+
+§1 의 그림은 구역과 배치가 보이는 도면을 기본으로 한다. 절차 단계를 노드와 화살표로 나열한 흐름도로 구조 설명을 대신하지 않는다.
+
+| 상황 | 형식 |
+|---|---|
+| 구역·레이어·배치를 보일 때 (기본) | 아스키 박스 도면 |
+| 구성 요소가 여섯 개를 넘거나 요소마다 설명이 필요할 때 | 아스키 도면에 번호를 달고 표에서 설명 |
+| 관계와 조건 분기가 본질이고 렌더링 환경 (GitHub, 에디터 미리보기) 을 전제할 수 있을 때 | mermaid |
+
+mermaid 를 쓸 때도 절차 나열이 아니라 관계를 보이는 그림이어야 한다.
+
+이 규칙은 산출물에만 적용된다. 이 skill 본문 안의 dot 흐름도는 에이전트 실행용이라 대상이 아니다.
 
 ## 서술 수준 — 이름보다 역할
 
@@ -214,16 +242,16 @@ Step 3 의 7-topic dialogue 를 사용자 마찰 줄이기 위해 adaptive 진�
 
 **1. Verify input**
 - Confirm <slug>-requirements.md exists in the same feature folder. If not, HARD-GATE — instruct the user to run `/brainstorm` first.
-- **Locate the requirements** — find the `## 요구 항목` section and read its `FR-N` items. Older docs (written before the section name was fixed) carry the same `FR-N` anchors under `## 3. 기능 요구사항 (FR)`; read those the same way.
-- If a doc has no `FR-N` anchors at all, treat every sentence describing a behavior the system must have as one requirement, and say so in a one-line notice. Never reject a doc as "missing FRs".
+- **Locate the requirements** — find the `## 요구 항목` section and read its numbered items. Three generations exist and ALL are read the same way: `**요구 N**:` (current), `**FR-N**:` under `## 요구 항목` (previous), and `**FR-N**:` under `## 3. 기능 요구사항 (FR)` (oldest). Never rewrite an old doc's numbering — read it as-is.
+- If a doc has no numbered anchors at all, treat every sentence describing a behavior the system must have as one requirement, and say so in a one-line notice. Never reject a doc as "missing requirements".
 
 **2. Survey the codebase**
-- For each `FR-N`, Grep/Read to identify likely impacted code areas
+- For each requirement item, Grep/Read to identify likely impacted code areas
 - (Full impact analysis is reserved for verifying-spec.)
 
 **3. Step-by-step questions** (one at a time, multiple choice when possible)
 - Architecture candidates (2-3 options + recommendation with reasoning)
-- Component/file mapping (FR-N → which file/module)
+- Component/file mapping (요구 N → which file/module)
 - Data model changes (tables, schema, migrations)
 - External interfaces (REST/GraphQL/events)
 - Key decisions (each one with at least one alternative + reason for chosen path)
@@ -307,7 +335,9 @@ Call `AskUserQuestion`:
 
 ## Self-Review
 
-- Every `FR-N` in <slug>-requirements.md is mapped to either §2 (impacted components) or §4 (external IF)
+- Every `요구 N` in <slug>-requirements.md is mapped to either §2 (impacted components) or §4 (external IF) — 옛 문서의 `FR-N` 도 같은 항목으로 센다
+- 서술 문단이 "산출물 문서 스타일" 네 가지를 지키는가 — 뒤를 먼저 읽어야 이해되는 문장 / 비유 / 산문으로 늘어놓은 나열 / 새로 만든 항목 코드
+- §1 의 그림이 "도면 형식" 세 형식 중 하나이고, 절차 나열 흐름도로 구조 설명을 대신하지 않았는가
 - Every key decision in §5 has at least one alternative and a reason for the chosen path
 - Risk candidates in §6 are pre-classified using risk-annotation categories (`side-effect | breaking | race`)
 - §7 test strategy is consistent with §3 and §4 (DB changes → migration tests, APIs → integration/contract tests)

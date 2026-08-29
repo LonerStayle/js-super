@@ -37,7 +37,8 @@ Agent tool (general-purpose):
 
     Two failure modes, and only these two.
 
-    **Gap** — an upstream item (FR-N, NFR, key decision, risk, constraint,
+    **Gap** — an upstream item (요구 N — older docs write it FR-N —, NFR,
+    key decision, risk, constraint,
     explicit exclusion) that appears nowhere downstream. Name the upstream
     item and say where you looked.
 

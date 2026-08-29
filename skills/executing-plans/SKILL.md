@@ -327,7 +327,7 @@ execute-plan 실행 흐름의 핵심 UX 룰. 사용자가 모드 (inline / subag
 | task 병렬 vs 순차 실행 여부 | plan 의 dependencies 만족 시 병렬 default |
 | task 묶음 (same-file mechanical 3-AND 룰 만족 시) | 묶음 default (v2.0.1+) |
 | task 안 보조 결정 (변수명 / format / order of imports) | plan 의 `**원본**` + `**수정본**` byte-copy 우선, 없으면 LLM 자율 |
-| dispatch model 선택 | (subagent 모드) v2.9+ 조건부 자동 판정 — 순수 byte-copy 는 haiku / 신규 테스트 포함은 plan 의 `**Model**:` 값 (최소 sonnet). 게이트 없이 자동 |
+| dispatch model 선택 | (subagent 모드) plan 의 `**Model**:` 값 자동 적용 — 생략 시 sonnet, 하한 sonnet (`js-super-sub-driven` Model Selection 참조). 게이트 없이 자동 |
 | task 완료 후 다음 task 진입 타이밍 | 자동 진입 (게이트 X) |
 | 중간 결과 보고 빈도 | 매 task X, 매 wave (3-5 task) 단위 OR BLOCKED 시만 |
 
@@ -379,7 +379,7 @@ prose 질문 좁은 예외:
 | 매 task 완료 후 "다음 task 진입할까요?" 게이트 | 룰 3 위반. 모드 선택 = 진행 위임. |
 | "같은 파일이라 묶을까요?" 게이트 | 룰 2 위반. 3-AND 룰 (v2.0.1+) 으로 자동 판정. |
 | BLOCKED → 곧장 사용자 재질문 (self-correct skip) | 룰 4 위반. 자가 복구 우선. |
-| dispatch model 변경 시 게이트 | 룰 2 위반. (subagent 모드) v2.9+ 조건부 룰 (순수 byte-copy=haiku / 신규 테스트 포함=plan **Model**: 값) 로 자동 판정. |
+| dispatch model 변경 시 게이트 | 룰 2 위반. (subagent 모드) plan **Model**: 값 (생략 시 sonnet, 하한 sonnet) 으로 자동 판정. |
 | 변수명 / format / import 순서 게이트 | 룰 2 위반. plan byte-copy 우선, 없으면 자율. |
 | 사용자 모드 선택 무시하고 inline → subagent 자동 전환 | 룰 1 위반. 모드 변경은 명시 동의 필수. |
 | 모든 mid-flight 결정을 "안전성" 명목으로 게이트 | 과보호. 룰 1 7 케이스 외엔 자율. |

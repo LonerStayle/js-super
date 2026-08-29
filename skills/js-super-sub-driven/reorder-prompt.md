@@ -12,7 +12,7 @@ Task tool (general-purpose):
   prompt: |
     You are reconciling Task N: [task name]
 
-    The implementer (haiku, byte-copy mode) reported BLOCKED because
+    The implementer (byte-copy mode) reported BLOCKED because
     Edit's old_string did not match the actual file. Your job is to
     figure out whether the file diverged due to:
     

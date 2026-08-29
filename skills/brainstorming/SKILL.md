@@ -1,6 +1,6 @@
 ---
 name: brainstorming
-description: You MUST use this before creating any feature, component, or behavior change. Runs a Socratic dialogue — one question at a time, alternatives with tradeoffs, then a free-form requirements doc whose only fixed parts are the title, a `## 요구 항목` section with FR-N anchors, and the change-log footer. Writes <slug>-requirements.md to docs/features/YYYY-MM-DD-<slug>/. Does NOT cover technical design — that belongs to tech-design.
+description: You MUST use this before creating any feature, component, or behavior change. Runs a Socratic dialogue — one question at a time, alternatives with tradeoffs, then a free-form requirements doc whose only fixed parts are the title, a `## 요구 항목` section with 요구 N anchors, and the change-log footer. Writes <slug>-requirements.md to docs/features/YYYY-MM-DD-<slug>/. Does NOT cover technical design — that belongs to tech-design.
 ---
 
 # Brainstorming → <slug>-requirements.md (Socratic)
@@ -31,7 +31,7 @@ js-superpowers' brainstorming is restricted to **planning-level requirements out
 
 The dialogue is Socratic: one question at a time, alternatives with tradeoffs before any decision, and a single review of the finished draft. There is no mode gate — every feature goes through the same path.
 
-The output is free-form prose. Only three things are fixed: the H1 title, a `## 요구 항목` section whose items carry `FR-N` anchors, and the `## 변경이력` footer. Everything else takes whatever shape the dialogue produced. Downstream skills (`tech-design`, `verifying-spec`, `writing-plans`, `change-propagation`) read the `FR-N` anchors, so that section is the one contract this doc must honour.
+The output is free-form prose. Only three things are fixed: the H1 title, a `## 요구 항목` section whose items carry `요구 N` anchors, and the `## 변경이력` footer. Everything else takes whatever shape the dialogue produced. Downstream skills (`tech-design`, `verifying-spec`, `writing-plans`, `change-propagation`) read the `요구 N` anchors, so that section is the one contract this doc must honour. Prose style is governed by the "산출물 문서 스타일" section below.
 
 <HARD-GATE>
 This skill produces requirements only — NOT <slug>-tech-design.md, NOT code, NOT implementation plans. Technical decisions belong to the next step.
@@ -71,7 +71,7 @@ You MUST create a TaskCreate task for each of these items and complete them in o
 2. **피처 이름/슬러그 확인** — one question, then create `docs/features/YYYY-MM-DD-<slug>/`
 3. **질문으로 좁히기** — 한 번에 하나씩. 커버 목록 다섯 가지가 채워지면 멈춘다. 자세한 룰은 "Socratic Procedure" 의 블록 1 참조.
 4. **대안 비교와 방향 결정** — 2~3안을 고정 비교축으로 제시하고 추천을 먼저 말한다. 블록 2 참조.
-5. **요구사항 문서 작성** — 자유 산문. `## 요구 항목` 섹션과 `FR-N` 만 필수. 제외 항목 취합 룰 포함. 블록 3 참조.
+5. **요구사항 문서 작성** — 자유 산문. `## 요구 항목` 섹션과 `요구 N` 만 필수. "산출물 문서 스타일" 을 지킨다. 제외 항목 취합 룰 포함. 블록 3 참조.
 6. **자체 점검** — 여섯 항목 단일 목록. "Self-Review" 참조.
 7. **사용자 검토** — 초안 전체를 한 번에 보여주고 승인받는다. 수정 요청이 오면 고쳐서 다시 보여준다.
 8. **변경이력 기록** — append first `[요구사항-수정]` entry via `change-history` skill
@@ -105,8 +105,8 @@ Save path: `docs/features/YYYY-MM-DD-<slug>/<slug>-requirements.md`
 
 ## 요구 항목
 
-**FR-1**: <시스템이 무엇을 해야 하는지 한 문장>
-**FR-2**: ...
+**요구 1**: <시스템이 무엇을 해야 하는지 한 문장>
+**요구 2**: ...
 
 <필요하면 더: ## 범위 밖 / ## 수용 기준 / ## 다음 단계>
 
@@ -118,11 +118,25 @@ Save path: `docs/features/YYYY-MM-DD-<slug>/<slug>-requirements.md`
 `## 요구 항목` 규칙:
 
 - 섹션 이름은 `## 요구 항목` 으로 고정한다. 다른 이름을 쓰면 다운스트림이 못 찾는다.
-- 항목마다 `FR-N` 을 붙인다. 번호는 1부터 순서대로, 문서 안에서 유일해야 한다.
+- 항목마다 `**요구 N**:` 을 붙인다. 굵게까지 포함한 형태가 약속이다. 번호는 1부터 순서대로, 문서 안에서 유일해야 한다.
 - 항목이 많으면 소제목으로 묶어도 된다 (`### 제거` / `### 신설` 등). 번호는 묶음을 가로질러 이어진다.
 - 요구 항목이 하나뿐이어도 섹션과 번호를 쓴다. 다운스트림은 셀 수 있는 단위를 필요로 한다.
 
 모드를 표기하는 줄은 쓰지 않는다. 경로가 하나뿐이라 표기할 모드가 없다.
+
+## 산출물 문서 스타일
+
+이 규칙은 이 skill 이 만드는 산출물 문서에 적용된다. 이 skill 본문 자체는 대상이 아니다.
+
+**위에서 아래로 읽힌다.** 용어는 처음 쓰는 자리에서 뜻을 밝힌다. 뒤 섹션을 먼저 읽어야 이해되는 문장을 쓰지 않는다. 앞 섹션이 뒤 섹션의 결론에 기대고 있으면 순서를 바꾼다.
+
+**간결한 자연어로 쓴다.** 한 문장에 하나를 말한다. 비유를 쓰지 않는다 — 무엇에 빗대지 말고 그것이 무엇인지 그대로 쓴다. 배경 반복, 다짐, 같은 말 되풀이는 넣지 않는다.
+
+**나열과 비교와 구조는 표나 도면으로 보인다.** 항목이 셋 이상이면 표로 만든다. 구성 요소들의 관계나 배치를 설명해야 하면 도면을 그린다. 산문은 배경과 판단 근거에 쓴다.
+
+**항목 코드를 만들지 않는다.** 본문에 알파벳-숫자 코드를 붙이지 않는다. 무언가를 가리켜야 하면 짧은 한국어 제목을 쓴다. 유일한 예외는 요구 항목 번호 (`요구 N`) 다 — 다음 단계 문서들이 이 번호로 항목을 찾는다.
+
+도면 안에 붙이는 번호 (①②③) 는 표에서 설명하기 위한 도면 표기법이지 항목 코드가 아니다. 금지 대상이 아니다.
 
 ## Process Flow
 
@@ -137,10 +151,10 @@ digraph brainstorm_flow {
     "블록 1 — 질문\n(한 번에 하나, 커버 목록 5)" [shape=box];
     "커버 목록 다 채워졌나?" [shape=diamond];
     "블록 2 — 대안\n(2~3안, 고정 비교축 3, 추천 먼저)" [shape=box];
-    "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/FR-N)" [shape=box];
+    "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/요구 N)" [shape=box];
     "제외 항목 취합해서 되돌려주기" [shape=box];
 
-    "Self-review (6 items)" [shape=box];
+    "Self-review (7 items)" [shape=box];
     "블록 4 — 승인\n초안 전체 한 번에" [shape=diamond];
     "Invoke change-history\n(first entry: 요구사항-수정)" [shape=box];
     "Auto-invoke /design-tech (no gate, v1.1.9+)" [shape=box];
@@ -158,11 +172,11 @@ digraph brainstorm_flow {
     "커버 목록 다 채워졌나?" -> "블록 1 — 질문\n(한 번에 하나, 커버 목록 5)" [label="아직 — 다음 질문"];
     "커버 목록 다 채워졌나?" -> "블록 2 — 대안\n(2~3안, 고정 비교축 3, 추천 먼저)" [label="다 채워짐 / 사용자가 그만"];
     "블록 2 — 대안\n(2~3안, 고정 비교축 3, 추천 먼저)" -> "제외 항목 취합해서 되돌려주기";
-    "제외 항목 취합해서 되돌려주기" -> "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/FR-N)";
-    "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/FR-N)" -> "Self-review (6 items)";
-    "Self-review (6 items)" -> "블록 4 — 승인\n초안 전체 한 번에";
+    "제외 항목 취합해서 되돌려주기" -> "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/요구 N)";
+    "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/요구 N)" -> "Self-review (7 items)";
+    "Self-review (7 items)" -> "블록 4 — 승인\n초안 전체 한 번에";
 
-    "블록 4 — 승인\n초안 전체 한 번에" -> "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/FR-N)" [label="수정 요청 — 고쳐서 다시"];
+    "블록 4 — 승인\n초안 전체 한 번에" -> "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/요구 N)" [label="수정 요청 — 고쳐서 다시"];
     "블록 4 — 승인\n초안 전체 한 번에" -> "Invoke change-history\n(first entry: 요구사항-수정)" [label="승인"];
     "Invoke change-history\n(first entry: 요구사항-수정)" -> "Auto-invoke /design-tech (no gate, v1.1.9+)";
     "Auto-invoke /design-tech (no gate, v1.1.9+)" -> "Auto-invoke tech-design skill" [label="continue"];
@@ -217,7 +231,7 @@ When `AskUserQuestion` is unavailable, ask in prose:
 **8. Invoke change-history skill** (first entry: initial creation)
 - Tag: `[요구사항-수정]` (use the entry type even on first creation)
 - 이유: 신규 피처 brainstorming 결과
-- 무엇이: <slug>-requirements.md 전체 (FR-1..N + 대화에서 나온 섹션들)
+- 무엇이: <slug>-requirements.md 전체 (요구 1..N + 대화에서 나온 섹션들)
 - 영향범위: 없음 (최초 생성)
 
 **9. Auto-proceed to tech-design (v1.1.9+ — no gate)**
@@ -346,7 +360,7 @@ AI 가 small/large 분명 판정할 필요 없음. 명시적 small 신호 catch 
 
 ## Self-Review
 
-초안을 다 쓴 뒤 처음 보는 눈으로 여섯 가지를 훑는다.
+초안을 다 쓴 뒤 처음 보는 눈으로 일곱 가지를 훑는다.
 
 1. **미완성 표현**: "TBD", "TODO", 비어 있는 섹션, 뭉뚱그린 요구가 있는가? 고친다.
 2. **내부 모순**: 서로 어긋나는 서술이 있는가?
@@ -354,6 +368,7 @@ AI 가 small/large 분명 판정할 필요 없음. 명시적 small 신호 catch 
 4. **중의성**: 두 가지로 읽히는 요구가 있는가? 하나로 정하고 명시한다.
 5. **제외 항목 취합**: 대화에서 나온 제외가 문서에 다 들어갔는가? 블록 3 에서 되돌려준 목록과 대조한다.
 6. **기술 세부 누출**: 구현 방법이나 파일 구조가 본문에 섞였는가? 다음 단계 산출물로 넘긴다.
+7. **문서 스타일**: "산출물 문서 스타일" 네 가지로 훑는다. 뒤를 먼저 읽어야 이해되는 문장, 비유, 산문으로 늘어놓은 나열, 새로 만든 항목 코드가 남았는가?
 
 찾은 문제는 그 자리에서 고친다. 다시 검토할 필요 없이 고치고 넘어간다.
 
@@ -405,9 +420,9 @@ Always prefer the tool when available. Detect availability via the harness tool 
 | Wrong | Right |
 |---|---|
 | Embedding tech decisions ("use Postgres", "REST API") in the requirements doc | Put those in <slug>-tech-design.md. Requirements stay tech-agnostic. |
-| Writing only "user can do X" without an FR id | `FR-N: <action>` in the `## 요구 항목` section, plus a way to tell it's done |
+| Writing only "user can do X" without a requirement number | `**요구 N**: <action>` in the `## 요구 항목` section, plus a way to tell it's done |
 | Asking "범위 밖이 뭔가요?" from scratch when exclusions were stated earlier | Consolidate prior exclusions first; ask only for additions on top |
-| Renaming the `## 요구 항목` section or dropping FR numbers | Downstream skills look for that exact heading and those anchors. Keep both. |
+| Renaming the `## 요구 항목` section or dropping the 요구 numbers | Downstream skills look for that exact heading and those anchors. Keep both. |
 | Auto-crossing into design without asking | Always ask the approval prompt. On approval, auto-invoke. Without approval, stop. |
 | Asking the user to type `/design-tech` manually | Once approved, auto-invoke tech-design via Skill tool. User shouldn't have to retype. |
 | "Skip the doc because it's simple" | Simple cases just produce a shorter doc, never a missing one. |
@@ -426,7 +441,7 @@ Always prefer the tool when available. Detect availability via the harness tool 
 On first save of <slug>-requirements.md, write a `[요구사항-수정]` entry:
 
 - 이유: 신규 피처 brainstorming 결과
-- 무엇이: <slug>-requirements.md 전체 (FR-1..N + 대화에서 나온 섹션들)
+- 무엇이: <slug>-requirements.md 전체 (요구 1..N + 대화에서 나온 섹션들)
 - 영향범위: 없음 (최초 생성)
 
 ## Key Principles
