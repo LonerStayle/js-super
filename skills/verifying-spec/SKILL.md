@@ -18,7 +18,7 @@ EXCEPTION 2 — clean-context verifiers: You MUST ALSO dispatch two context-free
 | Phase | Target MD | Upstream MDs |
 |---|---|---|
 | End of `tech-design` | <slug>-tech-design.md | [<slug>-requirements.md] |
-| End of `writing-plans` | <slug>-implementation-plan.md | [<slug>-requirements.md, <slug>-tech-design.md] |
+| End of `writing-plans` | <slug>-implementation-plan.md (+ `plan/tasks-*.md` if split) | [<slug>-requirements.md, <slug>-tech-design.md] |
 
 <slug>-requirements.md is the source of truth and is therefore not a verification target.
 
@@ -127,14 +127,14 @@ Verify every upstream item is reflected in the target. Two failure modes:
 ### Checklist
 
 When target = `<slug>-tech-design.md`:
-- Every FR-N from <slug>-requirements.md is mapped to <slug>-tech-design.md §2 (impacted components) or §4 (external interfaces)
+- Every 요구 N from <slug>-requirements.md is mapped to <slug>-tech-design.md §2 (impacted components) or §4 (external interfaces) — older docs number the same items `FR-N`; count them the same way
 - Every NFR is addressed in <slug>-tech-design.md §6 (risks) or §7 (test strategy)
 - <slug>-tech-design.md does not contradict <slug>-requirements.md (e.g., out-of-scope items are not added back)
 
 When target = `<slug>-implementation-plan.md`:
 - Every key decision in <slug>-tech-design.md §5 maps to at least one task in <slug>-implementation-plan.md §1
 - Every risk category from <slug>-tech-design.md §6 has at least one entry in <slug>-implementation-plan.md §2 위험 코드 지점
-- Every FR is implementable through the listed tasks (trace FR → decision → task chain)
+- Every requirement item is implementable through the listed tasks (trace 요구 N → decision → task chain)
 
 ## C. Code Impact Analysis
 
@@ -155,7 +155,7 @@ Output to the conversation in this exact structure:
 🔍 verifying-spec 보고서 — 대상: <target>.md (upstream: <list>)
 
 ## A. Consistency
-✅ Mapped: <count> items (e.g., FR-1, FR-2, FR-3 → §2/§4)
+✅ Mapped: <count> items (e.g., 요구 1, 요구 2, 요구 3 → §2/§4)
 ⚠️ Gaps: <count>
    - <upstream item ID> "<title>" → not found in <target> §<section>
 ❌ Conflicts: <count>

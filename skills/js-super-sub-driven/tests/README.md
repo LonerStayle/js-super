@@ -64,16 +64,23 @@
 
 - `H13-og-flow-subagent-routing/` — og-flow Subagent path 매칭 검증 (upstream 원본 매칭 / js-super-sub-driven 미매칭)
 
-## v2.9.0 이후 fixtures (H14~H20)
+## v2.9.0 이후 fixtures (H14~H21)
 
 | Fixture | 시나리오 |
 |---|---|
 | H14-depth-select | 산출물 깊이 선택 — 기술설계 게이트 3지선다 / `depth: 2` 표식 판독 / 2→3 승격 |
 | H15-natural-lang-verify | 구현계획서 테스트 자연어 축약 — `**검증**` 필드 / 구현 byte-copy 와 테스트 자체 작성 분리 |
 | H16-tech-design-abstraction | 기술설계 서술 수준 — 이름보다 역할 (통과 사례 + 위반 사례 대조) |
-| H17-socratic-single-track | 모드 질문 부재 (A) / 요구 항목 + FR-N 계약 (B) / 제외 항목 취합 (C) / '모르겠다' 3단 사다리 (D) / 옛 6섹션 문서 하위호환 (E) |
+| H17-socratic-single-track | 모드 질문 부재 (A) / 요구 항목 + 번호 계약 (B) / 제외 항목 취합 (C) / '모르겠다' 3단 사다리 (D) / 옛 6섹션 문서 하위호환 (E) |
 | H18-glossary-command | `/glossary` 명시 호출 전용 전환. 대상 문서 종류 무관 / 시점 제약 없음 / 인자 없을 때 후보 질문 / `/write-plan` 흐름에서 미발화 5 시나리오 |
 | H19-clean-verify | 무맥락 검증자 2종 병렬 — 단독(대상 MD 만) / 대조(대상 + upstream) / 중재 / `--no-clean-verify` skip |
 | H20-worktree-naming | `/worktree` 이름 해석 — AI 네이밍 제안 + 재분기 `부모__자식` 누적 / 명시 이름 존중 / detached HEAD fallback 5 시나리오 |
+| H21-doc-readability | 산출물 문서 스타일 — 위에서 아래로 / 비유 금지 / 표·도면 우선 / 항목 코드 금지 / 도면 형식 / 요구 항목 번호 하위 호환 |
 
-> 번호 규약: 병렬 워크트리에서 각자 선점해 `H16` 이 세 fixture 에 중복됐던 것을 정리했습니다 (glossary → H18, clean-verify → H19). 신규 fixture 는 본 인덱스의 마지막 번호 다음을 쓰세요.
+> 번호 규약: 신규 fixture 번호는 **부모 브랜치의 인덱스**를 확인해서 정합니다.
+>
+> ```bash
+> git show main:skills/js-super-sub-driven/tests/README.md | grep -oE 'H[0-9]+-' | sort -u | tail -3
+> ```
+>
+> 자기 워크트리의 인덱스만 보면 겹칩니다. 병렬 워크트리가 같은 번호를 각자 잡으면 머지할 때 이 표의 한 줄에서 충돌하고 디렉토리 번호도 중복됩니다. 실제로 두 번 발생했습니다 — `H16` 이 세 fixture 에 겹쳤고 (glossary → H18, clean-verify → H19 로 정리), `H20` 이 워크트리 네이밍과 문서 가독성 두 곳에 겹쳤습니다 (후자를 H21 로 정리).

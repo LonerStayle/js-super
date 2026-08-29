@@ -40,6 +40,20 @@ def _read_commit_policy(text: str) -> str:
     return line.group(1) if line else "per-task"
 
 
+def _plan_text_bundle(file_path: Path) -> str:
+    """인덱스 + 분할 하위 문서의 본문을 이어붙인다.
+
+    분할 구조에서는 코드 블록이 하위 문서에 있으므로, 인덱스만 읽으면
+    '수정 후 블록 없음' 으로 잘못 판정한다.
+    """
+    from scripts.plan_guard import resolve_documents
+
+    parts = []
+    for path in resolve_documents(file_path).all_paths:
+        parts.append(path.read_text(encoding="utf-8"))
+    return "\n".join(parts)
+
+
 def code_pretty_check(file_path: Path) -> PreflightResult:
     if not file_path.exists():
         return PreflightResult(
@@ -60,7 +74,8 @@ def code_pretty_check(file_path: Path) -> PreflightResult:
             "변경이력 footer not empty (doc is live)",
             "이미 변경이력 entry 가 존재합니다 (live doc). code-pretty 는 최초 생성 단계에서만 발화합니다",
         )
-    if "**수정 후**" not in text:
+    # ⚠️ RISK(side-effect): 분할 구조에서는 코드 블록이 하위 문서에 있어 인덱스 본문만으로 판정하면 오탐 — by 구현계획서-코드강제-분할 task 2
+    if "**수정 후**" not in _plan_text_bundle(file_path):
         return PreflightResult(
             False,
             "no '수정 후' code blocks found — nothing to prettify",

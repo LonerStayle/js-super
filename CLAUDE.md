@@ -2036,3 +2036,148 @@ grep -cF "sonnet | opus" skills/writing-plans/SKILL.md
 - 스킬 본문 6 (writing-plans / auto-writing-plans / js-super-sub-driven SKILL+implementer+reorder / executing-plans) + fixture 6 + CLAUDE.md. `scripts/` / `hooks/` / og-* / `auto-executing-plans` (dispatch 룰을 js-super-sub-driven 에 위임) 영향 0
 - reorder / spec-reviewer / code-pretty 의 sonnet 고정 — 동작 변경 0
 - 버전 bump 는 main 전용 룰에 따라 main 에서
+
+## 산출물 문서 스타일 + 요구 항목 번호 교체 결합
+
+요구사항서와 기술설계서를 만드는 스킬 넷에 산출물 작성 스타일 룰을 심고, 요구 항목 번호를 `FR-N` 에서 `요구 N` 으로 바꾼 작업. spec: `docs/features/2026-08-29-문서가독성개선/`.
+
+### 왜 스킬 본문에 직접 넣었나
+
+이 저장소의 스킬은 자기 완결이 원칙이다. 공용 스타일 파일 하나를 넷이 참조하게 만들면 저장소에 없던 참조 패턴이 새로 생긴다. 문체를 기계로 검사하는 방법도 검토했지만 한국어 문장의 좋고 나쁨은 판정할 수 없어 코드 패턴 검사만 보조로 남겼다. 앞서 "서술 수준 — 이름보다 역할" 룰도 같은 이유로 본문 삽입 방식을 썼다.
+
+### 핵심 룰
+
+- **섹션 이름은 넷 다 `## 산출물 문서 스타일`** — 이름이 같아야 한 줄 검색으로 네 파일을 한 번에 확인할 수 있다. 정식 경로 둘은 전체본, 자동 경로 둘은 압축본
+- **적용 대상은 산출물 문서뿐** — 스킬 본문의 영어 식별자, 룰 본문, dot 흐름도는 대상이 아니다. 본문은 에이전트가 읽는 코드에 해당한다
+- **요구 항목 번호는 `**요구 N**:`** — 굵게까지 포함한 형태가 약속이다. 읽는 쪽이 이 패턴을 찾는다
+- **읽는 쪽은 세 세대를 모두 인식** — `요구 N` (현행) / `## 요구 항목` 아래 `FR-N` (직전) / `## 3. 기능 요구사항 (FR)` 아래 `FR-N` (초기). 옛 문서를 읽는 김에 새 형식으로 고쳐 쓰지 않는다
+- **기술설계서 도면은 세 형식 중 상황에 맞게** — 아스키 박스 도면 (기본) / 아스키 도면 + 번호 + 설명 표 (요소가 많을 때) / mermaid (관계·분기가 본질이고 렌더링 환경 전제 가능). 절차 나열 흐름도로 구조 설명을 대신하지 않는다
+- **도면 안 번호 (①②③) 는 항목 코드가 아니다** — 표에서 설명하기 위한 도면 표기법이라 금지 대상 밖. 요구 항목 번호가 "유일한 예외" 라는 문구와 충돌하지 않는다
+- **옛 문서 소급 수정 없음** — 새로 쓰는 문서부터 적용. 하위 호환으로 계속 읽힌다
+- **구현계획서는 범위 밖** — `writing-plans` / `auto-writing-plans` 는 대상이 아니다. 두 파일의 `FR` 표기는 옛 피처 스펙을 가리키는 내부 주석뿐이고 요구 항목 번호를 찾아 읽는 문구가 없다
+
+### 회귀 패턴
+
+| 누락 | 증상 |
+|---|---|
+| 정식·자동 한쪽만 수정 | 두 경로가 만드는 문서의 문체가 갈린다. 문서를 나란히 놓고 읽기 전에는 안 드러난다 |
+| 읽는 쪽의 하위 호환 문구 삭제 | 옛 피처 문서를 다시 열 때 요구 항목을 못 찾는다 |
+| 읽는 쪽 중 한 곳 누락 | 그 스킬만 옛 형식을 기대한 채 남는다 |
+| 도면 형식 판단 기준 삭제 | 매번 형식이 흔들리고, 결국 한 형식만 쓰게 된다 |
+| 스타일 룰을 스킬 본문 자체에 적용 | 에이전트가 읽는 식별자와 룰이 지워져 스킬이 망가진다 |
+| 흐름도 노드 이름 일부만 교체 | 없는 노드를 가리키는 연결선이 생겨 그래프가 깨진다 |
+
+### 회귀 catch grep
+
+```bash
+grep -lF "## 산출물 문서 스타일" skills/brainstorming/SKILL.md skills/auto-brainstorming/SKILL.md skills/tech-design/SKILL.md skills/auto-tech-design/SKILL.md | wc -l
+# expected: 4
+```
+
+```bash
+grep -cF "### 도면 형식" skills/tech-design/SKILL.md skills/auto-tech-design/SKILL.md
+# expected: 각 1
+```
+
+```bash
+grep -cF "**요구 1**" skills/brainstorming/SKILL.md
+# expected: 1
+```
+
+```bash
+grep -c "FR-N" skills/tech-design/SKILL.md
+# expected: 3 (하위 호환 문구 — 0 이면 회귀)
+```
+
+```bash
+grep -c "FR-3" README.md
+# expected: 0
+```
+
+```bash
+grep -c "FR-N" commands/og-brainstorm.md
+# expected: 0
+```
+
+```bash
+grep -c "Self-review (6 items)" skills/brainstorming/SKILL.md
+# expected: 0
+```
+
+### 영향 범위
+
+- 스킬 8 (`brainstorming` / `auto-brainstorming` / `tech-design` / `auto-tech-design` / `verifying-spec` + 그 대조 검증 프롬프트 / `change-propagation` / `risk-annotation`) + 커맨드 1 (`og-brainstorm` 형식 비교 한 줄) + `README.md` 4곳 + fixture 2 (H21 신규 + 인덱스) + `CLAUDE.md`. 버전 bump 는 main 전용 룰에 따라 main 에서
+- `writing-plans` / `auto-writing-plans` / `executing-plans` / `js-super-sub-driven` — 변경 0
+- og-* / worktree 계열 / `scripts/` / `hooks/` / `agents/` 영향 0
+- 실행 코드 변경 0 — 스킬 본문과 문서 텍스트만
+## 구현계획서 코드 강제 + 위키형 분할 결합
+
+계획서가 길어지면 구현 코드 블록을 생략하고 자연어만 남기는 drift 가 실제로 발생했다 (사용자 catch — 코드를 검토하려 했는데 계획서에 코드가 없었다). 원인은 코드 존재를 검사하는 장치가 없었던 것 — 기존 byte-equal 검사는 존재하는 블록의 내용만 보므로 블록이 없으면 0건 매치로 통과한다. `scripts/plan_guard.py` 가 그 빈 자리를 메운다. spec: `docs/features/2026-08-29-구현계획서-코드강제-분할/`.
+
+### 핵심 룰
+
+- **문서 집합 해석은 한 곳에서만** — `plan_guard.resolve_documents()` 가 인덱스 → 하위 문서 집합을 푸는 단일 진입점이다. 소비자가 각자 해석하면 한 곳만 어긋나도 인덱스만 검사하고 통과하는 false-pass 가 난다
+- **임계값 10 / 상한 3** — task 10개 이상이면 분할 필수, 하위 문서 하나에 task 최대 3개. 둘 다 결정적 상수 (`SPLIT_THRESHOLD` / `MAX_TASKS_PER_SUBDOC`)
+- **재량은 나누는 방향으로만** — 10개 미만의 분할은 허용, 10개 이상의 단일 문서는 차단
+- **인덱스 파일 이름 불변** — `<slug>-implementation-plan.md` 그대로. 하위 문서는 `plan/tasks-NN-MM.md` 로, 기존 파일명 정규식에 **일부러 매치되지 않게** 짓는다 (최신 계획서 자동 선택이 하위 문서를 오선택하는 사고 차단)
+- **하위 문서에 변경이력 footer 없음** — 모든 entry 는 인덱스로 모인다
+- **축약 마커는 주석 형태만 탐지** — 맨몸 `...` 한 줄은 정상 코드와 충돌하므로 제외. 같은 task 의 `**원본**` 블록에 있던 라인은 면제 (원래 파일에 있던 표현)
+- **기존 byte-check 모듈 무변경** — `plan_byte_check.py` 는 그대로 두고 wrapper 가 문서별로 호출한다. 그 파일은 구현 / 재정렬 프롬프트 + sub-driven 본문과 atomic 번들로 묶여 있어 건드리면 번들 전체 재검증이 필요하다
+
+### 회귀 패턴
+
+| 누락 | 증상 |
+|---|---|
+| 소비자가 `resolve_documents` 를 안 쓰고 자체 해석 | 그 소비자만 인덱스를 보고 통과 — false-pass 재발 |
+| G1 검사 약화 | 코드 없는 계획서가 다시 통과 (이번 사고 그대로 재현) |
+| 축약 마커 면제 규칙 삭제 | 원래 파일에 있던 주석이 오탐으로 잡혀 게이트가 막힘 |
+| 하위 문서 이름을 `-implementation-plan.md` 접미사로 변경 | 최신 계획서 자동 선택이 하위 문서를 본체로 오선택 |
+| 하위 문서에 변경이력 footer 추가 | 이력이 흩어져 감사 흐름이 끊김 + live 판정이 어긋남 |
+| 정식 흐름만 수정 (자동 흐름 미동기) | 두 경로의 규약이 갈림 — 자동 흐름 계획서에 코드 생략 잔존 |
+| 실행 진입 시에도 강제 검사 추가 | 기존 계획서가 전부 차단 — 소급 비대상 원칙 위반 |
+
+### 회귀 확인
+
+```bash
+python3 -c "from scripts.plan_guard import resolve_documents, check_plan, verify_documents_byte_equal; print('OK')"
+# expected: OK
+```
+
+```bash
+grep -c "SPLIT_THRESHOLD = 10" scripts/plan_guard.py
+# expected: 1
+```
+
+```bash
+grep -c "MAX_TASKS_PER_SUBDOC = 3" scripts/plan_guard.py
+# expected: 1
+```
+
+```bash
+grep -lF "plan_guard" skills/writing-plans/SKILL.md skills/auto-writing-plans/SKILL.md | wc -l
+# expected: 2
+```
+
+```bash
+grep -c "plan/tasks-" skills/writing-plans/SKILL.md skills/auto-writing-plans/SKILL.md skills/executing-plans/SKILL.md skills/js-super-sub-driven/SKILL.md
+# expected: 각 1 이상
+```
+
+```bash
+test -f skills/js-super-sub-driven/tests/H20-plan-split/README.md && echo OK
+# expected: OK
+```
+
+```bash
+grep -c "분할 계획서 예외 (하위 문서)" skills/change-history/SKILL.md
+# expected: 1
+```
+
+### 영향 범위
+
+- 스크립트 2 신규 + 1 수정 (추가 전용 — 기존 함수 시그니처·exit code 규약 무변경이라 3 skill 의 사전 검사 명령 동기 불필요), 스킬 본문 8, 커맨드 2, fixture 1, CLAUDE.md
+- 보조 에이전트 프롬프트 3종 (`implementer-prompt.md` / `reorder-prompt.md` / `spec-reviewer-prompt.md`) **무변경** — task 전문을 붙여넣는 방식이라 계획서 레이아웃과 무관
+- 기존 계획서 소급 적용 없음 — 새 규약은 머지 후 작성되는 계획서부터
+- 테스트 코드는 그대로 자연어 `**검증**:` 유지 — 이번 강제화는 구현 코드 전용
+- og-* / worktree 계열 / fast-tasks 영향 0
+- 버전 bump 는 main 전용 룰에 따라 main 에서

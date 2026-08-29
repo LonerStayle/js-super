@@ -29,13 +29,16 @@ Agent tool (general-purpose):
 
     <TARGET_PATH>
 
-    Read all of them with the Read tool. Read nothing else.
+    Read all of them with the Read tool. If the target links to detail
+    documents under a `plan/` folder beside it, those are part of the
+    target — read them too. Read nothing else.
 
     ## Your job
 
     Two failure modes, and only these two.
 
-    **Gap** — an upstream item (FR-N, NFR, key decision, risk, constraint,
+    **Gap** — an upstream item (요구 N — older docs write it FR-N —, NFR,
+    key decision, risk, constraint,
     explicit exclusion) that appears nowhere downstream. Name the upstream
     item and say where you looked.
 

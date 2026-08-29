@@ -99,6 +99,8 @@ You are performing a STRICT code-block prettify on a Korean implementation-plan 
 
 Target file: <ABSOLUTE_PATH>
 
+(분할 구조 계획서에서는 caller 가 `**수정 후**` 블록을 가진 문서마다 이 보조 에이전트를 하나씩, 같은 메시지에 실어 병렬로 호출한다. 각 호출은 자기 대상 파일 하나만 만진다.)
+
 Your job: improve READABILITY of "수정 후" code blocks ONLY. Other content is byte-identical.
 
 # Identification — what counts as a target block
