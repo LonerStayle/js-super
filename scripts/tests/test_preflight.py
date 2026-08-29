@@ -207,3 +207,29 @@ def test_subagent_task_entry_check_depth2_hint(tmp_path):
     result = subagent_task_entry_check(tmp_path / "foo-implementation-plan.md")
     assert result.ok is False
     assert "승격" in result.human_reason
+
+
+def test_code_pretty_check_split_plan_modified_block_in_subdoc(tmp_path):
+    """분할 구조 — 인덱스에는 **수정 후** 가 없고 하위 문서에만 있으면 통과해야 한다."""
+    idx = tmp_path / "foo-implementation-plan.md"
+    _write(idx, "# x\n### Task 1: a\n**상세**: plan/tasks-01.md\n## 변경이력\n")
+    _write(tmp_path / "plan" / "tasks-01.md", "### Task 1: a\n**수정 후**:\n```py\npass\n```\n")
+    result = code_pretty_check(idx)
+    assert result.ok is True
+
+
+def test_code_pretty_check_split_plan_no_modified_block_anywhere(tmp_path):
+    """분할 구조 — 인덱스와 하위 문서 어디에도 **수정 후** 가 없으면 기존처럼 실패한다."""
+    idx = tmp_path / "foo-implementation-plan.md"
+    _write(idx, "# x\n### Task 1: a\n**상세**: plan/tasks-01.md\n## 변경이력\n")
+    _write(tmp_path / "plan" / "tasks-01.md", "### Task 1: a\n**검증**: 문구만 바뀐다.\n")
+    result = code_pretty_check(idx)
+    assert result.ok is False
+    assert "수정 후" in result.reason
+
+
+def test_code_pretty_check_single_doc_unaffected(tmp_path):
+    """plan/ 하위 폴더가 없는 단일 문서 계획서는 기존과 동일하게 인덱스 본문만으로 판정한다."""
+    plan = tmp_path / "foo-implementation-plan.md"
+    _write(plan, "# x\n**수정 후**:\n```py\npass\n```\n## 변경이력\n")
+    assert code_pretty_check(plan).ok is True
