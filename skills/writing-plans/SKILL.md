@@ -74,6 +74,7 @@ You MUST create a TaskCreate task for each of these items and complete them in o
 3. **구현계획서 task 목록 작성** — each task = one TDD cycle (계획서에는 `**검증**:` 자연어 설명만, 실행 단계에서 test → fail → impl → pass → commit), 2-5 minutes per step
 4. **위험 코드 지점 (§2) 채우기** — every risk category from <slug>-tech-design.md §6 mapped to a concrete location + mitigation
 5. **자체 점검** — spec coverage / placeholder scan / type consistency / 위험 coverage
+5.5. **문서 구조 확정 + 코드 강제 검사** — task 수를 세고, 10개 이상이면 인덱스 + `plan/` 하위 문서로 나눈다 (Plan Split 섹션). 그런 다음 `plan_guard` 검사를 돌려 코드 블록 부재 / 축약 마커 / 구조 위반을 확인한다. 위반이 하나라도 있으면 계획서는 저장되지 않는다.
 6. **코드 정리 + 용어집 작성 (병렬)** — dispatch `code-pretty` (Sonnet subagent, prettifies `**수정 후**` blocks) and `glossary` (Sonnet subagent, writes `<slug>-glossary.md`) in the SAME message so they run concurrently. Both run BEFORE verifying-spec and stop once the first change-history entry is logged.
 7. **사양 정합성 검증** — main agent runs A+C verification on the prettified plan via `verifying-spec` (Tolerance for missing skill)
 8. **사용자 검토 (구현계획서)** — show the plan (code-pretty applied) + `<slug>-glossary.md` + verifying-spec report + code-pretty diff summary; get approval (loop until OK; on changes → revise → back to step 6 코드 정리 + 용어집)
@@ -187,6 +188,36 @@ Every implementation plan MUST start with:
 
 ---
 ```
+
+## Plan Split — 인덱스 + 하위 문서
+
+task 가 **10개 이상**이면 계획서를 나눈다. 미만이면 단일 문서 그대로다. 미만이어도 코드량이 많다고 판단되면 나눠도 된다 — 재량은 나누는 방향으로만 열려 있다.
+
+```
+docs/features/<date>-<slug>/
+├── <slug>-implementation-plan.md     ← 인덱스 (이름 그대로)
+└── plan/
+    ├── tasks-01-03.md
+    ├── tasks-04-06.md
+    └── tasks-07.md
+```
+
+하위 문서 이름은 `plan/tasks-NN.md` 또는 `plan/tasks-NN-MM.md` (2자리, 연속 범위). task 번호는 문서를 가로질러 1부터 이어지는 전역 연번이고, 연관된 task 가 인접 번호가 되도록 정렬한다. **하위 문서 하나에 task 는 최대 3개**까지다.
+
+인덱스의 task 블록은 헤더 필드만 남긴다 — `**상세**` 링크 / `**Files:**` / `**Model**` / `**검증**`. step 목록과 코드 블록은 하위 문서에 둔다. 실행 단계가 인덱스만 읽고 DAG 를 짤 수 있어야 하기 때문이다.
+
+```markdown
+### Task 4: 결제 검증 helper
+
+**상세**: plan/tasks-04-06.md
+**Files:**
+- Modify: `src/pay/verify.py:40-88`
+- Test: `tests/pay/test_verify.py`
+**Model**: sonnet
+**검증**: <자연어 1~2줄>
+```
+
+하위 문서는 인덱스와 같은 헤더 필드 + step 목록 + 코드 블록을 담는다. **변경이력 footer 는 두지 않는다** — 계획서의 변경이력은 인덱스 한 곳으로 모은다.
 
 ## Task Structure (inherited)
 
@@ -365,39 +396,51 @@ After writing the complete plan, look at it with fresh eyes:
 4. **위험 코드 지점 coverage**: Every category in <slug>-tech-design.md §6 has at least one corresponding entry in §2.
 5. **same-file 묶음 룰 위반 검사**: task 들 중 같은 파일만 만지는 chain 이 2건 이상 있는지 확인. 있으면 D1 의 3 조건 (같은 파일 / test 경계 X / mechanical) 재검토 → 묶을지 결정. (v2.0.1+)
 6. **검증 필드 구체성 (v2.9+)**: 코드 변경 task 마다 `**검증**:` 필드가 있고 "무엇을 + 어떤 기준" 을 담았는지 확인. 동어반복 ("테스트 작성" 한 줄) 이나 테스트 코드 블록이 남아 있으면 수정.
+7. **구현 코드 존재 확인**: 파일을 만들거나 고치는 task 마다 코드 블록이 실제로 있는지 확인. 자연어 설명만 남은 task, 코드 블록 안의 생략 표현 (`... 생략`, `기존 코드 유지`, `이하 동일`) 은 그 자리에서 실제 코드로 채운다. 계획서가 길어질수록 이 항목이 무너지기 쉬우니 task 를 하나씩 짚어가며 본다.
+8. **문서 구조 확인**: task 가 10개 이상이면 인덱스 + `plan/` 하위 문서로 나뉘어 있는지, 하위 문서마다 task 가 3개 이하인지, 인덱스 링크와 실제 파일이 맞는지 확인.
 
 If you find issues, fix them inline. If you find a spec requirement with no task, add the task.
 
-### plan_byte_check helper (v2.0.0+)
+### plan_guard + plan_byte_check helper
 
-After all tasks are written and self-review checks pass, run the byte-equal
-verifier:
+After all tasks are written and self-review checks pass, run the guard. It
+covers code presence (G1), elision markers (G2), split structure (G3~G5),
+and byte-equality across the whole document set (G6):
 
 ```bash
 source .venv/bin/activate && python -c "
 import sys
 from pathlib import Path
-from scripts.plan_byte_check import verify_plan_block_byte_equal
-mismatches = verify_plan_block_byte_equal(
-    Path('docs/features/<date>-<slug>/<slug>-implementation-plan.md'),
-    Path('.'),
-)
-if mismatches:
-    for m in mismatches:
-        print(f'MISMATCH #{m.block_index} — {m.reason}')
-        print(f'  file: {m.file_path}')
+from scripts.plan_guard import check_plan, verify_documents_byte_equal
+index = Path('docs/features/<date>-<slug>/<slug>-implementation-plan.md')
+violations = check_plan(index)
+mismatches = verify_documents_byte_equal(index, Path('.'))
+for v in violations:
+    print(f'{v.code} — {v.human_reason}')
+    print(f'  문서: {v.doc_path}')
+for m in mismatches:
+    print(f'G6 — {m.reason}')
+    print(f'  파일: {m.file_path}')
+if violations or mismatches:
     sys.exit(1)
-print('plan_byte_check ✅ all blocks byte-equal')
+print('plan_guard ✅ 코드 블록 / 구조 / byte-equal 모두 통과')
 sys.exit(0)
 " 2>&1
 ```
 
-If exit 1 (mismatches found):
-- Mismatch list shown to user.
-- Plan is NOT saved. Fix the `**원본**` blocks (they must be byte-identical
-  to current file content) and re-run the helper.
-- This enforces v2.0.0 byte-copy implementer's precondition: it will
-  fail-fast on mismatch with no LLM fuzzy match fallback.
+If exit 1:
+- The violation list is shown to the user.
+- **Plan is NOT saved.** Fix and re-run:
+  - G1 — the task changes files but carries no code. Write the actual
+    `**원본**` / `**수정 후**` blocks. A natural-language description is
+    not a substitute, no matter how long the plan already is.
+  - G2 — a code block contains an elision marker. Replace it with the real code.
+  - G3~G5 — split the plan (10+ tasks), keep sub-documents to 3 tasks, fix
+    broken links / duplicate task numbers / field mismatches.
+  - G6 — the `**원본**` block is not byte-identical to the current file.
+- This enforces the byte-copy implementer's precondition (fail-fast, no LLM
+  fuzzy match fallback) AND the code-presence rule that the fuzzy path used
+  to let through.
 
 ## Anti-Patterns
 
