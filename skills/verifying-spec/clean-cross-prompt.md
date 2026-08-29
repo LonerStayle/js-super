@@ -29,7 +29,9 @@ Agent tool (general-purpose):
 
     <TARGET_PATH>
 
-    Read all of them with the Read tool. Read nothing else.
+    Read all of them with the Read tool. If the target links to detail
+    documents under a `plan/` folder beside it, those are part of the
+    target — read them too. Read nothing else.
 
     ## Your job
 

@@ -22,7 +22,11 @@ Agent tool (general-purpose):
 
     <TARGET_PATH>
 
-    Read it with the Read tool. This is the ONLY file you may read.
+    Read it with the Read tool.
+
+    If that document links to detail documents under a `plan/` folder
+    beside it, those are part of THIS document — read them too. Read
+    nothing else: no sibling specs, no upstream documents.
 
     ## Your job
 

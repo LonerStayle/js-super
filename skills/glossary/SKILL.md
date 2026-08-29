@@ -103,6 +103,7 @@ The dispatched subagent receives this exact prompt (filled in with target paths)
 당신은 구현계획서를 처음 읽는 개발자를 위한 용어집을 씁니다.
 
 읽을 파일: <PLAN_ABSOLUTE_PATH>
+           (이 파일 옆 `plan/` 폴더에 상세 문서들이 있으면 그것도 함께 읽으세요. 코드 블록이 거기 있습니다.)
 쓸 파일:   <GLOSSARY_ABSOLUTE_PATH>
 프로젝트 루트: <REPO_ROOT>
 
