@@ -1757,7 +1757,8 @@ def _compact(text: str, limit: int = 80) -> str:
 if __package__ in (None, ""):  # python3 scripts/code_gate.py 직접 실행
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     sys.modules.setdefault("scripts.code_gate", sys.modules[__name__])
-from scripts.mutation import MUTANT_STATUS_KO, check_mutation
+from scripts.mutation.score import MUTANT_STATUS_KO
+from scripts.mutation import check_mutation
 
 # ---------------------------------------------------------------------------
 # 실행 루프

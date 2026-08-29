@@ -573,3 +573,35 @@ def _run_mutation_javascript(ctx: gate.GateContext, js_files) -> tuple:
     _write_stryker_config(paths, project_config, runner)
     cmd, scope_notes = _mutation_command(ctx, paths, targets)
     return _mutation_run(ctx, paths, cmd, targets, scope_notes)
+
+
+# ---------------------------------------------------------------------------
+# 선언부 — 이 어댑터가 규격에 신고하는 사실 (계약 테스트가 동작과의 일치를 검사한다)
+# ---------------------------------------------------------------------------
+
+JAVASCRIPT_ADAPTER = score_mod.AdapterSpec(
+    language="javascript",
+    label="자바스크립트",
+    tool="stryker",
+    config_key="mutation.javascript",
+    # 항등 변환표. 지금까지는 "변환이 없다" 가 암묵이었는데, 규격 이후에는 "변환표가
+    # 항등이다" 를 명시한다 — 도구가 어휘를 바꾸면 이 표가 흡수하고 게이트 어휘는 흔들리지
+    # 않는다. 변환표 밖 상태는 원어 그대로 통과해 unknown 경로로 간다 (R4).
+    status_map={
+        "Killed": "Killed", "Timeout": "Timeout",
+        "Survived": "Survived", "NoCoverage": "NoCoverage",
+        "CompileError": "CompileError", "RuntimeError": "RuntimeError",
+        "Ignored": "Ignored", "Pending": "Pending",
+    },
+    measure_unit="expression",             # 파일 전체를 훑는다 — 건너뛰는 단위가 없다
+    skip_report=None,
+    incremental_triggers=("소스 변경", "테스트 변경"),  # 도구가 스스로 본다
+    target_syntax=("명령줄 글롭. 이스케이프는 어댑터가 _stryker_glob 로 한다. "
+                   "쉼표는 못 풀어 실행 뒤 대조(_mutation_gaps)가 잡는다"),
+    field_confidence={"line": "tool", "column": "tool", "mutator": "tool", "tests": "tool"},
+    tests_granularity="per-mutant",
+    requires=(),
+    workspace=("게이트 임시 디렉토리(매 실행 삭제) + 캐시에 상태 파일 하나"
+               "(mutation_state_file). 만료·정리 정책: 없음"),
+    copy_limitations=(),                   # 사본을 만들지 않는다
+)

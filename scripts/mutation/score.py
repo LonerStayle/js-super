@@ -14,7 +14,27 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 
-from scripts import code_gate as gate
+# ---------------------------------------------------------------------------
+# 게이트 어휘 — 이 여덟 이름은 게이트 자신의 상태 어휘다 (1c 에서 소유권 이전).
+#
+# 철자가 Stryker 의 mutation-testing-elements 스키마와 같은 것은 역사적 우연이다.
+# 정의는 도구와 무관하다:
+#   Killed        테스트가 변이를 잡았다                      → 분자·분모
+#   Timeout       변이가 테스트를 끝나지 않게 만들었다 — 잡은 것으로 센다 → 분자·분모
+#   Survived      테스트가 돌았는데 못 잡았다                 → 분모
+#   NoCoverage    덮는 테스트가 없어 돌리지 않았다 — 못 잡은 것으로 센다 → 분모
+#   CompileError  변이가 실행 가능한 프로그램을 만들지 못했다  → 제외
+#   RuntimeError  테스트 밖 기반 오류                         → 제외
+#   Ignored       도구나 설정이 의도적으로 뺐다               → 제외
+#   Pending       아직 돌지 않았다                            → 제외
+#
+# 각 어댑터는 자기 어휘 → 게이트 어휘 변환표를 선언부(AdapterSpec.status_map)에 신고한다.
+# 변환표에 없는 상태는 원어 철자 그대로 통과한다 — unknown_mutant_statuses 가 잡아
+# 분포와 참고 문장에 싣고 분모에서 뺀다. 이것이 의도된 경로다 (R4): 이름을 지우는 코드가
+# 어디에도 없어, 모르는 상태가 조용히 사라지는 일은 구조적으로 없다.
+# 어휘를 늘릴 권리는 어댑터에 없다 — 늘리는 순간 이미 튜닝된 다른 언어의 판정이 함께
+# 흔들린다. 어휘 확장은 중립층 변경 + 실증 + 자체 테스트를 요구하는 별도 작업이다.
+# ---------------------------------------------------------------------------
 
 # D1 의 상태 분류. 이 세 묶음이 점수 공식의 전부다.
 MUTATION_KILLED_STATUSES = ("Killed", "Timeout")
@@ -43,6 +63,33 @@ MUTANT_STATUS_KO = {
 
 # 살아남은 변이를 먼저, 테스트가 아예 없는 변이를 뒤에 놓는다 — 고칠 순서 그대로다.
 _SURVIVOR_ORDER = {"Survived": 0, "NoCoverage": 1}
+
+
+@dataclass(frozen=True)
+class AdapterSpec:
+    """어댑터 선언부 — 두 사례(Stryker / mutmut)에서 실제로 갈린 항목만 담는다.
+
+    각 어댑터 모듈이 자기 인스턴스를 모듈 상수(JAVASCRIPT_ADAPTER / PYTHON_ADAPTER)로
+    둔다. 1c 에서의 소비자는 계약 테스트뿐이다 — 선언부는 런타임 분기를 새로 만들지
+    않는다 (동작 불변). 선언이 거짓이면 계약 테스트(test_mutation_contract.py)가 잡는다.
+    유일한 런타임 소비 예외는 실패 각인(python 어댑터)이 incremental_triggers 와 같은
+    무효화 선언을 재사용하는 것이다 — 판정을 바꾸지 않고 보고만 정확해지는 쪽이다.
+    """
+
+    language: str                          # 네 칸 계약의 language 와 일치해야 한다
+    label: str                             # 네 칸 계약의 label 과 일치해야 한다
+    tool: str                              # 도구 이름 (선행 조건 검사의 근거)
+    config_key: str                        # .code-gate.json 안의 자리
+    status_map: dict                       # 자기 어휘 → 게이트 어휘. 값은 여덟 이름 안이어야 한다
+    measure_unit: str                      # 도구가 실제로 훑는 단위 (expression / function)
+    skip_report: str | None                # 훑지 않고 건너뛴 단위의 신고 방법. 없으면 None
+    incremental_triggers: tuple            # 무엇이 바뀌면 증분을 버리는가 ("지원 여부" 는 묻지 않는다)
+    target_syntax: str                     # 대상 목록 표기 규칙과 이스케이프 책임 (어댑터 소유)
+    field_confidence: dict                 # 기록 칸별 신뢰도 — tool / reconstructed / absent
+    tests_granularity: str                 # tests 칸의 단위 — per-mutant / per-function
+    requires: tuple                        # 요구하는 선행 항목 (예: "C1:python"). 없으면 빈 튜플
+    workspace: str                         # 작업 공간의 경로·수명. 만료·정리 정책 선언 자리 포함
+    copy_limitations: tuple                # 사본 방식이 원본과 다르게 만드는 실행 조건. 사본이 없으면 빈 튜플
 
 
 def mutation_score(counts) -> float | None:
@@ -331,3 +378,10 @@ def _mutation_outcome(ctx: gate.GateContext, summary: dict, elapsed: float, targ
     # 못 본 것이 있으면 통과로 내지 않는다. 점수가 변경분 전체를 대표하지 못하기 때문이다.
     outcome["status"] = "findings" if (score < threshold or tail) else "ok"
     return outcome
+
+
+# 뼈대 import 는 정의가 모두 끝난 뒤에 한다. 뼈대 하단이 이 모듈의 상수
+# (MUTANT_STATUS_KO)를 가져가는데, 이 import 가 파일 위에 있으면 어댑터를 단독으로
+# 먼저 import 하는 순서에서 상수가 정의되기 전에 뼈대 실행이 끼어들어 순환이 터진다.
+# 함수 본문의 gate.* 참조는 호출 시점 조회라 이 위치로 충분하다.
+from scripts import code_gate as gate  # noqa: E402

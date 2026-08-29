@@ -601,7 +601,7 @@ def _mutmut_incremental_guard(ctx: gate.GateContext, work: Path, targets, change
                                   targets, changed_tests)
     if reason and mutants.exists() and not _mutmut_drop_mutants(ctx, mutants, reason):
         return
-    _mutmut_write_state(ctx, work, targets)
+    _mutmut_write_state(ctx, work, targets, changed_tests)
 
 
 def _mutmut_drop_mutants(ctx: gate.GateContext, mutants: Path, reason: str) -> bool:
@@ -619,15 +619,103 @@ def _mutmut_drop_mutants(ctx: gate.GateContext, mutants: Path, reason: str) -> b
     return True
 
 
-def _mutmut_write_state(ctx: gate.GateContext, work: Path, targets) -> None:
-    """다음 회차가 견줄 기준을 남긴다. 못 남기면 다음 회차가 사본을 새로 만든다."""
+def _mutmut_write_state(ctx: gate.GateContext, work: Path, targets, changed_tests=()) -> None:
+    """다음 회차가 견줄 기준을 남긴다. 못 남기면 다음 회차가 사본을 새로 만든다.
+
+    상태에는 실패 각인의 입력 지문(대상 목록 + 변경분의 테스트 파일 목록 + 내용 지문)도
+    함께 남는다. 이 상태를 통째로 새로 쓰는 것이 지난 회차의 각인(baseline_failure)을
+    지우는 동작이기도 하다 — 실제로 도는 회차는 항상 여기를 지나므로, 각인은
+    "억제된 회차" 에서만 살아남는다.
+    """
+    state = {"targets": list(targets), "changed_tests": list(changed_tests),
+             "content": _mutmut_content_fingerprint(ctx, targets, changed_tests)}
     try:
         (Path(work) / _MUTMUT_STATE_NAME).write_text(
-            json.dumps({"targets": list(targets)}, ensure_ascii=False), encoding="utf-8")
+            json.dumps(state, ensure_ascii=False), encoding="utf-8")
     except OSError as exc:
         ctx.notes.append(
             f"파이썬 뮤테이션의 증분 기준을 남기지 못했습니다 ({type(exc).__name__}). "
             "다음 회차는 사본을 새로 만듭니다.")
+
+
+# 실패 각인 — "변이를 하나도 못 돌리고 기준 단계에서 죽은" 회차의 사유를 상태 파일에
+# 남기는 자리. 그 회차는 기준 테스트에 회차당 수십 초를 쓰고도 같은 오류만 되풀이하므로,
+# 입력이 같으면 다시 돌리지 않고 즉시 같은 오류를 낸다.
+#
+# 각인의 무효화 조건은 증분 무효화 선언(incremental_triggers)과 같은 것을 쓴다 —
+# 별도 조건을 만들면 두 무효화가 어긋나는 자리가 생긴다. 선언한 세 조건을 "지난 실패
+# 회차 이후 실제로 바뀌었는가" 로 평가한다:
+#   대상 목록 변화        → 지문의 targets 목록 비교
+#   테스트 파일 변경분 포함 → 지문의 changed_tests 목록 + 그 파일들의 내용 지문 비교
+#   함수 해시(소스 변경)   → 대상 파일들의 내용 지문 비교
+# 목록만 비교하면 사용자가 테스트의 git 의존을 끊는 수정을 해도 각인이 남아 낡은 오류가
+# 나간다 — 그래서 내용 지문이 필요하다. 이 메커니즘은 이 어댑터의 상태 파일 안 필드다 —
+# 중립층과 합치는 층은 이것을 모른다.
+_MUTMUT_FAILURE_KEY = "baseline_failure"
+
+
+def _mutmut_content_fingerprint(ctx: gate.GateContext, targets, changed_tests) -> str:
+    """입력 파일들(대상 + 변경분의 테스트)의 내용 지문. 변경분 한정이라 비용이 작다 (R3)."""
+    digest = hashlib.sha256()
+    for rel in sorted(set(targets) | set(changed_tests)):
+        digest.update(rel.encode("utf-8", "replace") + b"\x00")
+        try:
+            digest.update((Path(ctx.repo_root) / rel).read_bytes())
+        except OSError:
+            digest.update(b"<unreadable>")
+        digest.update(b"\x00")
+    return digest.hexdigest()
+
+
+def _mutmut_imprint_failure(ctx: gate.GateContext, work: Path, outcome: dict) -> None:
+    """실패 사유를 각인한다. 지문은 이미 상태에 있다. 못 남기면 다음 회차가 그냥 다시 돈다."""
+    path = Path(work) / _MUTMUT_STATE_NAME
+    state = gate._read_json_object(path)
+    state[_MUTMUT_FAILURE_KEY] = {"reason": outcome.get("reason", ""),
+                                  "human_reason": outcome.get("human_reason", "")}
+    try:
+        path.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+    except OSError as exc:
+        ctx.notes.append(
+            f"파이썬 뮤테이션의 실패 각인을 남기지 못했습니다 ({type(exc).__name__}). "
+            "다음 회차는 기준 테스트를 다시 돌립니다.")
+
+
+def _mutmut_imprint_matches(ctx: gate.GateContext, state: dict, targets,
+                            changed_tests) -> bool:
+    """지난 실패 회차의 입력 지문과 지금이 같은가 — 목록 둘과 내용 지문 전부."""
+    if list(state.get("targets") or ()) != list(targets):
+        return False
+    if list(state.get("changed_tests") or ()) != list(changed_tests):
+        return False
+    return state.get("content") == _mutmut_content_fingerprint(ctx, targets, changed_tests)
+
+
+def _mutmut_imprinted_outcome(ctx: gate.GateContext, work: Path, targets,
+                              changed_tests) -> dict | None:
+    """지난 회차의 실패 각인이 아직 유효하면 그 오류를 즉시 낸다. 아니면 None.
+
+    유효 = 입력 지문(대상 목록 + 변경분의 테스트 파일 목록 + 내용 지문)이 실패한 회차와
+    같다 — 무효화 조건의 평가 방식은 _MUTMUT_FAILURE_KEY 주석 참조. status 는 지난 회차와
+    같은 error 라 판정이 바뀌지 않는다 — 바뀌는 것은 소요 시간(기준 테스트 생략)과
+    문장의 정확도뿐이다.
+    """
+    state = gate._read_json_object(Path(work) / _MUTMUT_STATE_NAME)
+    imprint = state.get(_MUTMUT_FAILURE_KEY)
+    if not isinstance(imprint, dict):
+        return None
+    if not _mutmut_imprint_matches(ctx, state, targets, changed_tests):
+        return None
+    last_human = imprint.get("human_reason") or imprint.get("reason") or "(기록 없음)"
+    ctx.notes.append("지난 회차의 실패 각인이 유효해 기준 테스트를 다시 돌리지 않았습니다.")
+    return {
+        "status": "error",
+        "reason": ("mutmut baseline failure repeated; inputs unchanged since last run: "
+                   + (imprint.get("reason") or "")),
+        "human_reason": (
+            f"지난 회차와 입력이 같아 다시 돌지 않았습니다. 지난 사유: {last_human} "
+            f"다시 재려면 대상이나 테스트를 바꾸거나 사본 디렉토리를 지우십시오 ({work})."),
+    }
 
 
 def mutmut_work_dir(repo_root: Path, notes: list) -> Path | None:
@@ -727,6 +815,15 @@ def _mutmut_command(ctx: gate.GateContext, work: Path, targets) -> tuple:
 _MUTMUT_FAILURE_CAUSES = (
     ("Module name starts with", "테스트가 소스를 `src.` 로 시작하는 경로로 import 하면 mutmut 이 멈춥니다."),
     ("none match any mutant key", "테스트가 사본이 아닌 원본을 import 했습니다 (conftest 의 경로 조작과 부딪힌 경우입니다)."),
+    # 사본 한계(copy_limitations 선언)의 실측 사례 — "failed to collect stats" 보다 먼저
+    # 봐야 한다. 같은 회차에 두 문장이 함께 나오는데 이쪽이 원인이고 저쪽은 증상이다.
+    ("not a git repository",
+     "사본에는 .git 이 없습니다. git 을 부르는 테스트는 사본 안에서 돌 수 없습니다. "
+     "그런 테스트를 뮤테이션 대상 테스트에서 빼거나, 테스트의 git 의존을 끊으십시오."),
+    # 같은 오류의 한국어 로케일 문구 (실측 — git 이 LANG 을 따라간다).
+    ("깃 저장소가 아닙니다",
+     "사본에는 .git 이 없습니다. git 을 부르는 테스트는 사본 안에서 돌 수 없습니다. "
+     "그런 테스트를 뮤테이션 대상 테스트에서 빼거나, 테스트의 git 의존을 끊으십시오."),
     ("failed to collect stats", "사본 안에서 기준 테스트가 실패해 변이를 시작하지 못했습니다."),
     ("Could not figure out where the code to mutate is", "소스 루트를 찾지 못했습니다."),
     ("could not find any test case for any mutant",
@@ -942,6 +1039,11 @@ def _mutmut_setup(ctx: gate.GateContext, targets, changed_tests) -> tuple:
     work, extra, blocked = _mutmut_workspace(ctx, roots)
     if blocked is not None:
         return None, (), blocked
+    imprinted = _mutmut_imprinted_outcome(ctx, work, targets, changed_tests)
+    if imprinted is not None:
+        # 지난 회차가 기준 단계에서 죽었고 입력이 그대로다 — 다시 돌아도 같은 오류에
+        # 수십 초만 쓴다. 증분 가드보다 먼저 본다 (가드가 상태를 새로 쓰면 각인이 지워진다).
+        return None, (), imprinted
     _mutmut_incremental_guard(ctx, work, targets, changed_tests)
     carried = _mutmut_project_settings(ctx.repo_root)
     _mutmut_config_notes(ctx, extra, carried)
@@ -1026,7 +1128,10 @@ def _mutmut_finished(ctx: gate.GateContext, work: Path, targets, proc, summary: 
             return _mutmut_uncovered(ctx, work, targets, elapsed)
         # 변이를 만들기만 하고 하나도 돌리지 못한 회차. `.meta` 는 남지만 전부 "실행 안 됨"
         # 이라 점수가 없다. 그대로 "점수를 낼 변이가 없다" 고만 내면 왜 그런지가 사라진다.
-        return _mutmut_no_result(proc, elapsed), None
+        # 이 회차의 사유를 각인해, 입력이 같은 다음 회차가 기준 테스트를 다시 돌리지 않게 한다.
+        outcome = _mutmut_no_result(proc, elapsed)
+        _mutmut_imprint_failure(ctx, work, outcome)
+        return outcome, None
     if int(summary["counts"].get("Pending", 0) or 0):
         return _mutmut_incomplete(proc, summary, elapsed), None
     _mutmut_exit_note(ctx, proc)
@@ -1122,3 +1227,38 @@ def _run_mutation_python(ctx: gate.GateContext, py_files) -> tuple:
 def _mutation_changed_python_files(ctx: gate.GateContext) -> list:
     """C7 이 볼 파이썬 변경 파일. 변경분의 단일 출처는 그대로 ctx.change.files 다."""
     return [rel for rel in ctx.change.files if Path(rel).suffix.lower() in MUTATION_PY_SUFFIXES]
+
+
+# ---------------------------------------------------------------------------
+# 선언부 — 이 어댑터가 규격에 신고하는 사실 (계약 테스트가 동작과의 일치를 검사한다)
+# ---------------------------------------------------------------------------
+
+PYTHON_ADAPTER = score_mod.AdapterSpec(
+    language="python",
+    label="파이썬",
+    tool="mutmut",
+    config_key="mutation.python",
+    # 변환표 = MUTMUT_STATUS_TO_GATE. 종료 코드 정수 → mutmut 낱말 변환
+    # (MUTMUT_EXIT_CODE_TO_STATUS)은 변환표 앞의 어댑터 내부 단계다 — 규격은
+    # "자기 어휘 → 게이트 어휘" 한 겹만 본다. 표에 없는 상태(suspicious /
+    # caught by type check)는 원어 그대로 통과해 unknown 경로로 간다 (R4).
+    status_map=MUTMUT_STATUS_TO_GATE,
+    measure_unit="function",               # 함수 단위로 훑는다
+    skip_report=("데코레이터 붙은 함수는 통째로 빠진다 — python_decorated_skips 가 "
+                 "mutmut 의 규칙을 재현해 빠진 이름을 결과 문장에 신고한다"),
+    # 앞의 것은 도구가 스스로 보는 것, 뒤 둘은 게이트 보강(_mutmut_stale_reason)이다.
+    # 실패 각인의 무효화도 이 선언을 재사용한다 — 별도 조건을 만들면 두 무효화가
+    # 어긋나는 자리가 생긴다.
+    incremental_triggers=("함수 해시", "테스트 파일 변경분 포함", "대상 목록 변화"),
+    target_syntax=("설정 파일 fnmatch 글롭. only_mutate 에만 glob.escape 를 건다 — "
+                   "source_paths 와 also_copy 는 글롭이 아니라 경로라 이스케이프하면 매치가 깨진다"),
+    field_confidence={"line": "reconstructed", "column": "absent",
+                      "mutator": "absent", "tests": "tool"},
+    tests_granularity="per-function",
+    requires=("C1:python",),               # ctx.python_tests_status 를 본다
+    workspace=("캐시 안에 회차를 넘어 사는 디렉토리 + 소스·테스트 심링크"
+               "(mutmut_work_dir). 만료·정리 정책: 없음 (실측 18MB)"),
+    copy_limitations=(
+        "사본에 .git 이 없다 — git 을 부르는 테스트는 사본 안에서 돌 수 없다",
+    ),
+)

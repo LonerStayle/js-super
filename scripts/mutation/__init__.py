@@ -12,14 +12,6 @@ from __future__ import annotations
 
 import time
 
-from scripts import code_gate as gate
-from scripts.mutation import score as score_mod
-from scripts.mutation import javascript
-from scripts.mutation import python
-
-# 뼈대(리포트 구간)가 패키지에서 가져다 쓰는 상수 — 값이 고정된 표라 값 노출로 충분하다.
-MUTANT_STATUS_KO = score_mod.MUTANT_STATUS_KO
-
 def _mutation_preconditions(ctx: gate.GateContext, js_files, py_files) -> dict | None:
     """두 언어 모두에 걸리는 사유. 있으면 그 결과를, 없으면 None (R4).
 
@@ -166,3 +158,13 @@ def check_mutation(ctx: gate.GateContext) -> dict:
         parts.append(python._check_mutation_python(ctx, py_files) if score_mod._mutation_budget(ctx) > 0
                      else score_mod._mutation_out_of_budget("python", "파이썬", budget))
     return _merge_mutation_languages(ctx, parts)
+
+
+# import 는 정의가 모두 끝난 뒤에 한다. 어댑터·중립층은 뼈대(code_gate)를 import 하고,
+# 뼈대는 하단에서 이 패키지의 check_mutation 을 도로 import 한다 — 이 순환은 어느 쪽이
+# 먼저 import 되든 "이름 정의를 끝낸 뒤 상대를 부른다" 로만 풀린다. 함수 본문의
+# gate.* / score_mod.* / javascript.* / python.* 참조는 호출 시점 조회라 이 위치로 충분하다.
+from scripts import code_gate as gate  # noqa: E402
+from scripts.mutation import score as score_mod  # noqa: E402
+from scripts.mutation import javascript  # noqa: E402
+from scripts.mutation import python  # noqa: E402
