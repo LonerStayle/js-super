@@ -178,7 +178,7 @@ flowchart LR
     classDef sub fill:#1e293b,stroke:#06b6d4,color:#e2e8f0
     classDef block fill:#dc2626,stroke:#fca5a5,color:#fff
 
-    P[구현계획.md]:::sub --> I["일꾼 (haiku)<br/>복붙 + 의존 분석"]:::sub
+    P[구현계획.md]:::sub --> I["일꾼 (sonnet)<br/>복붙 + 의존 분석"]:::sub
     I -->|성공| M[메인 AI]:::main
     I -.-> B(("막힘")):::block
     B -.->|자동 호출| R["조정자 (sonnet)<br/>복구 시도"]:::sub
@@ -205,7 +205,7 @@ flowchart LR
 - 7 task → 3 wave 로 묶이면 **체감 시간 ⅓ ~ ½**
 - 계획서가 기준 → **AI 멋대로 코드 짓는 사고 0**
 - 의존 있는 건 **자동으로 순서대로** → race / 깨짐 차단
-- 일꾼 = haiku (저렴) / 조정자 = sonnet (똑똑) → **비용·속도·안전 동시**
+- 일꾼도 조정자도 sonnet 이상 → **속도와 안전 동시**
 
 </td>
 </tr>
@@ -388,8 +388,8 @@ flowchart LR
 
 > *"feature 작업 1 주 했더니 main 이 멀리 갔어요. 머지하려니 충돌 무서워요"*
 
-feature 브랜치가 오래 살면 main 이 앞으로 갑니다. 보통은 main 워크트리에서 `git merge feature` 하다가 거기서 충돌 나서 main 이 더러워지죠.
-**`/merge-back-worktree` 은 거꾸로**, **feature 워크트리 안에서 main 을 당겨와 충돌을 거기서 해결**합니다.
+feature 브랜치가 오래 살면 부모 브랜치가 앞으로 갑니다. 보통은 부모 워크트리에서 `git merge feature` 하다가 거기서 충돌 나서 부모가 더러워지죠.
+**`/merge-back-worktree` 은 거꾸로**, **feature 워크트리 안에서 부모를 당겨와 충돌을 거기서 해결**합니다.
 
 <table>
 <tr>
@@ -403,7 +403,7 @@ cd .worktrees/GNG-432-캔버스첨부오류
 /merge-back-worktree
 ```
 
-이걸 하면 main 의 최신 변경을 이 워크트리로 당겨 옵니다. 충돌은 여기서만 일어나요.
+이걸 하면 이 워크트리의 직계 부모 브랜치에서 최신 변경을 당겨 옵니다. 충돌은 여기서만 일어나요. 워크트리에서 또 워크트리를 딴 경우(재분기)에는 최상위 main 이 아니라 바로 위 부모가 대상입니다.
 
 </td>
 <td width="50%" valign="top">
@@ -720,7 +720,7 @@ flowchart LR
 
     M[메인 AI]:::main
     P[구현계획.md]:::sub
-    I["일꾼 (haiku)<br/>계획 그대로 실행"]:::sub
+    I["일꾼 (sonnet)<br/>계획 그대로 실행"]:::sub
     R["조정자 (sonnet)<br/>막히면 복구 시도"]:::sub
     B((막힘)):::block
 
@@ -732,14 +732,14 @@ flowchart LR
     R -.->|실패| M
 ```
 
-- **일꾼 (haiku, 빠르고 저렴)** — 계획 그대로 실행. 의심스러우면 즉시 멈춥니다.
+- **일꾼 (sonnet)** — 계획 그대로 실행. 의심스러우면 즉시 멈춥니다. 계획서가 더 높은 모델을 지정하면 그 값을 씁니다.
 - **조정자 (sonnet, 똑똑)** — 일꾼이 막히면 자동으로 복구 시도. 그래도 안 되면 사람에게.
 - 일반 `/execute-plan` (인라인) 은 영향 0 — 평소처럼 LLM 자율로 진행됩니다.
 
 </details>
 
 <details>
-<summary><b>전체 Skill 27 개</b></summary>
+<summary><b>전체 Skill 26 개</b></summary>
 
 <br/>
 

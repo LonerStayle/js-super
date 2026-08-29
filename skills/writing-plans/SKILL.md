@@ -319,6 +319,7 @@ digraph plan_flow {
     "File structure outline" [shape=box];
     "Decompose into bite-sized tasks" [shape=box];
     "Self-review (internal)" [shape=box];
+    "Split if 10+ tasks\n+ plan_guard code check" [shape=box];
     "Dispatch code-pretty" [shape=box];
     "Run verifying-spec\n(on the prettified plan)" [shape=box];
     "Single combined approval gate\n(plan + verify + code-pretty diff)" [shape=diamond];
@@ -328,7 +329,8 @@ digraph plan_flow {
     "Read <slug>-requirements.md + <slug>-tech-design.md" -> "File structure outline";
     "File structure outline" -> "Decompose into bite-sized tasks";
     "Decompose into bite-sized tasks" -> "Self-review (internal)";
-    "Self-review (internal)" -> "Dispatch code-pretty";
+    "Self-review (internal)" -> "Split if 10+ tasks\n+ plan_guard code check";
+    "Split if 10+ tasks\n+ plan_guard code check" -> "Dispatch code-pretty";
     "Dispatch code-pretty" -> "Run verifying-spec\n(on the prettified plan)";
     "Run verifying-spec\n(on the prettified plan)" -> "Single combined approval gate\n(plan + verify + code-pretty diff)";
     "Single combined approval gate\n(plan + verify + code-pretty diff)" -> "Self-review (internal)" [label="no — re-prettify + re-verify"];
@@ -391,7 +393,7 @@ Every step must contain the actual content an engineer needs. These are **plan f
 
 After writing the complete plan, look at it with fresh eyes:
 
-1. **Spec coverage**: Skim each FR and key decision in <slug>-requirements.md and <slug>-tech-design.md. Can you point to a task that implements it? List any gaps.
+1. **Spec coverage**: Skim each 요구 항목 and key decision in <slug>-requirements.md and <slug>-tech-design.md. Can you point to a task that implements it? List any gaps. (요구 항목 번호는 현행 `**요구 N**:`, 옛 문서는 `FR-N` — 둘 다 같은 항목으로 센다.)
 2. **Placeholder scan**: Search for any of the patterns from "No Placeholders" above. Fix them.
 3. **Type consistency**: Function names, signatures, and property names must match across tasks (e.g., `clearLayers()` in Task 3 vs `clearFullLayers()` in Task 7 is a bug).
 4. **위험 코드 지점 coverage**: Every category in <slug>-tech-design.md §6 has at least one corresponding entry in §2.
@@ -466,14 +468,15 @@ This summarizes the corrected order (matches Checklist + Process Flow above):
 
 1. **Dispatch code-pretty FIRST** (before verifying-spec, before any user prompt):
    - `code-pretty` → Target: `<slug>-implementation-plan.md` (only `**수정 후**`-labeled blocks). Output: diff summary text (preserved for the approval gate).
+   - **분할한 경우 (`plan/` 하위 문서)**: 코드 블록은 인덱스가 아니라 하위 문서에 있다. `**수정 후**` 블록을 가진 문서마다 `code-pretty` 를 하나씩, **같은 메시지에 실어 병렬로** 호출한다 (각 호출은 자기 대상 파일 하나만 만진다). 인덱스만 대상으로 잡으면 하위 문서의 코드가 한 번도 정리되지 않는다.
    - **Why this order**: verifying-spec then runs against the code blocks the user will actually read, and it doubles as a safety net for anything code-pretty disturbed. Running verify first meant re-verifying nothing after the prettify pass.
    - **Tolerance**: if `code-pretty` is not installed, skip it and emit "ℹ️ code-pretty 가 설치되지 않았습니다. 코드 블록은 그대로 표시됩니다."
    - **용어집은 여기서 만들지 않습니다.** 사용자가 원할 때 `/glossary` 커맨드로 직접 부릅니다.
 
-2. **Run verifying-spec** (after both subagents return):
+2. **Run verifying-spec** (after every dispatched `code-pretty` returns):
    - Target: `<slug>-implementation-plan.md` (post-prettify state)
    - Upstream: `[<slug>-requirements.md, <slug>-tech-design.md]`
-   - Procedure: consistency (FR + key decisions covered as tasks) + code impact (files/functions referenced exist or are explicitly created)
+   - Procedure: consistency (요구 항목 + key decisions covered as tasks) + code impact (files/functions referenced exist or are explicitly created)
    - **Tolerance**: if verifying-spec skill is not installed, skip and emit the notice ("ℹ️ verify-gate 가 설치되지 않았습니다. Phase 2 이후 활성화되며, 지금은 검증 없이 진행합니다.")
 
 3. **Single combined approval gate** — present in ONE message:

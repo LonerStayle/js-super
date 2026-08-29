@@ -169,13 +169,15 @@ git worktree add -b <BR> <MAIN_ROOT>/.worktrees/<BR> HEAD          # 신규 (분
 git worktree add -b <BR> <MAIN_ROOT>/.worktrees/<BR> <BASE>        # 사용자가 베이스 명시 시 (예: "dev 기준으로")
 ```
 
-신규 브랜치 생성 직전 `BASE_SHA` / `BASE_BRANCH` (Step 0 캡처값) 를 그대로 두고, 생성 후 Step 6 보고에 사용한다.
+분기 기준 값은 생성 후 Step 6 보고와 아래 부모 기록에 쓴다. 기본은 Step 0 캡처값 (`BASE_SHA` / `BASE_BRANCH` = 호출 위치 HEAD) 이지만, **사용자가 베이스를 명시한 마지막 케이스에서는 그 베이스 기준으로 두 값을 다시 읽는다** (`git rev-parse <BASE>` 와 브랜치 이름 `<BASE>`). Step 0 값을 그대로 쓰면 이름 접두어, 부모 기록, 보고가 모두 실제 부모가 아닌 브랜치를 가리킨다.
 
-**분기 부모 기록 (`-b` 신규 생성 케이스만)**: 신규 분기 (`-b`) 로 워크트리를 만든 경우에만, `git worktree add` 성공 직후 **별도의 후속 Bash 호출**로 분기 부모를 공유 git config 에 기록한다 (`git worktree add` 와 한 Bash 호출로 묶으면 `worktree-memory-symlink` 훅의 프리픽스 매치가 깨져 심링크가 생성되지 않는다):
+**분기 부모 기록 (`-b` 신규 생성 케이스만)**: 신규 분기 (`-b`) 로 워크트리를 만든 경우에만, `git worktree add` 성공 직후 **별도의 후속 Bash 호출**로 분기 부모를 공유 git config 에 기록한다 (`git worktree add` 와 한 Bash 호출로 묶으면 `worktree-memory-symlink` 훅의 프리픽스 매치가 깨져 심링크가 생성되지 않는다).
+
+⚠️ **값은 실제 문자열로 치환해서 넣는다.** `<BR>` / `<BASE_BRANCH>` / `<BASE_SHA>` 는 Step 0 에서 읽은 값으로 바꿔 쓰는 자리표시자다. 셸 변수(`"$BASE_BRANCH"`) 형태로 두면 안 된다 — 셸 변수는 Bash 도구 호출 사이에 유지되지 않으므로, Step 0 과 다른 호출인 여기서는 빈 값이 기록된다. 빈 값은 `worktree-merge-back` 에서 "기록 없음" 과 구분되지 않아 부모 자동 판별이 매번 실패한다.
 
 ```bash
-git config "branch.<BR>.js-super-parent" "$BASE_BRANCH"
-git config "branch.<BR>.js-super-parent-base" "$BASE_SHA"
+git config "branch.<BR>.js-super-parent" "<BASE_BRANCH>"
+git config "branch.<BR>.js-super-parent-base" "<BASE_SHA>"
 ```
 
 `worktree-merge-back` 은 이 기록으로 직계 부모를 판별해 그 브랜치로 머지한다. 같은 이름 브랜치를 이 스킬로 다시 만들면 (기존 워크트리 제거 후 재생성 등) 기록은 덮어쓴다.
@@ -262,6 +264,7 @@ Claude 메모리 폴더: 메인 → 워크트리 심링크 (n개)
 | for-loop 한 방에 `git worktree add` 묶기 | 훅 프리픽스 미매치 → 심링크 미생성. 브랜치별 개별 Bash 호출. |
 | dirty 워크트리에서 말없이 분기 (또는 stash 로 넘기기) | Step 3.5 게이트 — WIP 커밋 / 커밋 시점 분기 선택. stash 금지. |
 | 기록 명령을 `git worktree add` 와 한 Bash 호출로 묶기 | 훅 프리픽스 미매치 → 심링크 미생성. 기록은 add 이후 별도 호출. |
+| 기록 명령에 `"$BASE_BRANCH"` 처럼 셸 변수를 그대로 두기 | 셸 변수는 Bash 도구 호출 사이에 유지되지 않아 빈 값이 기록된다. Step 0 에서 읽은 실제 문자열로 치환해서 넣는다. |
 | Performing the memory symlink yourself in this skill | Forbidden — handled by `worktree-memory-symlink` PostToolUse hook. The agent must not run any path-mutating shell command (directory creation, symlink, or string substitution) against the Claude memory location. Past versions failed because agents mentally simulated the encoding rule and produced folder names Claude Code never reads. |
 | Clobber worktree's existing memory dir with a symlink | Forbidden. If `$WT_MEMORY` already exists, skip and tell user to migrate manually. |
 | Skip the symlink because "user didn't ask for it" | Always attempt. The whole point is zero-friction worktree start. Only skip when main memory missing or WT memory already there. |

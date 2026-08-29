@@ -11,15 +11,15 @@
 ## 시나리오 B — 산출물이 요구 항목 계약을 지킨다
 
 - 입력: 시나리오 A 에 이어 질문에 답하고 초안 승인까지 진행
-- 기대: `<slug>-requirements.md` 에 `## 요구 항목` 섹션 + 항목마다 `FR-N`
+- 기대: `<slug>-requirements.md` 에 `## 요구 항목` 섹션 + 항목마다 번호. 새로 만드는 문서의 번호 표기는 `**요구 N**:` 이다 (옛 `FR-N` 은 이미 있는 문서를 읽을 때만 — 시나리오 E 참조)
 
 ```bash
-grep -c "^## 요구 항목$" docs/features/*/알림-배지-requirements.md    # 1
-grep -c "FR-1" docs/features/*/알림-배지-requirements.md             # 1 이상
-grep -c "^> \*\*모드\*\*:" docs/features/*/알림-배지-requirements.md  # 0
+grep -c "^## 요구 항목$" docs/features/*/알림-배지-requirements.md      # 1
+grep -c "\*\*요구 1\*\*:" docs/features/*/알림-배지-requirements.md     # 1 이상
+grep -c "^> \*\*모드\*\*:" docs/features/*/알림-배지-requirements.md    # 0
 ```
 
-- 실패 신호: 섹션 이름이 `## 기능 요구` 등으로 나옴, 모드 표기 줄 잔존, FR 번호 부재
+- 실패 신호: 섹션 이름이 `## 기능 요구` 등으로 나옴, 모드 표기 줄 잔존, 항목 번호 부재, 새 문서인데 `FR-N` 으로 씀
 
 ## 시나리오 C — 제외 항목이 취합되어 되돌아온다
 

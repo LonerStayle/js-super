@@ -56,7 +56,10 @@ Agent tool (general-purpose):
     ## What you must NOT do
 
     - Do NOT guess what the upstream requirements probably said
-    - Do NOT read any other file, including siblings in the same folder
+    - Do NOT read any other file, including siblings in the same folder.
+      The one exception is stated above: detail documents under a `plan/`
+      folder that the target document links to — those count as part of
+      the target, not as other files.
     - Do NOT run code-impact analysis (file existence checks, caller
       searches, grep across the repo) — the main agent owns that axis
     - Do NOT edit anything — you are strictly read-only

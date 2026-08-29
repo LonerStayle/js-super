@@ -369,7 +369,7 @@ If not, the boundaries need work. Smaller, well-bounded units are also easier fo
 | Wrong | Right |
 |---|---|
 | Listing step-by-step tasks here | Tasks belong in <slug>-implementation-plan.md. 개발방향 stops at "how it is designed". |
-| Missing FR mapping | Every `FR-N` from `## 요구 항목` must appear in §2 or §4. |
+| Missing 요구 항목 mapping | Every `요구 N` from `## 요구 항목` must appear in §2 or §4 — 옛 문서의 `FR-N` 도 같은 항목으로 센다. |
 | One decision, no alternatives | Always present at least one alternative + comparison. |
 | "Be careful here" without a category | Force one of the three risk-annotation categories (`side-effect`, `breaking`, `race`). |
 | 서술 문단에 내부 변수나 아직 없는 함수 이름을 그대로 박기 | 역할을 말로 풀어쓴다. 이름이 바뀌면 문서 밖이 깨지는 경우만 실제 이름. |

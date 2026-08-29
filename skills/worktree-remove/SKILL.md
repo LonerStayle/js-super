@@ -1,11 +1,11 @@
 ---
 name: worktree-remove
-description: 커맨드 /remove-worktree 명시 호출로만 진입 — 자유 요청에서 자동 선택 금지. 현재 feature 워크트리를 정리 (git worktree remove + 브랜치 안전 삭제 -d, --force 옵트인 시 -D). worktree-only (main 에서 호출 시 차단).
+description: 커맨드 /remove-worktree 명시 호출로만 진입 — 자유 요청에서 자동 선택 금지. 현재 feature 워크트리를 정리 (git worktree remove + 부모 기준 머지 확인을 통과한 브랜치만 삭제, --force 옵트인 시 확인 없이 삭제). worktree-only (main 에서 호출 시 차단).
 ---
 
 # Worktree Remove (v2.5.1+)
 
-현재 feature 워크트리를 정리 — `git worktree remove` + `git branch -d` 를 한 슬래시로 묶음. `worktree-merge-back` 직후 정리 흐름의 사용자 편의 명령. chain 없음 — 사용자가 `/remove-worktree` 명시 호출.
+현재 feature 워크트리를 정리 — `git worktree remove` + 부모 기준 머지 확인을 통과한 브랜치 삭제를 한 슬래시로 묶음. `worktree-merge-back` 직후 정리 흐름의 사용자 편의 명령. chain 없음 — 사용자가 `/remove-worktree` 명시 호출.
 
 **Announce at start:** "I'm using the worktree-remove skill — cleanup current worktree + branch (worktree-only)."
 
@@ -73,20 +73,30 @@ MAIN_PATH 는 `git worktree list` 의 첫 항목(main)으로 추론한다. neste
 
 ### Step 3 — 워크트리 제거 + 브랜치 안전 삭제 (자동)
 
-**safe (-d) default** — 머지 안 된 브랜치는 차단 (데이터 손실 보호):
+**머지 확인 후 삭제가 default** — 부모에 머지되지 않은 브랜치는 지우지 않는다 (데이터 손실 보호):
 
 ```bash
 # 워크트리 제거 (작업 디렉토리만)
 git -C "$MAIN_PATH" worktree remove "$CURRENT_PATH"
 
-# 브랜치 안전 삭제 (머지 안 됐으면 차단)
-git -C "$MAIN_PATH" branch -d "$CURRENT_BRANCH"
+# 판정 기준 = 이 브랜치의 직계 부모 (setting-up-worktrees 가 기록해 둔 값)
+PARENT_BRANCH=$(git -C "$MAIN_PATH" config "branch.$CURRENT_BRANCH.js-super-parent")
+[ -z "$PARENT_BRANCH" ] && PARENT_BRANCH=$(git -C "$MAIN_PATH" branch --show-current)
+
+# 부모에 완전히 머지됐을 때만 삭제
+if git -C "$MAIN_PATH" merge-base --is-ancestor "$CURRENT_BRANCH" "$PARENT_BRANCH"; then
+  git -C "$MAIN_PATH" branch -D "$CURRENT_BRANCH"
+else
+  : # 아래 차단 안내 출력
+fi
 ```
 
-브랜치 삭제 실패 시 prose 안내:
+⚠️ **`-d` 가 아니라 "확인 후 `-D`" 인 이유.** `git branch -d` 는 명령을 실행한 위치의 HEAD 를 기준으로 머지 여부를 판정한다. 최상위에서 실행하면 부모 브랜치로만 머지된 재분기 브랜치 (`부모__자식` → `부모`) 를 미머지로 보고 거부한다. 그래서 부모 기준 머지 여부를 `merge-base --is-ancestor` 로 먼저 확인하고, 통과했을 때만 지운다. 확인을 이 스킬이 직접 했으므로 안전성은 `-d` 와 같다. 사용자의 `--force` 와는 다르다 — `--force` 는 이 확인 자체를 건너뛴다.
+
+머지 확인을 통과하지 못했을 때 prose 안내:
 
 ```
-⚠️ 브랜치 "$CURRENT_BRANCH" 가 parent 로 머지되지 않아 안전 삭제(-d) 차단되었습니다.
+⚠️ 브랜치 "$CURRENT_BRANCH" 가 부모 "$PARENT_BRANCH" 에 머지되지 않아 삭제하지 않았습니다.
    1. 머지 후 재호출 — /merge-back-worktree 먼저 실행 후 /remove-worktree
    2. 또는 강제 삭제 — /remove-worktree --force 명시 호출 (데이터 손실 위험)
    (워크트리는 이미 제거됨 — Step 4 안내 그대로 진행)
@@ -99,8 +109,8 @@ git -C "$MAIN_PATH" worktree remove --force "$CURRENT_PATH"
 git -C "$MAIN_PATH" branch -D "$CURRENT_BRANCH"
 ```
 
-- safe (-d) default — 머지 안 된 브랜치는 차단 (head 변경 보호)
-- `--force` 옵트인 — 머지 안 된 브랜치도 강제 삭제(`-D`) + gitignored 빌드 산출물/lock 때문에 `git worktree remove` 가 막히면 `--force` 로 진행. **단 미커밋 변경사항(tracked/untracked 불문 — `git status --porcelain` 이 non-empty)은 `--force` 여도 Step 1 에서 종료** (데이터 손실 방지 — 사용자 명시 의사만)
+- default — 부모 기준 머지 확인을 통과한 브랜치만 삭제 (head 변경 보호)
+- `--force` 옵트인 — 머지 확인 없이 강제 삭제(`-D`) + gitignored 빌드 산출물/lock 때문에 `git worktree remove` 가 막히면 `--force` 로 진행. **단 미커밋 변경사항(tracked/untracked 불문 — `git status --porcelain` 이 non-empty)은 `--force` 여도 Step 1 에서 종료** (데이터 손실 방지 — 사용자 명시 의사만)
 
 ### Step 4 — 종료 메시지 (자동, 게이트 X)
 
@@ -122,7 +132,8 @@ git -C "$MAIN_PATH" branch -D "$CURRENT_BRANCH"
 | Wrong | Right |
 |---|---|
 | main 워크트리에서 invoke 후 그대로 진행 | HARD-GATE 차단. main 자체는 본 skill 으로 제거 X (자기 자신 정리 위험). |
-| `--force` 자동 적용 (사용자 명시 없이) | NEVER. safe (-d) default. 사용자가 명시 `--force` 플래그 시만. |
+| `--force` 자동 적용 (사용자 명시 없이) | NEVER. 부모 기준 머지 확인이 default. 사용자가 명시 `--force` 플래그 시만. |
+| 최상위에서 `git branch -d` 로 판정 | 부모로만 머지된 재분기 브랜치를 미머지로 오판해 차단한다. `js-super-parent` 기록을 읽어 그 부모 기준으로 `merge-base --is-ancestor` 확인. |
 | `cd <parent-path> && git ...` 패턴 | `git -C <parent-path>` 사용. cwd 변경 X. |
 | skill 내부 자동 `cd` 실행 | NEVER. 사용자 shell 영향 X. 종료 메시지로 안내만. |
 | Step 1 dirty 시 임의 commit / discard | NEVER. 즉시 종료 + 사용자 재호출 안내. |

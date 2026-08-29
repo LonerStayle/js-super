@@ -159,6 +159,7 @@ For each task in this wave (in plan order), 두 dispatch 를 한 메시지에 �
 For each task within wave, dispatch sequence is now:
 
 1. **Stage 1 — Implementer** (plan `**Model**:` 값, byte-copy + 테스트 자체 작성)
+   **분할 계획서라면 dispatch 직전에 이 task 의 본문을 읽는다.** 계획서가 인덱스 + `plan/` 하위 문서로 나뉜 경우, 인덱스에는 헤더 필드만 있고 step 목록과 코드 블록은 하위 문서에 있다. 이 task 의 `**상세**` 링크가 가리키는 문서를 지금 읽어 task 전문을 프롬프트에 붙여넣는다 (이번 wave 에 속한 task 의 문서만 — 전체를 미리 읽지 않는다). 분할되지 않은 계획서는 Plan Analysis 에서 이미 전문을 읽었으므로 이 단계가 필요 없다. 이 읽기를 건너뛰면 implementer 에게 구현할 코드가 없는 프롬프트가 나간다.
    Dispatch via `./implementer-prompt.md` (plan `**Model**:` 값 — 생략 시 sonnet, 하한 sonnet).
    - Status: DONE → proceed to Stage 3 (Spec Reviewer)
    - Status: BLOCKED — 원본 mismatch → proceed to Stage 2 (Reorder)

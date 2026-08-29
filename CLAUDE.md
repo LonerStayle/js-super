@@ -436,7 +436,7 @@ v2.1.1+ 에서 6곳 (5 skill + 1 command) 에 "Other / 모호 응답 처리" boi
 ### Regression catch grep
 
 ```bash
-grep -c "Other / 모호 응답 처리 (v2.1.1+)" \
+grep -cE "^#+ Other / 모호 응답 처리 \(v2\.1\.1\+\)" \
   skills/brainstorming/SKILL.md \
   skills/tech-design/SKILL.md \
   skills/writing-plans/SKILL.md \
@@ -671,7 +671,8 @@ v2.5.1+ 에서 `worktree-merge-back` 자동화 강화 + `worktree-remove` 신규
 - **D-3 env 파일 동기화** = LLM 변경 의미 판단 + 각 파일 1줄 prose 보고 + 선택적 cp (`cp -P` symlink 보존). silent cp 절대 X
 - **D-4 worktree-remove** = 독립 슬래시 명령 (chain X). worktree-merge-back 의 Step 5 종료 메시지에 호출 안내만
 - **D-5 HARD-GATE worktree-only** = 두 skill 모두 유지 (main 워크트리 차단). 안전성 핵심
-- **D-6 worktree-remove 브랜치 삭제 default** = safe (-d). `--force` 옵트인 플래그 명시 시만 force (-D)
+- **D-6 worktree-remove 브랜치 삭제 default** = 부모 기준 머지 확인을 통과한 브랜치만 삭제. 판정 기준은 `branch.<이름>.js-super-parent` 기록이고, 없으면 최상위 브랜치로 대체한다. `--force` 옵트인 플래그 명시 시만 확인 없이 삭제
+  - 최상위에서 `git branch -d` 로 판정하면 안 된다. `-d` 는 실행 위치의 HEAD 를 기준으로 보므로, 부모로만 머지된 재분기 브랜치 (`부모__자식` → `부모`) 를 미머지로 오판해 차단하고 사용자를 `--force` 로 몬다. `merge-base --is-ancestor` 로 부모 기준 확인을 마친 뒤 삭제하므로 안전성은 `-d` 와 같다
 
 ### 회귀 catch grep (release 직전, `-F` fixed string 표준)
 
@@ -1294,7 +1295,7 @@ python3 -c "from scripts.preflight import feature_depth; print('OK')"
 - **심각도는 심각 / 높음 / 보통 3단계** — 모두 실행 경로를 확인했다는 전제 위에서만 붙인다. 실행 경로를 확인하지 못한 항목은 심각도 없이 `unverified` 로 분리한다. 0~100 점수는 쓰지 않는다
 - **`status: "clean"` 반환 시 `checked` 배열 필수** — 점검했지만 없음과 점검하지 않음을 구분하기 위한 안전장치다
 - **비밀값은 값 자체를 남기지 않는다** — `redact_secret` 표시와 파일·줄 번호만 적고, raw 값은 어떤 필드에도 넣지 않는다 (기존 안전장치 그대로 유지)
-- **커맨드 본문과 H23 fixture 는 함께 고칠 것** — `commands/audit-risk.md` 와 `commands/audit-risk-tests/H23-e2e/` 는 한 쌍이다. 한쪽만 고치면 사람이 돌리는 시나리오와 실제 동작이 어긋난다
+- **커맨드 본문과 H23 fixture 는 함께 고칠 것** — `commands/audit-risk.md` 와 `tests/eval-fixtures/H23-e2e/` 는 한 쌍이다. 한쪽만 고치면 사람이 돌리는 시나리오와 실제 동작이 어긋난다
 - **보고서 본문은 한국어로 쓴다** — 사람이 읽는 값(`checked` / `title` / `evidence` / `impact` / `recommendation` / `summary` / `why_unverified` / `how_to_check`)은 한국어 문장. 파일 경로·함수 이름·명령어·라이브러리 이름처럼 그대로 검색해야 찾을 수 있는 것만 영어로 둔다. 영어 약어는 처음 나올 때 한국어 설명을 함께 적는다. 이 규칙은 공통 지시문과 Step 4 보고서 작성 지침 **양쪽**에 있어야 한다 (한쪽만 있으면 보조 에이전트가 영어로 돌려준 문장이 그대로 보고서에 실린다)
 
 ### 회귀 패턴 (한쪽만 변경 시)
@@ -1329,7 +1330,7 @@ grep -c "disable-model-invocation: true" commands/audit-risk.md
 
 ### 영향 범위
 
-- `commands/audit-risk.md` 전면 재작성 + `commands/audit-report-prompt.md` 삭제 + `commands/audit-risk-tests/H23-e2e/` 2 파일 + README 4곳 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
+- `commands/audit-risk.md` 전면 재작성 + `commands/audit-report-prompt.md` 삭제 + `tests/eval-fixtures/H23-e2e/` 2 파일 + README 4곳 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
 - audit-risk 는 애초에 HTML 생성 skill 을 거치지 않고 자체 보조 에이전트로 HTML 을 만들던 구조였고, 이번에 그 구조 자체를 걷어냈다 (이후 별도 작업에서 `generating-html` skill 과 `/sync-html` 커맨드도 저장소에서 제거됨)
 - og-* / auto-* / 워크트리 계열 영향 0 — 명시 호출 커맨드 1개 재작성 범위 밖
 
@@ -1633,11 +1634,13 @@ test -f skills/js-super-sub-driven/tests/H19-clean-verify/README.md && echo OK
 
 ## PRD 제거 + 소크라테스 단일화 결합
 
-`brainstorming` 의 두 갈래(PRD / 소크라테스)를 없애고 소크라테스 단일 경로로 통합. 요구사항 문서의 계약은 `## 요구 항목` 섹션 + `FR-N` 앵커. spec: `docs/features/2026-08-15-prd제거-소크라테스고도화/`.
+`brainstorming` 의 두 갈래(PRD / 소크라테스)를 없애고 소크라테스 단일 경로로 통합. 요구사항 문서의 계약은 `## 요구 항목` 섹션 + 항목 번호 앵커. spec: `docs/features/2026-08-15-prd제거-소크라테스고도화/`.
+
+> ⚠️ **항목 번호 표기는 이후 바뀌었다.** 이 섹션이 쓰일 당시의 표기는 `FR-N` 이었지만, 지금 새로 만드는 문서는 `**요구 N**:` 을 쓴다. 아래 서술의 `FR-N` 은 전부 "그 시점의 항목 번호 표기" 로 읽고, 현행 규약은 "산출물 문서 스타일 결합" 섹션을 따른다. 섹션 이름(`## 요구 항목`)과 "번호를 붙인다" 는 계약 자체는 그대로다.
 
 ### 핵심 룰
 
-- **E-1 요구 항목 계약** — 산출물에서 고정되는 것은 H1 / `## 요구 항목` + `FR-N` / `## 변경이력` 셋. 섹션 이름을 바꾸거나 번호를 빼면 다운스트림 4곳(`tech-design` / `verifying-spec` / `writing-plans` / `change-propagation`)이 앵커를 잃는다
+- **E-1 요구 항목 계약** — 산출물에서 고정되는 것은 H1 / `## 요구 항목` + 항목 번호 (현행 `**요구 N**:`, 당시 `FR-N`) / `## 변경이력` 셋. 섹션 이름을 바꾸거나 번호를 빼면 다운스트림 4곳(`tech-design` / `verifying-spec` / `writing-plans` / `change-propagation`)이 앵커를 잃는다
 - **E-2 모드 표기 줄 폐지** — 경로가 하나라 표기할 모드가 없음. `tech-design` 의 입력 형식 감지도 함께 삭제 (옛 문서와 새 문서가 같은 `FR-N` 앵커를 공유하므로 구분 불필요). 옛 6섹션 문서는 `## 3. 기능 요구사항 (FR)` 아래 같은 앵커를 갖고 있어 그대로 읽힌다
 - **E-3 소크라테스 4블록** — 질문(커버 목록 5 + 종료 판정 + 3단 사다리) / 대안(고정 비교축 3 + 추천 먼저 + 깨지는 조건) / 문서(제외 항목 취합) / 승인(초안 전체 한 번)
 - **E-4 질문 개수 상한 없음** — 커버 목록 충족으로 종료 판정. `auto-brainstorming`(1~5개)·`fast-tasks`(2~3개)와 의도적으로 다름
@@ -1649,7 +1652,7 @@ test -f skills/js-super-sub-driven/tests/H19-clean-verify/README.md && echo OK
 | 누락 | 증상 |
 |---|---|
 | `## 요구 항목` 섹션 이름 변경 | 다운스트림 4곳이 앵커를 못 찾음 |
-| `FR-N` 번호 폐지 | `verifying-spec` A축이 셀 대상을 잃어 조용히 통과 |
+| 항목 번호 자체를 폐지 (표기 교체가 아니라 번호를 없앰) | `verifying-spec` A축이 셀 대상을 잃어 조용히 통과 |
 | `tech-design` 감지 분기만 지우고 요구 항목 읽는 경로 누락 | 옛 6섹션 문서가 안 읽힘 |
 | 공용 문구를 한 스킬만 교체 | 세 스킬의 문구가 갈림 |
 | `README.md` 게이트 행만 삭제 | 바로 위 개수 표기와 불일치 |
@@ -1683,7 +1686,7 @@ grep -rlF '`--no-ask` 플래그 (v2.5+)' skills/ commands/ | wc -l
 
 - 스킬 4(`brainstorming` / `tech-design` / `auto-brainstorming` / `writing-plans` 공용 문구) + 커맨드 2 + `README.md` + `CLAUDE.md` + 예제 1
 - `scripts/` `hooks/` 영향 0 — 요구사항 문서는 파일 이름만 검사
-- `verifying-spec` / `change-propagation` 본문 변경 0 — `FR-N` 유지로 기존 앵커 그대로 동작
+- `verifying-spec` / `change-propagation` 본문 변경 0 — 당시에는 `FR-N` 을 그대로 둬서 기존 앵커가 계속 동작했다. (이후 "산출물 문서 스타일" 작업에서 두 파일 모두 `**요구 N**:` 인식 + 옛 표기 하위 호환으로 실제로 바뀌었다)
 - og-\* / worktree 계열 영향 0. (`generating-html` 은 이 작업과 별개로 main 에서 저장소에서 제거됐다 — 머지 시점에 확인)
 - 버전 bump 는 main 전용 룰에 따라 main 에서
 
@@ -1937,7 +1940,7 @@ grep -cF "## 스킬목록 홈 전체 조회 결합" CLAUDE.md
 | 한쪽 스킬만 변경 (키 규약 desync) | 생성 기록과 머지백 판독 불일치 — 매번 판별 실패 게이트 |
 | 기록 명령을 `git worktree add` 호출에 합침 | 훅 프리픽스 미매치 → 메모리 심링크 미생성 |
 | 게이트 제거 + 최상위 fallback 부활 | 재분기 워크트리가 최상위로 잘못 머지 — 본 피처 무화 |
-| 검증 4번 (분기점 조상) 제거 | 스킬 밖 동명 재생성 시 stale 기록 상속 → 잘못된 부모로 자동 머지 |
+| 검증 4번 (분기점 조상) 제거 | 스킬 밖에서 브랜치를 옮기면 (`reset --hard` / `branch -f`) 기록만 남고 낡는다 → 잘못된 부모로 자동 머지. (브랜치 삭제 후 동명 재생성은 해당 없음 — git 이 `branch.<이름>.*` 를 함께 지운다) |
 
 ### 회귀 catch grep
 
@@ -2054,7 +2057,7 @@ grep -cF "sonnet | opus" skills/writing-plans/SKILL.md
 - **기술설계서 도면은 세 형식 중 상황에 맞게** — 아스키 박스 도면 (기본) / 아스키 도면 + 번호 + 설명 표 (요소가 많을 때) / mermaid (관계·분기가 본질이고 렌더링 환경 전제 가능). 절차 나열 흐름도로 구조 설명을 대신하지 않는다
 - **도면 안 번호 (①②③) 는 항목 코드가 아니다** — 표에서 설명하기 위한 도면 표기법이라 금지 대상 밖. 요구 항목 번호가 "유일한 예외" 라는 문구와 충돌하지 않는다
 - **옛 문서 소급 수정 없음** — 새로 쓰는 문서부터 적용. 하위 호환으로 계속 읽힌다
-- **구현계획서는 범위 밖** — `writing-plans` / `auto-writing-plans` 는 대상이 아니다. 두 파일의 `FR` 표기는 옛 피처 스펙을 가리키는 내부 주석뿐이고 요구 항목 번호를 찾아 읽는 문구가 없다
+- **구현계획서의 문체는 범위 밖** — 계획서 본문은 코드를 보여주는 것이 목적이라 서술 문체 규칙을 적용하지 않는다. 다만 `writing-plans` 는 자체 점검에서 요구사항 문서의 항목을 세어 읽으므로, 그 자리의 항목 번호 표기는 세 세대를 모두 인식하도록 맞춰 뒀다 (`auto-writing-plans` 에는 해당 문구가 없어 손댈 것이 없었다)
 
 ### 회귀 패턴
 
@@ -2107,9 +2110,10 @@ grep -c "Self-review (6 items)" skills/brainstorming/SKILL.md
 ### 영향 범위
 
 - 스킬 8 (`brainstorming` / `auto-brainstorming` / `tech-design` / `auto-tech-design` / `verifying-spec` + 그 대조 검증 프롬프트 / `change-propagation` / `risk-annotation`) + 커맨드 1 (`og-brainstorm` 형식 비교 한 줄) + `README.md` 4곳 + fixture 2 (H21 신규 + 인덱스) + `CLAUDE.md`. 버전 bump 는 main 전용 룰에 따라 main 에서
-- `writing-plans` / `auto-writing-plans` / `executing-plans` / `js-super-sub-driven` — 변경 0
+- `auto-writing-plans` / `executing-plans` / `js-super-sub-driven` — 변경 0. `writing-plans` 는 자체 점검에서 요구사항 문서의 항목을 세어 읽으므로 그 자리의 번호 표기만 세 세대 인식으로 맞췄다 (문체 규칙은 적용 대상 아님)
 - og-* / worktree 계열 / `scripts/` / `hooks/` / `agents/` 영향 0
 - 실행 코드 변경 0 — 스킬 본문과 문서 텍스트만
+
 ## 구현계획서 코드 강제 + 위키형 분할 결합
 
 계획서가 길어지면 구현 코드 블록을 생략하고 자연어만 남기는 drift 가 실제로 발생했다 (사용자 catch — 코드를 검토하려 했는데 계획서에 코드가 없었다). 원인은 코드 존재를 검사하는 장치가 없었던 것 — 기존 byte-equal 검사는 존재하는 블록의 내용만 보므로 블록이 없으면 0건 매치로 통과한다. `scripts/plan_guard.py` 가 그 빈 자리를 메운다. spec: `docs/features/2026-08-29-구현계획서-코드강제-분할/`.
@@ -2164,8 +2168,15 @@ grep -c "plan/tasks-" skills/writing-plans/SKILL.md skills/auto-writing-plans/SK
 ```
 
 ```bash
-test -f skills/js-super-sub-driven/tests/H20-plan-split/README.md && echo OK
+test -f skills/js-super-sub-driven/tests/H22-plan-split/README.md && echo OK
 # expected: OK
+```
+
+fixture 번호는 브랜치마다 자기 것의 존재만 검사하면 중복을 못 잡는다 (두 룰이 각자 자기 경로만 보므로 번호가 같아도 둘 다 통과한다 — 실제로 `H20` 이 세 워크트리에 겹쳤을 때 이 방식이 놓쳤다). 번호 공간 전체를 보는 룰을 따로 둔다.
+
+```bash
+ls skills/js-super-sub-driven/tests | grep -oE '^H[0-9]+' | sort | uniq -d | wc -l
+# expected: 0
 ```
 
 ```bash

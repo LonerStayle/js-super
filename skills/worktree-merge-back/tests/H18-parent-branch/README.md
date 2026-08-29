@@ -160,13 +160,14 @@ git -C <main-path> log --oneline -1   # feature-c 머지 커밋이 main 에 직�
 
 ---
 
-### (f) 스킬 밖 동명 재생성으로 stale 기록 상속 → 검증 4번이 게이트로 떨어뜨림
+### (f) 스킬 밖에서 브랜치를 옮겨 기록이 낡음 → 검증 4번이 게이트로 떨어뜨림
 
 **셋업 명령**
 
 - 공통 구조 그대로 재현 (A 존속) + A 워크트리 안에서 `/worktree feature-d` (재분기) → `branch.feature-d.js-super-parent=feature-a` + `branch.feature-d.js-super-parent-base=<SHA_X>` (당시 A 의 HEAD) 기록
-- 스킬 밖 raw git 으로 feature-d 를 완전히 제거: `git worktree remove <feature-d-path>` 후 `git branch -D feature-d`
-- 스킬을 거치지 않고 같은 이름의 새 브랜치를 재생성: `git worktree add ../feature-d -b feature-d <SHA_X 보다 훨씬 이전 커밋>` (예: 저장소 최초 commit). `/worktree` 를 안 거쳤으므로 새 config 가 안 쓰이고, 삭제됐던 옛 브랜치의 `branch.feature-d.js-super-parent` / `js-super-parent-base` 값이 config 상 그대로 남아 새 브랜치가 그 기록을 물려받는다
+- 스킬 밖 raw git 으로 feature-d 의 히스토리를 갈아엎는다: feature-d 워크트리 안에서 `git reset --hard <SHA_X 보다 훨씬 이전 커밋>` (예: 저장소 최초 commit). 브랜치를 지운 게 아니라 옮긴 것이므로 `branch.feature-d.*` 기록은 그대로 남고, 이제 `SHA_X` 는 현재 히스토리의 조상이 아니다
+
+> 브랜치를 `git branch -D` 로 지웠다가 같은 이름으로 다시 만드는 방식으로는 이 상황이 만들어지지 않는다. git 은 브랜치를 삭제할 때 `branch.<이름>.*` 설정도 함께 지우므로 새 브랜치가 물려받을 기록이 남지 않는다. 기록을 남긴 채 낡게 만들려면 위처럼 브랜치를 옮겨야 한다.
 
 **실행**
 
