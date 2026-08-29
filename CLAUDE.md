@@ -1895,3 +1895,74 @@ grep -cF "## 스킬목록 홈 전체 조회 결합" CLAUDE.md
 - `commands/list-skills.md` + `scripts/skill_scan.py` (신규) + `scripts/tests/test_skill_scan.py` (신규) + `README.md` 2곳 + `CLAUDE.md` (v2.7 메모 개정 + 본 섹션). 버전 bump 는 main 전용 룰에 따라 main 에서
 - `commands/new-skill.md` / `commands/remove-skill.md` — 변경 0 (출처 표식 규약 그대로. 3 커맨드 동시 수정 룰은 규약 변경 시에만 발동)
 - og-* / auto-* / worktree 계열 / `scripts/preflight.py` / hooks 영향 0
+## 구현계획서 코드 강제 + 위키형 분할 결합
+
+계획서가 길어지면 구현 코드 블록을 생략하고 자연어만 남기는 drift 가 실제로 발생했다 (사용자 catch — 코드를 검토하려 했는데 계획서에 코드가 없었다). 원인은 코드 존재를 검사하는 장치가 없었던 것 — 기존 byte-equal 검사는 존재하는 블록의 내용만 보므로 블록이 없으면 0건 매치로 통과한다. `scripts/plan_guard.py` 가 그 빈 자리를 메운다. spec: `docs/features/2026-08-29-구현계획서-코드강제-분할/`.
+
+### 핵심 룰
+
+- **문서 집합 해석은 한 곳에서만** — `plan_guard.resolve_documents()` 가 인덱스 → 하위 문서 집합을 푸는 단일 진입점이다. 소비자가 각자 해석하면 한 곳만 어긋나도 인덱스만 검사하고 통과하는 false-pass 가 난다
+- **임계값 10 / 상한 3** — task 10개 이상이면 분할 필수, 하위 문서 하나에 task 최대 3개. 둘 다 결정적 상수 (`SPLIT_THRESHOLD` / `MAX_TASKS_PER_SUBDOC`)
+- **재량은 나누는 방향으로만** — 10개 미만의 분할은 허용, 10개 이상의 단일 문서는 차단
+- **인덱스 파일 이름 불변** — `<slug>-implementation-plan.md` 그대로. 하위 문서는 `plan/tasks-NN-MM.md` 로, 기존 파일명 정규식에 **일부러 매치되지 않게** 짓는다 (최신 계획서 자동 선택이 하위 문서를 오선택하는 사고 차단)
+- **하위 문서에 변경이력 footer 없음** — 모든 entry 는 인덱스로 모인다
+- **축약 마커는 주석 형태만 탐지** — 맨몸 `...` 한 줄은 정상 코드와 충돌하므로 제외. 같은 task 의 `**원본**` 블록에 있던 라인은 면제 (원래 파일에 있던 표현)
+- **기존 byte-check 모듈 무변경** — `plan_byte_check.py` 는 그대로 두고 wrapper 가 문서별로 호출한다. 그 파일은 구현 / 재정렬 프롬프트 + sub-driven 본문과 atomic 번들로 묶여 있어 건드리면 번들 전체 재검증이 필요하다
+
+### 회귀 패턴
+
+| 누락 | 증상 |
+|---|---|
+| 소비자가 `resolve_documents` 를 안 쓰고 자체 해석 | 그 소비자만 인덱스를 보고 통과 — false-pass 재발 |
+| G1 검사 약화 | 코드 없는 계획서가 다시 통과 (이번 사고 그대로 재현) |
+| 축약 마커 면제 규칙 삭제 | 원래 파일에 있던 주석이 오탐으로 잡혀 게이트가 막힘 |
+| 하위 문서 이름을 `-implementation-plan.md` 접미사로 변경 | 최신 계획서 자동 선택이 하위 문서를 본체로 오선택 |
+| 하위 문서에 변경이력 footer 추가 | 이력이 흩어져 감사 흐름이 끊김 + live 판정이 어긋남 |
+| 정식 흐름만 수정 (자동 흐름 미동기) | 두 경로의 규약이 갈림 — 자동 흐름 계획서에 코드 생략 잔존 |
+| 실행 진입 시에도 강제 검사 추가 | 기존 계획서가 전부 차단 — 소급 비대상 원칙 위반 |
+
+### 회귀 확인
+
+```bash
+python3 -c "from scripts.plan_guard import resolve_documents, check_plan, verify_documents_byte_equal; print('OK')"
+# expected: OK
+```
+
+```bash
+grep -c "SPLIT_THRESHOLD = 10" scripts/plan_guard.py
+# expected: 1
+```
+
+```bash
+grep -c "MAX_TASKS_PER_SUBDOC = 3" scripts/plan_guard.py
+# expected: 1
+```
+
+```bash
+grep -lF "plan_guard" skills/writing-plans/SKILL.md skills/auto-writing-plans/SKILL.md | wc -l
+# expected: 2
+```
+
+```bash
+grep -c "plan/tasks-" skills/writing-plans/SKILL.md skills/auto-writing-plans/SKILL.md skills/executing-plans/SKILL.md skills/js-super-sub-driven/SKILL.md
+# expected: 각 1 이상
+```
+
+```bash
+test -f skills/js-super-sub-driven/tests/H20-plan-split/README.md && echo OK
+# expected: OK
+```
+
+```bash
+grep -c "분할 계획서 예외 (하위 문서)" skills/change-history/SKILL.md
+# expected: 1
+```
+
+### 영향 범위
+
+- 스크립트 2 신규 + 1 수정 (추가 전용 — 기존 함수 시그니처·exit code 규약 무변경이라 3 skill 의 사전 검사 명령 동기 불필요), 스킬 본문 8, 커맨드 2, fixture 1, CLAUDE.md
+- 보조 에이전트 프롬프트 3종 (`implementer-prompt.md` / `reorder-prompt.md` / `spec-reviewer-prompt.md`) **무변경** — task 전문을 붙여넣는 방식이라 계획서 레이아웃과 무관
+- 기존 계획서 소급 적용 없음 — 새 규약은 머지 후 작성되는 계획서부터
+- 테스트 코드는 그대로 자연어 `**검증**:` 유지 — 이번 강제화는 구현 코드 전용
+- og-* / worktree 계열 / fast-tasks 영향 0
+- 버전 bump 는 main 전용 룰에 따라 main 에서

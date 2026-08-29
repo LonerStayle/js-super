@@ -10,7 +10,7 @@ description: <slug>-requirements.md + <slug>-tech-design.md를 기반으로 <slu
 
 산출물은 세 가지입니다.
 
-- `docs/features/<날짜>-<slug>/<slug>-implementation-plan.md` — 구현계획서 (정본)
+- `docs/features/<날짜>-<slug>/<slug>-implementation-plan.md` — 구현계획서 (정본). task 가 10개 이상이면 이 파일은 인덱스가 되고, task 상세와 코드는 같은 폴더의 `plan/tasks-*.md` 로 나뉩니다.
 - `docs/features/<날짜>-<slug>/<slug>-glossary.md` — 용어집. 계획서에 나오는 클래스·함수·변수 이름 중 처음 보는 사람이 멈출 만한 것들을 표로 정리합니다. 실제 코드까지 찾아보고 씁니다.
 - 메인 에이전트 검증 보고서 (대화로 출력)
 
