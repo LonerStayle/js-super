@@ -18,10 +18,10 @@
 | G2-simple-wave | 3 task disjoint, 1 wave 동시 dispatch | AC-1 | (수동 dogfood) |
 | G3-deps | task 2 가 task 1 helper 사용, 2 waves | D-T1/D-T7 | (수동 dogfood) |
 | G4-failure-isolation | wave 안 task 1개 spec FAIL → 형제 commit + 격리 | AC-2 | (수동 dogfood) |
-| G5-model-haiku | `**Model**: haiku` → implementer haiku dispatch | AC-4 | (수동 dogfood) |
+| G5-model-haiku | `**Model**: haiku` 잔존 → sonnet 격상 dispatch | AC-4 | (수동 dogfood) |
 | G6-no-model-default | Model 필드 없음 → sonnet 디폴트 | AC-5 | (수동 dogfood) |
 | G7-post-hoc-conflict | DAG 추론 오류 시뮬, conflict rollback + 재배치 | R1 | (수동 dogfood) |
-| G8-reviewer-sonnet | implementer haiku 시에도 reviewer sonnet 고정 | AC-6 | (수동 dogfood) |
+| G8-reviewer-sonnet | implementer 격상 케이스에도 reviewer sonnet 고정 | AC-6 | (수동 dogfood) |
 
 자동 (pytest) 항목은 `scripts/tests/test_changelog_buffer.py` + `scripts/tests/test_dag_builder.py` + `scripts/tests/test_preflight.py` 로 호출됨. G1~G8 의 동작 검증은 dogfood 에서 사용자가 직접 비교 (subagent dispatch 는 pytest 로 모킹 불가).
 
