@@ -1895,3 +1895,43 @@ grep -cF "## 스킬목록 홈 전체 조회 결합" CLAUDE.md
 - `commands/list-skills.md` + `scripts/skill_scan.py` (신규) + `scripts/tests/test_skill_scan.py` (신규) + `README.md` 2곳 + `CLAUDE.md` (v2.7 메모 개정 + 본 섹션). 버전 bump 는 main 전용 룰에 따라 main 에서
 - `commands/new-skill.md` / `commands/remove-skill.md` — 변경 0 (출처 표식 규약 그대로. 3 커맨드 동시 수정 룰은 규약 변경 시에만 발동)
 - og-* / auto-* / worktree 계열 / `scripts/preflight.py` / hooks 영향 0
+
+## 워크트리 부모브랜치 기록 결합
+
+`/merge-back-worktree` 의 머지 대상을 "워크트리 목록 첫 entry = 최상위" 추론에서 **생성 시 기록된 직계 부모 브랜치** 로 교체. 재분기 워크트리 (워크트리 A 안에서 만든 워크트리 B) 가 A 가 아니라 최상위로 머지하려던 문제를 없앤다. spec: `docs/features/2026-08-29-머지백-부모브랜치기준/`.
+
+### 핵심 룰
+
+- **기록 키 2개 규약** — `branch.<BR>.js-super-parent` (부모 브랜치 이름) + `branch.<BR>.js-super-parent-base` (분기 SHA). 생성 (`setting-up-worktrees` Step 4, 신규 `-b` 분기 직후) 과 판독 (`worktree-merge-back` Step 2) 이 공유한다. 키 이름이나 값 형식을 한쪽만 바꾸면 desync — 두 스킬 동시 수정
+- **판별 = 검증 4건 전부 통과 시에만 자동 진행** — 기록 존재·자기 자신 아님 / 부모 브랜치 실존 / 부모가 워크트리에 체크아웃됨 / 기록된 분기점이 현재 히스토리의 조상. 하나라도 실패하면 `AskUserQuestion` 게이트로 머지 대상을 확인받는다. 조용한 최상위 fallback 과 히스토리 추정 자동 진행은 금지 (사용자 결정). 게이트에는 "중단" 옵션을 항상 포함해 부모 미체크아웃 케이스의 탈출 경로를 남긴다
+- **기록 명령은 `git worktree add` 와 별도 Bash 호출** — `worktree-memory-symlink` 훅은 명령 문자열이 `git worktree add ` 로 시작할 때만 발화한다. 한 호출로 묶으면 접두사가 바뀌어 심링크가 조용히 사라진다
+- **게이트 1건 재도입** — `worktree-merge-back` 의 "게이트 0건" 서술과 Other / 모호 응답 룰 (v2.1.1+) 비활성 서술이 함께 갱신됐다. 게이트를 다시 없애면 이 서술도 되돌려야 한다
+- **기존 워크트리 소급 기록 없음** — 이 개선 이전에 만든 워크트리는 기록이 없고, 게이트가 흡수한다. v2.5.1 D-1 의 "머지 대상 = parent 의 로컬 브랜치" 는 유지되되 parent 의 의미가 최상위에서 직계 부모로 좁혀졌다
+
+### 회귀 패턴
+
+| 누락 | 증상 |
+|---|---|
+| 한쪽 스킬만 변경 (키 규약 desync) | 생성 기록과 머지백 판독 불일치 — 매번 판별 실패 게이트 |
+| 기록 명령을 `git worktree add` 호출에 합침 | 훅 프리픽스 미매치 → 메모리 심링크 미생성 |
+| 게이트 제거 + 최상위 fallback 부활 | 재분기 워크트리가 최상위로 잘못 머지 — 본 피처 무화 |
+| 검증 4번 (분기점 조상) 제거 | 스킬 밖 동명 재생성 시 stale 기록 상속 → 잘못된 부모로 자동 머지 |
+
+### 회귀 catch grep
+
+```bash
+grep -lF "js-super-parent" skills/setting-up-worktrees/SKILL.md skills/worktree-merge-back/SKILL.md
+# expected: 2 lines
+grep -c "MAIN_INFO" skills/worktree-merge-back/SKILL.md
+# expected: 0
+grep -cF "판별 실패" skills/worktree-merge-back/SKILL.md
+# expected: >= 1
+test -f skills/worktree-merge-back/tests/H18-parent-branch/README.md && echo OK
+# expected: OK
+```
+
+### 영향 범위
+
+- 스킬 2 (`setting-up-worktrees` / `worktree-merge-back`) + 커맨드 2 (`worktree` / `merge-back-worktree`) + fixture 1 (H18) + CLAUDE.md
+- `worktree-remove` / og-* / auto-* / `scripts/preflight.py` / hooks 본문 영향 0 — 훅은 접두사 계약 재확인만
+- 버전 bump 는 main 전용 룰에 따라 main 에서
