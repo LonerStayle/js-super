@@ -15,7 +15,7 @@ NEVER silently update downstream MDs or code without first surfacing the impact 
 
 Two ways to enter this skill:
 
-1. **Natural language change request** — the user says something like "FR-3 한도 바꿔", "개발방향 §5 결정 다시", "Task 4 단계 추가". The main agent recognizes the intent and invokes this skill.
+1. **Natural language change request** — the user says something like "요구 3 한도 바꿔", "개발방향 §5 결정 다시", "Task 4 단계 추가". The main agent recognizes the intent and invokes this skill. Older docs number the same items `FR-N`, so a request naming "FR-3" points at the same thing — recognize both.
 2. **Explicit override** — the user says "요구사항만 고쳐, 하위는 건드리지 마". This phrase forces partial-scope behavior; the skill applies the upstream edit but skips the cascading step.
 
 ## Change Level Identification
@@ -93,7 +93,7 @@ digraph propagation {
 변경 요청 감지: <change level> 변경 ("<short summary of the change>")
 
 영향 매트릭스 적용 결과 — 함께 갱신될 항목:
-1. <slug>-requirements.md 요구 항목 FR-3 (직접 변경)
+1. <slug>-requirements.md 요구 항목 요구 3 (직접 변경)
 2. <slug>-tech-design.md §6 위험 (한도 증가에 따른 잔액 검증 강도 재평가)
 3. <slug>-implementation-plan.md Task 4 (한도 검증 로직)
 4. 코드 src/wallet/service.py:withdraw() (한도 상수)
@@ -133,7 +133,7 @@ Example entry skeleton (one of N in a batch):
 ### [2026-05-02 14:30] [요구사항-수정]
 - **id**: CH-20260502-007
 - **이유**: 사용자 요청, 한도 5만 → 10만
-- **무엇이**: <slug>-requirements.md §3 FR-3
+- **무엇이**: <slug>-requirements.md 요구 항목 요구 3
 - **영향범위**: <slug>-tech-design.md §6 (위험 재평가), <slug>-implementation-plan.md Task 4 (검증 로직)
 - **연관 항목**: CH-20260502-008 (개발방향), CH-20260502-009 (구현계획서), CH-20260502-010 (코드)
 ```
