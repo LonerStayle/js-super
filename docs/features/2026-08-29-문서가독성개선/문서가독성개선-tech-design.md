@@ -59,7 +59,7 @@
 | `commands/og-brainstorm.md` | 원본 흐름 안내 | 형식 비교 표의 한 줄만 사실 갱신 (`FR-N` 필수 → `요구 N` 필수) |
 | `README.md` | 사용자 안내 | 변경 전파 설명의 예시 표기 4곳 갱신 (`FR-3` → `요구 3`) |
 | `CLAUDE.md` | 기여자 결합 메모 | 신규 결합 섹션 + 회귀 검사 명령 추가 |
-| `skills/js-super-sub-driven/tests/H20-doc-readability/README.md` | 대조 사례 fixture (신규) | 새 스타일 통과/위반 대조 사례 |
+| `skills/js-super-sub-driven/tests/H21-doc-readability/README.md` | 대조 사례 fixture (신규) | 새 스타일 통과/위반 대조 사례 |
 
 내부 버전 주석 (`(v1.1.15+, FR-3)` 같은 것) 은 옛 피처 스펙을 가리키는 이력 표기라서 건드리지 않는다. 구현계획서를 만드는 스킬 (`writing-plans`, `auto-writing-plans`) 도 대상이 아니다 — 구현계획서 스타일은 요구사항서에서 범위 밖으로 확정됐다.
 

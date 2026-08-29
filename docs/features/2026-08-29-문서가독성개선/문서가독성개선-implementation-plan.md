@@ -651,7 +651,7 @@ git commit -m "docs(clean-cross-prompt): 상위 항목 번호 표기 갱신 + �
 - [ ] **Step 1: 현재 상태 확인**
 
 Run: `grep -c "FR-3" skills/change-propagation/SKILL.md; grep -c "FR-N" skills/change-propagation/SKILL.md`
-Expected: `3`, `0` (수정 전 — 교체 뒤에는 `FR-3` 이 0, 새로 넣는 하위 호환 문구 때문에 `FR-N` 이 1)
+Expected: `3`, `0` (수정 전 — 교체 뒤에는 `FR-3` 이 1 로 줄고 `FR-N` 이 1 로 는다. 둘 다 새로 넣는 하위 호환 문구 몫이다)
 
 - [ ] **Step 2: entry 예시 교체 (아래쪽 먼저)**
 
@@ -692,7 +692,7 @@ Expected: `3`, `0` (수정 전 — 교체 뒤에는 `FR-3` 이 0, 새로 넣는 
 - [ ] **Step 5: 검증 grep → PASS 확인**
 
 Run: `grep -c "요구 3" skills/change-propagation/SKILL.md; grep -c "FR-N" skills/change-propagation/SKILL.md; grep -c "FR-3" skills/change-propagation/SKILL.md`
-Expected: `3`, `1`, `0`
+Expected: `3`, `1`, `1` — 마지막 하나는 Step 4 가 넣는 하위 호환 인식 문구의 예시다 (옛 표기로 들어온 요청도 같은 항목을 가리킨다는 설명). 예시를 지우면 그 문구가 무엇을 인식하라는 것인지 알 수 없어지므로 남긴다.
 
 - [ ] **Step 6: Commit**
 
@@ -844,7 +844,7 @@ git commit -m "docs(README): 변경 전파 예시의 요구 항목 번호 표기
 ### Task 11: 대조 사례 fixture 신규 작성
 
 **Files:**
-- Create: `skills/js-super-sub-driven/tests/H20-doc-readability/README.md`
+- Create: `skills/js-super-sub-driven/tests/H21-doc-readability/README.md`
 
 **Model**: sonnet
 
@@ -857,7 +857,7 @@ Expected: 통과/위반 대조 구성 확인 (구조 참고용)
 
 - [ ] **Step 2: fixture 작성**
 
-`skills/js-super-sub-driven/tests/H20-doc-readability/README.md` 를 새로 만든다. 담을 시나리오는 다섯이다.
+`skills/js-super-sub-driven/tests/H21-doc-readability/README.md` 를 새로 만든다. 담을 시나리오는 다섯이다.
 
 | 시나리오 | 내용 |
 |---|---|
@@ -871,14 +871,14 @@ Expected: 통과/위반 대조 구성 확인 (구조 참고용)
 
 - [ ] **Step 3: 파일 생성 확인**
 
-Run: `test -f skills/js-super-sub-driven/tests/H20-doc-readability/README.md && echo OK`
+Run: `test -f skills/js-super-sub-driven/tests/H21-doc-readability/README.md && echo OK`
 Expected: OK
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add skills/js-super-sub-driven/tests/H20-doc-readability/README.md
-git commit -m "test(H20): 산출물 문서 스타일 통과/위반 대조 사례 추가"
+git add skills/js-super-sub-driven/tests/H21-doc-readability/README.md
+git commit -m "test(H21): 산출물 문서 스타일 통과/위반 대조 사례 추가"
 ```
 
 ### Task 12: fixture 인덱스 등록
@@ -890,9 +890,9 @@ git commit -m "test(H20): 산출물 문서 스타일 통과/위반 대조 사례
 
 **Model**: haiku
 
-**검증**: 인덱스 표에 H20 행이 있고, H17 행의 계약 표기가 새 번호 형식을 반영하면 성공.
+**검증**: 인덱스 표에 H21 행이 있고, H17 행의 계약 표기가 새 번호 형식을 반영하면 성공.
 
-- [ ] **Step 1: H20 행 추가 (아래쪽 먼저)**
+- [ ] **Step 1: H21 행 추가 (아래쪽 먼저)**
 
 **원본** (`skills/js-super-sub-driven/tests/README.md:76`):
 ```markdown
@@ -902,7 +902,7 @@ git commit -m "test(H20): 산출물 문서 스타일 통과/위반 대조 사례
 **수정 후**:
 ```markdown
 | H19-clean-verify | 무맥락 검증자 2종 병렬 — 단독(대상 MD 만) / 대조(대상 + upstream) / 중재 / `--no-clean-verify` skip |
-| H20-doc-readability | 산출물 문서 스타일 — 위에서 아래로 / 비유 금지 / 표·도면 우선 / 항목 코드 금지 / 도면 형식 / 요구 항목 번호 하위 호환 |
+| H21-doc-readability | 산출물 문서 스타일 — 위에서 아래로 / 비유 금지 / 표·도면 우선 / 항목 코드 금지 / 도면 형식 / 요구 항목 번호 하위 호환 |
 ```
 
 - [ ] **Step 2: H17 행 표기 갱신**
@@ -926,19 +926,19 @@ git commit -m "test(H20): 산출물 문서 스타일 통과/위반 대조 사례
 
 **수정 후**:
 ```markdown
-## v2.9.0 이후 fixtures (H14~H20)
+## v2.9.0 이후 fixtures (H14~H21)
 ```
 
 - [ ] **Step 4: 검증 grep → PASS 확인**
 
-Run: `grep -c "H20-doc-readability" skills/js-super-sub-driven/tests/README.md`
+Run: `grep -c "H21-doc-readability" skills/js-super-sub-driven/tests/README.md`
 Expected: 1
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add skills/js-super-sub-driven/tests/README.md
-git commit -m "test: fixture 인덱스에 H20 등록 + H17 번호 계약 표기 갱신"
+git commit -m "test: fixture 인덱스에 H21 등록 + H17 번호 계약 표기 갱신"
 ```
 
 ### Task 13: CLAUDE.md 결합 메모 추가
@@ -1068,6 +1068,7 @@ Expected: 스킬 8 + 커맨드 1 + README + fixture 2 + CLAUDE.md + 피처 문�
 - 정식 경로 2 ↔ 자동 경로 2 — side-effect: 한쪽만 고치면 두 경로가 만드는 문서의 문체가 갈리고, 이 어긋남은 문서를 나란히 놓고 읽기 전에는 드러나지 않는다 (mitigation: 섹션 이름 통일 + Task 14 Step 1 에서 네 파일 동시 확인)
 - `skills/risk-annotation/SKILL.md` 주석 금지 목록 — side-effect: 새 번호 형식을 빠뜨리면 코드 주석에 문서 참조가 다시 새어 들어간다 (mitigation: Task 8 에서 금지 패턴에 추가)
 - 계획 대상 목록 밖 파일 — breaking: 요구 항목 번호를 읽는 파일이 목록에서 빠지면 그 파일만 옛 형식을 기대한 채 남아 요구 항목을 못 찾는다 (mitigation: Task 14 Step 5 에서 저장소 전체를 훑어 착수 시점 전수 조사를 실행 시점에 재확인)
+- fixture 번호 선점 — side-effect: 병렬 워크트리가 같은 번호를 각자 쓰면 머지 시 인덱스 한 줄에서 충돌하고 디렉토리 번호가 겹친다. 실제로 이번 실행 중 발생했다 — 착수 시점 인덱스의 마지막 번호가 H19 라 H20 을 잡았는데, 그 사이 부모 브랜치에 다른 작업의 H20 이 들어와 있었다. 본 피처의 fixture 를 H21 로 옮겨 해소했다 (mitigation: 신규 fixture 번호는 인덱스가 아니라 `git show <부모 브랜치>:skills/js-super-sub-driven/tests/README.md` 로 부모 쪽 최신 번호를 확인해 정한다)
 - `CLAUDE.md` 회귀 검사 명령 — side-effect: 명령 형식이 어긋나면 스킬 검증 러너가 규칙을 조용히 놓친다 (mitigation: Task 13 Step 3 에서 삽입한 명령을 실제로 실행해 대조 + Task 14 Step 4 에서 파싱된 규칙 수 확인)
 - 6 manifest 버전 필드 — breaking: 워크트리에서 버전을 올리면 main 머지 때 충돌한다 (mitigation: Task 14 Step 6 에서 변경 파일 목록 확인)
 

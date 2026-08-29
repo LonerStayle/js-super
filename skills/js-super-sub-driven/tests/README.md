@@ -64,7 +64,7 @@
 
 - `H13-og-flow-subagent-routing/` — og-flow Subagent path 매칭 검증 (upstream 원본 매칭 / js-super-sub-driven 미매칭)
 
-## v2.9.0 이후 fixtures (H14~H20)
+## v2.9.0 이후 fixtures (H14~H21)
 
 | Fixture | 시나리오 |
 |---|---|
@@ -74,6 +74,6 @@
 | H17-socratic-single-track | 모드 질문 부재 (A) / 요구 항목 + 번호 계약 (B) / 제외 항목 취합 (C) / '모르겠다' 3단 사다리 (D) / 옛 6섹션 문서 하위호환 (E) |
 | H18-glossary-parallel-order | code-pretty ‖ glossary 병렬 dispatch → verifying-spec → 사용자 검토 순서. 용어집 실패 non-blocking / 두 helper 조건 차이 / live doc 차단 / auto-flow 미적용 5 시나리오 |
 | H19-clean-verify | 무맥락 검증자 2종 병렬 — 단독(대상 MD 만) / 대조(대상 + upstream) / 중재 / `--no-clean-verify` skip |
-| H20-doc-readability | 산출물 문서 스타일 — 위에서 아래로 / 비유 금지 / 표·도면 우선 / 항목 코드 금지 / 도면 형식 / 요구 항목 번호 하위 호환 |
+| H21-doc-readability | 산출물 문서 스타일 — 위에서 아래로 / 비유 금지 / 표·도면 우선 / 항목 코드 금지 / 도면 형식 / 요구 항목 번호 하위 호환 |
 
 > 번호 규약: 병렬 워크트리에서 각자 선점해 `H16` 이 세 fixture 에 중복됐던 것을 정리했습니다 (glossary → H18, clean-verify → H19). 신규 fixture 는 본 인덱스의 마지막 번호 다음을 쓰세요.

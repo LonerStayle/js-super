@@ -1965,7 +1965,7 @@ grep -c "Self-review (6 items)" skills/brainstorming/SKILL.md
 
 ### 영향 범위
 
-- 스킬 8 (`brainstorming` / `auto-brainstorming` / `tech-design` / `auto-tech-design` / `verifying-spec` + 그 대조 검증 프롬프트 / `change-propagation` / `risk-annotation`) + 커맨드 1 (`og-brainstorm` 형식 비교 한 줄) + `README.md` 4곳 + fixture 2 (H20 신규 + 인덱스) + `CLAUDE.md`. 버전 bump 는 main 전용 룰에 따라 main 에서
+- 스킬 8 (`brainstorming` / `auto-brainstorming` / `tech-design` / `auto-tech-design` / `verifying-spec` + 그 대조 검증 프롬프트 / `change-propagation` / `risk-annotation`) + 커맨드 1 (`og-brainstorm` 형식 비교 한 줄) + `README.md` 4곳 + fixture 2 (H21 신규 + 인덱스) + `CLAUDE.md`. 버전 bump 는 main 전용 룰에 따라 main 에서
 - `writing-plans` / `auto-writing-plans` / `executing-plans` / `js-super-sub-driven` — 변경 0
 - og-* / worktree 계열 / `scripts/` / `hooks/` / `agents/` 영향 0
 - 실행 코드 변경 0 — 스킬 본문과 문서 텍스트만
