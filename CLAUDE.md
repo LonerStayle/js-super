@@ -145,7 +145,7 @@ Before proposing changes to skill design, workflow philosophy, or architecture, 
 
 `writing-plans` 의 task block 신규 `**Model**:` 필드 (v1.1.14+) 는 `js-super-sub-driven` 의 implementer dispatch model 결정에 직접 사용된다 (`skills/js-super-sub-driven/SKILL.md` Plan Analysis & Wave Build 단계). 즉:
 
-- writing-plans 의 평가 룰 (haiku/sonnet/opus 분기) 변경 시 `js-super-sub-driven` 의 dispatch 단계도 동시 수정
+- writing-plans 의 평가 룰 (sonnet/opus 분기) 변경 시 `js-super-sub-driven` 의 dispatch 단계도 동시 수정
 - 한쪽만 건드리면 다음 회귀 발생: plan 작성 시 의도한 모델과 실제 dispatch 모델 불일치
 
 요약: 이 두 skill 의 `**Model**:` 룰 변경은 atomic 하게 묶어 처리할 것.
@@ -250,7 +250,7 @@ D1 (3 조건 AND — 같은 파일 / test 경계 X / mechanical) 룰 은 두 ski
 1. `skills/writing-plans/SKILL.md` — 검증 필드 스키마 + 템플릿 + placeholder 룰 반전 + Model sonnet floor
 2. `skills/auto-writing-plans/SKILL.md` — mirror 3곳 동기 (페어 atomic)
 3. `skills/js-super-sub-driven/implementer-prompt.md` — 구현=byte-copy / 테스트=자체 작성 분리 + 하위 호환 분기
-4. `skills/js-super-sub-driven/SKILL.md` — 조건부 dispatch (신규 테스트 포함 task = `**Model**:` 값, 최소 sonnet / 순수 byte-copy = haiku)
+4. `skills/js-super-sub-driven/SKILL.md` — dispatch 모델 단일 룰 (plan `**Model**:` 값, 하한 sonnet — "서브에이전트 sonnet 하한 결합" 섹션으로 조건부 분기 폐지)
 5. `skills/executing-plans/SKILL.md` — 테스트 소스 분기 섹션 + 룰 2 dispatch row
 6. `CLAUDE.md` — v2.0.0 결합 메모 갱신 + 본 섹션
 7. fixtures — H12 갱신 + H15 신규 (H15-natural-lang-verify — H14 는 depth-select 가 선점) + G5/G6 기대값 갱신
@@ -1895,3 +1895,51 @@ grep -cF "## 스킬목록 홈 전체 조회 결합" CLAUDE.md
 - `commands/list-skills.md` + `scripts/skill_scan.py` (신규) + `scripts/tests/test_skill_scan.py` (신규) + `README.md` 2곳 + `CLAUDE.md` (v2.7 메모 개정 + 본 섹션). 버전 bump 는 main 전용 룰에 따라 main 에서
 - `commands/new-skill.md` / `commands/remove-skill.md` — 변경 0 (출처 표식 규약 그대로. 3 커맨드 동시 수정 룰은 규약 변경 시에만 발동)
 - og-* / auto-* / worktree 계열 / `scripts/preflight.py` / hooks 영향 0
+
+## 서브에이전트 sonnet 하한 결합 (haiku 사용 금지)
+
+서브에이전트 dispatch 전 경로에서 haiku 사용 금지. implementer dispatch = plan `**Model**:` 값 (생략 시 sonnet, 하한 sonnet). 계획서 작성 층의 `**Model**:` 필드는 `sonnet | opus` 2값. 옛 계획서에 남은 haiku 값은 실행 층이 sonnet 으로 격상해 dispatch (계획서 수정 요구 없음, dispatch log 에 격상 표기). v2.9 의 조건부 분기 (순수 byte-copy = haiku) 는 폐지. spec: `docs/features/2026-08-29-서브에이전트-sonnet-기본/`.
+
+### 핵심 룰
+
+- **작성 층 (writing-plans / auto-writing-plans) 본문에서 haiku 단어 소멸** — enum 2값 + 판정표 sonnet 흡수. executing-plans 룰 2 row 도 haiku 단어 없이 js-super-sub-driven 참조로 위임
+- **실행 층 (js-super-sub-driven SKILL.md + implementer-prompt.md) 만 격상 문구에서 haiku 언급 허용** — dispatch 패턴 (`model: "haiku"` / `model='haiku'`) 은 0
+- **금지-언급 무변경 — spec-reviewer-prompt / code-pretty / glossary 3파일 + reorder-prompt L10 의 "NOT haiku." 주석** — "Haiku 쓰지 마라" 류 문구는 새 룰과 정합이라 잔존 허용
+- **STRICT BYTE-COPY 룰은 모델 무관 유지** — sonnet implementer 도 구현 코드는 byte-copy
+
+### 회귀 패턴 (한쪽만 변경 시)
+
+| 누락 | 증상 |
+|---|---|
+| 작성 층만 변경 (실행 층 미동기) | 실행 층이 옛 조건부 룰로 haiku dispatch 부활 |
+| 실행 층만 변경 (작성 층 미동기) | 계획서에 haiku 값 재유입 — plan 모델 ↔ dispatch 모델 불일치 (v1.1.14 결합 회귀) |
+| 격상 룰 제거 | 옛 계획서 (`**Model**: haiku` 잔존) 실행 시 금지 값 그대로 dispatch |
+| 판정표에 haiku 행 부활 | 금지 무력화 — 작성 세션이 다시 haiku 배정 |
+
+### 회귀 catch grep
+
+```bash
+grep -ni "haiku" skills/writing-plans/SKILL.md skills/auto-writing-plans/SKILL.md skills/executing-plans/SKILL.md
+# expected: 0
+
+grep -n 'model: "haiku"' skills/js-super-sub-driven/SKILL.md skills/js-super-sub-driven/implementer-prompt.md
+# expected: 0
+
+grep -n "model='haiku'" skills/js-super-sub-driven/SKILL.md
+# expected: 0
+
+grep -cF "haiku 격상" skills/js-super-sub-driven/SKILL.md
+# expected: >= 1
+
+grep -cF "하한 sonnet" skills/js-super-sub-driven/SKILL.md skills/executing-plans/SKILL.md
+# expected: 각 >= 1
+
+grep -cF "sonnet | opus" skills/writing-plans/SKILL.md
+# expected: >= 1
+```
+
+### 영향 범위
+
+- 스킬 본문 6 (writing-plans / auto-writing-plans / js-super-sub-driven SKILL+implementer+reorder / executing-plans) + fixture 6 + CLAUDE.md. `scripts/` / `hooks/` / og-* / `auto-executing-plans` (dispatch 룰을 js-super-sub-driven 에 위임) 영향 0
+- reorder / spec-reviewer / code-pretty / glossary 의 sonnet 고정 — 동작 변경 0
+- 버전 bump 는 main 전용 룰에 따라 main 에서
