@@ -17,6 +17,8 @@ NEVER skip this. The history is the only audit trail outside git.
 
 **파생 문서 예외 (용어집)**: `<slug>-glossary.md` 는 리비전마다 통째로 재생성되는 파생 문서라 `## 변경이력` footer 를 갖지 않는다. 이 파일의 생성·갱신은 본 skill 의 트리거 대상이 아니다 (`glossary` skill 본문의 동일 룰과 쌍).
 
+**분할 계획서 예외 (하위 문서)**: 계획서가 인덱스 + `plan/tasks-*.md` 로 나뉜 경우, 하위 문서는 `## 변경이력` footer 를 갖지 않는다. 하위 문서를 고쳐서 생기는 entry 도 전부 인덱스 (`<slug>-implementation-plan.md`) 의 footer 로 모은다. 이력이 문서마다 흩어지면 감사 흐름이 끊긴다.
+
 ## When to Use
 
 | Trigger | Append to |
