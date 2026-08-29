@@ -28,7 +28,7 @@ NEVER ask the user which 로컬 빌드 환경 파일 to copy. 메인 에이전�
 | Knob | Default behavior |
 |---|---|
 | Worktree root | `<메인 저장소 루트>/.worktrees/` — 워크트리 안에서 호출해도 메인 루트 기준, 중첩 생성 금지 (override only if user explicitly asks) |
-| Branch creation | If branch missing → `-b <name>` from **호출 위치 HEAD** (워크트리 안이면 그 워크트리의 커밋이 시작점; 사용자가 베이스 명시 시 그 브랜치). Existing local → use as-is. Remote-only → `-B <name> origin/<name>` |
+| Branch creation | If branch missing → `-b <name>` from **호출 위치 HEAD** (워크트리 안이면 그 워크트리의 커밋이 시작점; 사용자가 베이스 명시 시 그 브랜치). Existing local → use as-is. Remote-only → `-B <name> origin/<name>`. 신규 생성 시 분기 부모를 공유 git config 에 기록 (`js-super-parent` / `js-super-parent-base`) |
 | Dirty 워크트리에서 분기 (v2.9.0+) | Step 3.5 게이트 — "WIP 커밋 후 분기" / "마지막 커밋 시점 기준 분기" 선택. stash 금지 |
 | 로컬 빌드 환경 파일 복사 | **메인 에이전트가 프로젝트 컨텍스트 기반 후보 판단** (Node/Web → `.env*` / Android → `local.properties`, keystore 류 / iOS → `*.xcconfig` 등 / Desktop → `secrets.*`). 후보 list 사용자 노출 후 자동 복사. committed templates / build artifacts 자동 제외. |
 | Claude memory folder | **Symlink handled by `worktree-memory-symlink` PostToolUse hook** — fires automatically on `git worktree add`. Skips if main has no memory yet or if worktree's memory dir already exists. The skill body does NOT perform this step. |
@@ -161,6 +161,22 @@ git worktree add -b <BR> <MAIN_ROOT>/.worktrees/<BR> <BASE>        # 사용자�
 
 신규 브랜치 생성 직전 `BASE_SHA` / `BASE_BRANCH` (Step 0 캡처값) 를 그대로 두고, 생성 후 Step 6 보고에 사용한다.
 
+**분기 부모 기록 (`-b` 신규 생성 케이스만)**: 신규 분기 (`-b`) 로 워크트리를 만든 경우에만, `git worktree add` 성공 직후 **별도의 후속 Bash 호출**로 분기 부모를 공유 git config 에 기록한다 (`git worktree add` 와 한 Bash 호출로 묶으면 `worktree-memory-symlink` 훅의 프리픽스 매치가 깨져 심링크가 생성되지 않는다):
+
+```bash
+git config "branch.<BR>.js-super-parent" "$BASE_BRANCH"
+git config "branch.<BR>.js-super-parent-base" "$BASE_SHA"
+```
+
+`worktree-merge-back` 은 이 기록으로 직계 부모를 판별해 그 브랜치로 머지한다. 같은 이름 브랜치를 이 스킬로 다시 만들면 (기존 워크트리 제거 후 재생성 등) 기록은 덮어쓴다.
+
+기록을 생략하는 케이스 (정상 동작, 에러 아님):
+- 기존 로컬 브랜치를 attach 한 경우 (`git worktree add <path> <BR>`) — 그 브랜치의 분기 이력을 이 스킬이 모른다
+- remote-only 브랜치를 attach 한 경우 (`git worktree add -B <BR> <path> origin/<BR>`) — 마찬가지로 분기 이력 미상
+- `BASE_BRANCH` 가 빈 값인 경우 (detached HEAD 에서 호출) — 기록할 부모 브랜치명이 없다
+
+기록이 없으면 `worktree-merge-back` 실행 시점에 사용자 확인 게이트가 이를 흡수한다 (머지 대상을 사용자에게 되묻는다).
+
 **Step 5 — Copy ALL detected env files into each worktree (no prompts)**
 
 복사 소스는 **호출 위치 워크트리 루트 우선** (base 워크트리에서 갱신된 env 가 최신일 가능성이 높다), 후보 파일이 호출 위치에 없으면 메인 루트에서 fallback:
@@ -202,13 +218,17 @@ Claude 메모리 폴더: 메인 → 워크트리 심링크 (n개)
 
 - feature-a   → .worktrees/feature-a   (.env ✓ .env.local ✓ .env.production ✓ | 🔗 memory)
   분기 기준: <BASE_BRANCH> @ <BASE_SHA 앞 7자리>
+  부모 기록: ✓ (머지백이 이 브랜치로 머지)
 - feature-b   → .worktrees/feature-b   (.env ✓ .env.local ✓ .env.production ✓ | 🔗 memory)
   분기 기준: <BASE_BRANCH> @ <BASE_SHA 앞 7자리>
+  부모 기록: ✓ (머지백이 이 브랜치로 머지)
 
 각 워크트리에서 바로 빌드·서버 실행 가능합니다.
 워크트리 첫 세션부터 메인 레포의 Claude 메모리(user/feedback/project) 즉시 활용됩니다.
 정리: `git worktree remove <path>` — 메모리 심링크는 워크트리 디렉터리 밖이라 메인 메모리에 영향 없음.
 ```
+
+기존 로컬/remote 브랜치를 attach 한 케이스는 "부모 기록: ✓" 대신 "부모 기록: 없음 (기존 브랜치 attach — 머지백 시 대상 확인)" 으로 표기한다.
 
 분기 베이스가 메인 브랜치가 아니면 (`BASE_BRANCH` ≠ `MAIN_BRANCH`) 다음 주의를 함께 출력한다 (v2.9.0+):
 
@@ -231,6 +251,7 @@ Claude 메모리 폴더: 메인 → 워크트리 심링크 (n개)
 | 워크트리 안에서 호출 시 호출 위치 루트 아래 `.worktrees/` 중첩 생성 | 항상 `MAIN_ROOT` (worktree list 첫 entry) 기준 배치. |
 | for-loop 한 방에 `git worktree add` 묶기 | 훅 프리픽스 미매치 → 심링크 미생성. 브랜치별 개별 Bash 호출. |
 | dirty 워크트리에서 말없이 분기 (또는 stash 로 넘기기) | Step 3.5 게이트 — WIP 커밋 / 커밋 시점 분기 선택. stash 금지. |
+| 기록 명령을 `git worktree add` 와 한 Bash 호출로 묶기 | 훅 프리픽스 미매치 → 심링크 미생성. 기록은 add 이후 별도 호출. |
 | Performing the memory symlink yourself in this skill | Forbidden — handled by `worktree-memory-symlink` PostToolUse hook. The agent must not run any path-mutating shell command (directory creation, symlink, or string substitution) against the Claude memory location. Past versions failed because agents mentally simulated the encoding rule and produced folder names Claude Code never reads. |
 | Clobber worktree's existing memory dir with a symlink | Forbidden. If `$WT_MEMORY` already exists, skip and tell user to migrate manually. |
 | Skip the symlink because "user didn't ask for it" | Always attempt. The whole point is zero-friction worktree start. Only skip when main memory missing or WT memory already there. |
@@ -268,6 +289,7 @@ After running this skill:
 8. 워크트리 안에서 호출된 경우에도 새 워크트리는 메인 루트 `.worktrees/` 아래에 있고, 호출 위치 워크트리 내부에 `.worktrees/` 중첩이 생기지 않았다. (v2.9.0+)
 9. 보고에 분기 기준 커밋 해시가 포함됐고, 베이스가 메인 브랜치가 아니면 스택 구조 주의가 함께 출력됐다. (v2.9.0+)
 10. 호출 위치가 dirty 였다면 Step 3.5 게이트 (WIP 커밋 / 커밋 시점 분기) 가 발화했다. (v2.9.0+)
+11. 신규 분기로 만든 워크트리마다 분기 부모 기록 (`js-super-parent` + `js-super-parent-base`) 이 남았고, attach 케이스는 기록 없이 보고에 그 사실이 표기됐다.
 
 ## Related Skills
 
