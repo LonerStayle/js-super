@@ -18,7 +18,7 @@ EXCEPTION 2 — clean-context verifiers: You MUST ALSO dispatch two context-free
 | Phase | Target MD | Upstream MDs |
 |---|---|---|
 | End of `tech-design` | <slug>-tech-design.md | [<slug>-requirements.md] |
-| End of `writing-plans` | <slug>-implementation-plan.md | [<slug>-requirements.md, <slug>-tech-design.md] |
+| End of `writing-plans` | <slug>-implementation-plan.md (+ `plan/tasks-*.md` if split) | [<slug>-requirements.md, <slug>-tech-design.md] |
 
 <slug>-requirements.md is the source of truth and is therefore not a verification target.
 
