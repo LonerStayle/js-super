@@ -81,15 +81,15 @@ Per-wave loop 보다 먼저 1회만 실행. 모든 task 완료까지 wave 구조
 
 1. **Read plan tasks** — `<slug>-implementation-plan.md` 의 §1 단계별 작업 모든 task block.
 2. **Parse files + deps** — 각 task block 의 `**Files:**` (Create/Modify/Test) 섹션 + step 본문에서 task ID 참조 추출 (예: "Task 1 의 helper 사용" → deps=[1]). `Test:` 경로도 files 집합에 포함 — wave file-disjoint 판정이 테스트 파일 충돌까지 커버한다 (v2.9+ 계획서에 테스트 코드 블록이 없어도 `Test:` 경로 줄을 유지하는 이유).
-3. **Parse model hint** — task block 의 `**Model**:` 줄 파싱. DAG 복잡도 표시 + v2.9+ 조건부 dispatch 판정에 사용 (신규 테스트 작성 포함 task 는 이 값으로 dispatch, 최소 sonnet — Model Selection 참조). 없으면 DAG 표시상 `sonnet` (`scripts/dag_builder.py` 의 `Task.model` 기본값).
+3. **Parse model hint** — task block 의 `**Model**:` 줄 파싱. DAG 표시 + implementer dispatch 모델로 그대로 사용 (하한 sonnet, haiku 값은 sonnet 으로 격상 — Model Selection 참조). 없으면 `sonnet` (`scripts/dag_builder.py` 의 `Task.model` 기본값).
 4. **Build waves** — `scripts/dag_builder.py:build_waves` 호출:
 
 ```bash
 source .venv/bin/activate && python -c "
 from scripts.dag_builder import Task, build_waves
 tasks = [
-    Task(id=1, name='Foo', files=['scripts/dag_builder.py'], deps=[], model='haiku'),
-    Task(id=2, name='Bar', files=['scripts/dag_builder.py'], deps=[1], model='haiku'),
+    Task(id=1, name='Foo', files=['scripts/dag_builder.py'], deps=[], model='sonnet'),
+    Task(id=2, name='Bar', files=['scripts/dag_builder.py'], deps=[1], model='sonnet'),
     # ...
 ]
 waves = build_waves(tasks)
@@ -109,22 +109,21 @@ for w in waves:
 
 ## Model Selection
 
-**Implementer dispatch 모델은 조건부 (v2.9+)** — 순수 byte-copy task (`**원본**`/`**수정 후**` 블록만, 신규 테스트 작성 없음) 는 **`haiku` 고정** (v2.0.0 byte-copy — 기계적 복사라 추론 모델 불필요). **신규 테스트 작성 포함 task** (`**검증**:` 필드 + `Files:` 의 `Test:` 경로 존재 + 테스트 코드 블록 없음) 는 plan 의 `**Model**:` 값 (**최소 sonnet floor**) 으로 dispatch — 자연어 검증 설명만으로 테스트 코드를 작성해야 하기 때문. 하위 호환: task 에 테스트 코드 블록이 있으면 (v2.8 이전 형식) 기존 룰 (전체 byte-copy + haiku) 우선. 구현 코드의 STRICT BYTE-COPY 는 dispatch 모델과 무관하게 적용. task 가 byte-copy 로 감당 안 되면 implementer 가 `BLOCKED` 보고 → 메인이 reorder(sonnet) dispatch (아래 W-2 Stage 1/2/3 참조).
+**Implementer dispatch 모델은 단일 룰 — haiku 사용 금지, 하한 sonnet.** implementer 는 항상 plan 의 `**Model**:` 값으로 dispatch 한다. 필드 생략 시 sonnet 기본값 (dispatch log 판정 근거 예: "Task 1 model: sonnet (기본값)"). 옛 계획서에 haiku 값이 남아 있으면 sonnet 으로 격상해 dispatch 하고 판정 근거에 격상 사실을 표기한다 (예: "Task 1 model: sonnet (haiku 격상)") — 계획서 수정을 요구하지 않는다. 테스트 소스 분기 (v2.9+) 는 dispatch 모델과 분리되어 그대로 유지된다 — task 에 테스트 코드 블록이 있으면 (v2.8 이전 형식) 테스트도 byte-copy 우선 (implementer-prompt Test Authoring 참조). 구현 코드의 STRICT BYTE-COPY 는 dispatch 모델과 무관하게 적용 (sonnet implementer 도 구현 코드는 byte-copy). task 가 byte-copy 로 감당 안 되면 implementer 가 `BLOCKED` 보고 → 메인이 reorder(sonnet) dispatch (아래 W-2 Stage 1/2/3 참조).
 
 **Spec reviewer 서브에이전트** 는 항상 **sonnet** 고정 (D11). implementer 모델과 무관.
 
-참고 — plan 의 `**Model**:` 값이 나타내는 task 복잡도 (신규 테스트 포함 task 는 dispatch 모델로도 사용, v2.9+):
+참고 — plan 의 `**Model**:` 값 (implementer dispatch 모델로 사용):
 
-| Task 신호 | 복잡도 힌트 |
+| Task 신호 | Model 값 |
 |---|---|
-| 1-2 파일 + 명확한 spec, 기계적 구현 | **haiku** |
-| 다중 파일 통합 / 패턴 매칭 / 디버깅 | **sonnet** |
+| 기계적 구현 / 다중 파일 통합 / 패턴 매칭 / 디버깅 | **sonnet** |
 | 설계 판단 / 광범위 코드베이스 이해 / 리뷰 | **opus** |
 
 dispatch 예시:
 ```
 Task tool (general-purpose):
-  model: "haiku"   # 순수 byte-copy task 는 haiku / 신규 테스트 포함 task 는 plan **Model**: 값 (최소 sonnet) — v2.9+
+  model: "sonnet"   # plan **Model**: 값 (생략 시 sonnet 기본, 하한 sonnet)
   description: "Implement Task N: ..."
   prompt: <implementer-prompt 템플릿>
 ```
@@ -150,7 +149,7 @@ Wave i/N 시작: task <list> 병렬 실행…
 ### W-2. Pair-parallel dispatch
 
 For each task in this wave (in plan order), 두 dispatch 를 한 메시지에 묶어 **병렬** 실행 (Agent tool multiple calls in single message):
-- Implementer (`./implementer-prompt.md`, 순수 byte-copy task 는 `model: "haiku"` / 신규 테스트 포함 task 는 plan `**Model**:` 값 (최소 sonnet) — v2.9+)
+- Implementer (`./implementer-prompt.md`, plan `**Model**:` 값 — 생략 시 sonnet, 하한 sonnet)
 - Spec reviewer 는 implementer 가 `Status: DONE` + manifest 작성 후 dispatch (`./spec-reviewer-prompt.md`, `model: "sonnet"` 고정)
 
 페어 병렬 = wave 안 task **간** 병렬 (task A 와 task B 동시), task **안** 의 impl→review 는 직렬.
@@ -159,8 +158,8 @@ For each task in this wave (in plan order), 두 dispatch 를 한 메시지에 �
 
 For each task within wave, dispatch sequence is now:
 
-1. **Stage 1 — Implementer** (조건부 모델, byte-copy + 테스트 자체 작성)
-   Dispatch via `./implementer-prompt.md` (순수 byte-copy=haiku / 신규 테스트 포함=plan `**Model**:` 값, 최소 sonnet — v2.9+).
+1. **Stage 1 — Implementer** (plan `**Model**:` 값, byte-copy + 테스트 자체 작성)
+   Dispatch via `./implementer-prompt.md` (plan `**Model**:` 값 — 생략 시 sonnet, 하한 sonnet).
    - Status: DONE → proceed to Stage 3 (Spec Reviewer)
    - Status: BLOCKED — 원본 mismatch → proceed to Stage 2 (Reorder)
    - Status: BLOCKED — other → wave finalization failure isolation (D7), no Stage 2
@@ -177,8 +176,7 @@ For each task within wave, dispatch sequence is now:
 
 Stage 1 BLOCKED → Stage 2 dispatch is automatic (no user gate). Stage 2
 NEEDS_USER → main agent gate. Plan's `**Model**:` value drives Stage 1 dispatch
-ONLY for tasks that author new tests (v2.9+, min sonnet floor); pure byte-copy
-tasks stay haiku. Spec reviewer remains sonnet (D11/D-T2 PRD).
+for every task (min sonnet floor). Spec reviewer remains sonnet (D11/D-T2 PRD).
 
 ### W-3. Spec reviewer ❌ 시 implementer 재dispatch
 
@@ -347,8 +345,8 @@ Wave 1/3 시작: task 1, 2 병렬 실행…
 ──────────────────────────────────────
 
 [Single message with 2 Agent tool calls in parallel:
-  - Implementer task 1 (model: haiku)
-  - Implementer task 2 (model: haiku)]   # 두 task 모두 순수 byte-copy → haiku (신규 테스트 포함 task 면 plan **Model**: 값 — v2.9+)
+  - Implementer task 1 (model: sonnet)
+  - Implementer task 2 (model: sonnet)]   # 두 task 모두 plan **Model**: 값 — 생략 시 sonnet 기본 (하한 sonnet)
 
 [Both return: Status DONE + manifest written to buffer]
 
@@ -393,7 +391,7 @@ Wave 3/3 시작: task 5...
 ```
 
 **핵심 패턴**:
-1. dispatch 는 항상 **명시 모델 주입** (implementer=조건부: 순수 byte-copy 는 haiku / 신규 테스트 포함은 plan **Model**: 값 (최소 sonnet), spec-reviewer=sonnet 고정) — 부모 모델 상속 회피
+1. dispatch 는 항상 **명시 모델 주입** (implementer=plan **Model**: 값 (생략 시 sonnet, 하한 sonnet), spec-reviewer=sonnet 고정) — 부모 모델 상속 회피
 2. wave 단위 pair-parallel — task **간** 병렬, task **안** impl→review 직렬
 3. wave finalization 단계에서 메인이 plan order 직렬 commit (implementer 는 commit X)
 4. post-hoc conflict 검출 → 충돌 시 plan order 늦은 task rollback + 다음 wave 재배치
@@ -479,7 +477,7 @@ subagent execute 흐름의 핵심 UX 룰. 사용자가 subagent 모드를 선택
 | task 병렬 vs 순차 (wave 분할) | plan 의 dependencies 만족 시 wave-parallel default (v2.0.0+ Per-wave Sequence) |
 | task 묶음 (same-file mechanical 3-AND 룰 만족 시) | 묶음 default (v2.0.1+) |
 | task 안 보조 결정 (변수명 / format / order of imports) | plan 의 `**원본**` + `**수정본**` byte-copy 우선, 없으면 implementer 자율 |
-| implementer dispatch model | v2.9+ 조건부 자동 판정 — 순수 byte-copy 는 haiku / 신규 테스트 포함은 plan `**Model**:` 값 (최소 sonnet). 게이트 없이 자동 |
+| implementer dispatch model | plan `**Model**:` 값 자동 적용 — 생략 시 sonnet, 하한 sonnet. 게이트 없이 자동 |
 | wave 완료 후 다음 wave 진입 타이밍 | 자동 진입 (게이트 X) |
 | 중간 결과 보고 빈도 | 매 task X, 매 wave 단위 OR BLOCKED 시만 |
 
@@ -521,7 +519,7 @@ prose 질문 좁은 예외:
 | 매 wave 완료 후 "다음 wave 진입할까요?" 게이트 | 룰 3 위반. 모드 선택 = 진행 위임. |
 | "같은 파일이라 묶을까요?" 게이트 | 룰 2 위반. 3-AND 룰 (v2.0.1+) 으로 자동 판정. |
 | BLOCKED → 곧장 사용자 재질문 (reorder skip) | 룰 4 위반. reorder dispatch 자동 시도 우선. |
-| implementer model 변경 시 게이트 | 룰 2 위반. v2.9+ 조건부 룰 (순수 byte-copy=haiku / 신규 테스트 포함=plan **Model**: 값) 로 자동 판정. |
+| implementer model 변경 시 게이트 | 룰 2 위반. plan **Model**: 값 (생략 시 sonnet, 하한 sonnet) 으로 자동 판정. |
 | 변수명 / format / import 순서 게이트 | 룰 2 위반. plan byte-copy 우선, 없으면 implementer 자율. |
 | 사용자 모드 선택 무시하고 subagent → inline 자동 전환 권유 | 룰 1 위반. 모드 변경은 명시 동의 필수. |
 | 모든 mid-flight 결정을 "안전성" 명목으로 게이트 | 과보호. 룰 1 7 케이스 외엔 자율. |
