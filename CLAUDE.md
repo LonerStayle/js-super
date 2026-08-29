@@ -2050,3 +2050,77 @@ grep -cF "sonnet | opus" skills/writing-plans/SKILL.md
 - 스킬 본문 6 (writing-plans / auto-writing-plans / js-super-sub-driven SKILL+implementer+reorder / executing-plans) + fixture 6 + CLAUDE.md. `scripts/` / `hooks/` / og-* / `auto-executing-plans` (dispatch 룰을 js-super-sub-driven 에 위임) 영향 0
 - reorder / spec-reviewer / code-pretty / glossary 의 sonnet 고정 — 동작 변경 0
 - 버전 bump 는 main 전용 룰에 따라 main 에서
+
+## 산출물 문서 스타일 + 요구 항목 번호 교체 결합
+
+요구사항서와 기술설계서를 만드는 스킬 넷에 산출물 작성 스타일 룰을 심고, 요구 항목 번호를 `FR-N` 에서 `요구 N` 으로 바꾼 작업. spec: `docs/features/2026-08-29-문서가독성개선/`.
+
+### 왜 스킬 본문에 직접 넣었나
+
+이 저장소의 스킬은 자기 완결이 원칙이다. 공용 스타일 파일 하나를 넷이 참조하게 만들면 저장소에 없던 참조 패턴이 새로 생긴다. 문체를 기계로 검사하는 방법도 검토했지만 한국어 문장의 좋고 나쁨은 판정할 수 없어 코드 패턴 검사만 보조로 남겼다. 앞서 "서술 수준 — 이름보다 역할" 룰도 같은 이유로 본문 삽입 방식을 썼다.
+
+### 핵심 룰
+
+- **섹션 이름은 넷 다 `## 산출물 문서 스타일`** — 이름이 같아야 한 줄 검색으로 네 파일을 한 번에 확인할 수 있다. 정식 경로 둘은 전체본, 자동 경로 둘은 압축본
+- **적용 대상은 산출물 문서뿐** — 스킬 본문의 영어 식별자, 룰 본문, dot 흐름도는 대상이 아니다. 본문은 에이전트가 읽는 코드에 해당한다
+- **요구 항목 번호는 `**요구 N**:`** — 굵게까지 포함한 형태가 약속이다. 읽는 쪽이 이 패턴을 찾는다
+- **읽는 쪽은 세 세대를 모두 인식** — `요구 N` (현행) / `## 요구 항목` 아래 `FR-N` (직전) / `## 3. 기능 요구사항 (FR)` 아래 `FR-N` (초기). 옛 문서를 읽는 김에 새 형식으로 고쳐 쓰지 않는다
+- **기술설계서 도면은 세 형식 중 상황에 맞게** — 아스키 박스 도면 (기본) / 아스키 도면 + 번호 + 설명 표 (요소가 많을 때) / mermaid (관계·분기가 본질이고 렌더링 환경 전제 가능). 절차 나열 흐름도로 구조 설명을 대신하지 않는다
+- **도면 안 번호 (①②③) 는 항목 코드가 아니다** — 표에서 설명하기 위한 도면 표기법이라 금지 대상 밖. 요구 항목 번호가 "유일한 예외" 라는 문구와 충돌하지 않는다
+- **옛 문서 소급 수정 없음** — 새로 쓰는 문서부터 적용. 하위 호환으로 계속 읽힌다
+- **구현계획서는 범위 밖** — `writing-plans` / `auto-writing-plans` 는 대상이 아니다. 두 파일의 `FR` 표기는 옛 피처 스펙을 가리키는 내부 주석뿐이고 요구 항목 번호를 찾아 읽는 문구가 없다
+
+### 회귀 패턴
+
+| 누락 | 증상 |
+|---|---|
+| 정식·자동 한쪽만 수정 | 두 경로가 만드는 문서의 문체가 갈린다. 문서를 나란히 놓고 읽기 전에는 안 드러난다 |
+| 읽는 쪽의 하위 호환 문구 삭제 | 옛 피처 문서를 다시 열 때 요구 항목을 못 찾는다 |
+| 읽는 쪽 중 한 곳 누락 | 그 스킬만 옛 형식을 기대한 채 남는다 |
+| 도면 형식 판단 기준 삭제 | 매번 형식이 흔들리고, 결국 한 형식만 쓰게 된다 |
+| 스타일 룰을 스킬 본문 자체에 적용 | 에이전트가 읽는 식별자와 룰이 지워져 스킬이 망가진다 |
+| 흐름도 노드 이름 일부만 교체 | 없는 노드를 가리키는 연결선이 생겨 그래프가 깨진다 |
+
+### 회귀 catch grep
+
+```bash
+grep -lF "## 산출물 문서 스타일" skills/brainstorming/SKILL.md skills/auto-brainstorming/SKILL.md skills/tech-design/SKILL.md skills/auto-tech-design/SKILL.md | wc -l
+# expected: 4
+```
+
+```bash
+grep -cF "### 도면 형식" skills/tech-design/SKILL.md skills/auto-tech-design/SKILL.md
+# expected: 각 1
+```
+
+```bash
+grep -cF "**요구 1**" skills/brainstorming/SKILL.md
+# expected: 1
+```
+
+```bash
+grep -c "FR-N" skills/tech-design/SKILL.md
+# expected: 3 (하위 호환 문구 — 0 이면 회귀)
+```
+
+```bash
+grep -c "FR-3" README.md
+# expected: 0
+```
+
+```bash
+grep -c "FR-N" commands/og-brainstorm.md
+# expected: 0
+```
+
+```bash
+grep -c "Self-review (6 items)" skills/brainstorming/SKILL.md
+# expected: 0
+```
+
+### 영향 범위
+
+- 스킬 8 (`brainstorming` / `auto-brainstorming` / `tech-design` / `auto-tech-design` / `verifying-spec` + 그 대조 검증 프롬프트 / `change-propagation` / `risk-annotation`) + 커맨드 1 (`og-brainstorm` 형식 비교 한 줄) + `README.md` 4곳 + fixture 2 (H21 신규 + 인덱스) + `CLAUDE.md`. 버전 bump 는 main 전용 룰에 따라 main 에서
+- `writing-plans` / `auto-writing-plans` / `executing-plans` / `js-super-sub-driven` — 변경 0
+- og-* / worktree 계열 / `scripts/` / `hooks/` / `agents/` 영향 0
+- 실행 코드 변경 0 — 스킬 본문과 문서 텍스트만

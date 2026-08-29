@@ -176,7 +176,7 @@ If they agree to the companion, read the detailed guide before proceeding:
 | 항목 | `/brainstorm` (js-super 확장) | `/og-brainstorm` (upstream 원본) |
 |---|---|---|
 | 산출물 경로 | `docs/features/<date>-<slug>/<slug>-requirements.md` | `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` |
-| 산출물 형식 | 자유 산문 + `## 요구 항목` 과 `FR-N` 필수 | upstream 자유 형식 단일 |
+| 산출물 형식 | 자유 산문 + `## 요구 항목` 과 `요구 N` 필수 | upstream 자유 형식 단일 |
 | 대화 방식 | 소크라테스 4블록 (커버 목록 5 / 고정 비교축 3 / 3단 사다리) | upstream 자유 대화 |
 | 변경이력 footer | 자동 누적 | 없음 |
 | 다음 단계 | `/design-tech` | `/og-write-plan` |
