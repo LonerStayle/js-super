@@ -64,8 +64,9 @@ mkdir -p docs/features/$(date +%Y-%m-%d)-<slug>/
 ### Step 4 — 산출물 자동 작성
 
 `<slug>-requirements.md` 작성 (자유 산문):
-- H1 + 다음 단계 안내 배너 + 배경 + 핵심 결정 + `## 요구 항목` (FR-N) + 우려/해결 + 다음 단계 + 변경이력 footer
-- `## 요구 항목` 과 `FR-N` 은 필수. 나머지 섹션은 대화에서 나온 대로. 모드 표기 줄은 쓰지 않는다.
+- H1 + 다음 단계 안내 배너 + 배경 + 핵심 결정 + `## 요구 항목` (`**요구 N**:`) + 우려/해결 + 다음 단계 + 변경이력 footer
+- `## 요구 항목` 과 `**요구 N**:` 은 필수. 나머지 섹션은 대화에서 나온 대로. 모드 표기 줄은 쓰지 않는다.
+- 아래 "산출물 문서 스타일" 을 지킨다. 작성 직후 그 네 가지로 한 번 훑는다 (사용자 응답 wait X).
 - RAW 본문 그대로.
 
 ### Step 5 — change-history 자동
@@ -80,12 +81,24 @@ mkdir -p docs/features/$(date +%Y-%m-%d)-<slug>/
 
 다음 사용자 turn 의 입력에 `parse_interrupt` (scripts/auto_flow.py) 매치 시 cleanly exit + `ℹ️ 알겠습니다. 기술설계는 나중에 /auto-design-tech (자동) 또는 /design-tech (단계별 확인) 으로 실행해주세요.` 안내. 매치 X 시 즉시 `js-super:auto-tech-design` skill invoke.
 
+## 산출물 문서 스타일
+
+산출물 문서에만 적용된다 (이 skill 본문은 대상 아님).
+
+- **위에서 아래로** — 용어는 처음 쓰는 자리에서 설명. 뒤를 먼저 읽어야 이해되는 문장 금지
+- **간결한 자연어** — 한 문장에 하나. 비유 금지. 배경 반복·다짐 금지
+- **표와 도면 우선** — 항목 셋 이상이면 표. 관계·배치는 도면. 산문은 배경과 판단 근거에만
+- **항목 코드 금지** — 알파벳-숫자 코드를 새로 만들지 않는다. 유일한 예외는 요구 항목 번호 (`요구 N`). 도면 안 번호 (①②③) 는 표기법이라 대상 아님
+
+전체 룰은 `skills/brainstorming/SKILL.md` 의 같은 이름 섹션 답습.
+
 ## Anti-Patterns
 
 | Wrong | Right |
 |---|---|
 | AskUserQuestion 호출 | NEVER. auto-flow 의 사용자 입력은 clarifying Q 답변에만. |
 | Visual Companion offer | NEVER. D-T11. |
+| 산출물에 비유·항목 코드·산문 나열 | "산출물 문서 스타일" 네 가지 위반. 표·도면·짧은 문장으로. |
 | 일반 brainstorming skill body 호출 | NEVER. self-contained mirror (D-T1). |
 | transition notice 후 사용자 응답 wait sleep | NEVER. harness 모델은 자동 다음 turn — sleep X. |
 
