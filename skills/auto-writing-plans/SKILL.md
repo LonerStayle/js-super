@@ -11,7 +11,7 @@ description: auto-flow 3단계 — /auto-write-plan 커맨드 또는 앞 단계 
 - [ ] Step 2 — AI 자동 task 분해 (TDD bite-sized + Model hint 자동)
 - [ ] Step 3 — §2 위험 코드 지점 자동 (R-N → file:line 매핑)
 - [ ] Step 4 — 산출물 자동 작성 (<slug>-implementation-plan.md)
-- [ ] Step 4.5 — plan_byte_check 자동 (3회 재시도)
+- [ ] Step 4.5 — plan_guard 자동 (3회 재시도)
 - [ ] Step 5 — verifying-spec 자동 실행 (4축 보고서)
 - [ ] Step 6 — change-history 자동 ([구현계획서-수정] entry)
 - [ ] Step 7 — Transition notice + auto-executing-plans invoke
@@ -39,6 +39,10 @@ tech-design §1~§7 + R1~R10 분석. TDD bite-sized task 자동 생성:
 
 세 조건 중 하나라도 어기면 분리. multi-step task 안 step 구조: `**검증**` 설명 기반 통합 테스트 작성 + FAIL 확인 (실행 단계 수행, 1회) → byte-copy Edit (N회) → test pass → self-review. 애매하면 분리 (보수적 default).
 
+**분할 판정**: 분해 결과 task 가 **10개 이상**이면 인덱스 + `plan/` 하위 문서 구조로 쓴다. 하위 문서 이름은 `plan/tasks-NN.md` / `plan/tasks-NN-MM.md` (2자리, 연속 범위), 하나에 task 최대 3개, 번호는 전역 연번. 인덱스 task 블록은 `**상세**` 링크 + `**Files:**` + `**Model**` + `**검증**` 만 담고, step 목록과 코드 블록은 하위 문서에 둔다. 하위 문서에는 변경이력 footer 를 두지 않는다 (인덱스 한 곳으로 모음). 10개 미만이면 단일 문서 — 코드량이 많다고 판단되면 나눠도 된다 (재량은 나누는 방향으로만).
+
+**구현 코드 강제**: 파일을 만들거나 고치는 task 는 예외 없이 코드 블록을 싣는다. 계획서가 길어졌다고 자연어 설명으로 대체하지 않는다. 코드 블록 안에 `... 생략` / `기존 코드 유지` / `이하 동일` 류 생략 표현을 쓰지 않는다 — Step 4.5 검사가 결정적으로 차단한다.
+
 **Step 2 끝 자체 검토 (same-file 묶음 자체 검토)**: 자동 분해 결과 같은 파일만 만지는 task chain ≥ 2건 있으면 메인이 직접 D1 의 3 조건 재검토 → 묶을지 결정. 사용자 응답 wait X (auto 모드).
 
 ### Step 3 — §2 위험 코드 지점 자동
@@ -49,28 +53,29 @@ tech-design §6 R-N → file:line + mitigation 매핑. 모든 R-N 이 §2 에 en
 
 `<slug>-implementation-plan.md` schema 따라 작성. frontmatter `commit_policy: per-task`. RAW 본문, code-pretty / glossary 호출 X (D-T12 일관 — auto-flow 는 사용자 검토 게이트가 없어서 사람이 읽기 좋게 다듬는 단계 자체가 의미 없음).
 
-### Step 4.5 — plan_byte_check 자동 (v2.0.0+)
+### Step 4.5 — plan_guard 자동 (3회 재시도)
 
-Plan 본문 자동 작성 직후, 메인이 helper 자동 호출:
+Plan 본문 자동 작성 직후, 메인이 helper 자동 호출. 코드 블록 존재 (G1) / 생략 표현 (G2) / 분할 구조 (G3~G5) / byte-equal (G6) 을 한 번에 본다:
 
 ```bash
 source .venv/bin/activate && python -c "
 import sys
 from pathlib import Path
-from scripts.plan_byte_check import verify_plan_block_byte_equal
-mismatches = verify_plan_block_byte_equal(
-    Path('<PLAN_PATH>'),
-    Path('.'),
-)
-if mismatches:
-    for m in mismatches:
-        print(f'MISMATCH #{m.block_index} — {m.reason}')
+from scripts.plan_guard import check_plan, verify_documents_byte_equal
+index = Path('<PLAN_PATH>')
+violations = check_plan(index)
+mismatches = verify_documents_byte_equal(index, Path('.'))
+for v in violations:
+    print(f'{v.code} — {v.human_reason} ({v.doc_path})')
+for m in mismatches:
+    print(f'G6 — {m.reason}')
+if violations or mismatches:
     sys.exit(1)
 sys.exit(0)
 "
 ```
 
-미스매치 발견 시 메인이 즉시 plan 의 `**원본**` 블록 수정 후 재시도 (auto 모드 — 사용자 응답 wait X). 3회 재시도 후에도 실패 시 `ℹ️ plan_byte_check 가 3회 실패했습니다. 사용자가 직접 개입해주세요.` 안내 후 종료. byte-copy 정밀도 강제는 v2.0.0 구현계획서의 핵심 precondition.
+위반 발견 시 메인이 즉시 수정 후 재시도 (auto 모드 — 사용자 응답 wait X). G1 은 코드 블록을 실제로 채워서, G2 는 생략 표현을 실제 코드로 바꿔서, G3~G5 는 문서를 나누거나 링크·번호를 맞춰서, G6 은 `**원본**` 블록을 현재 파일과 맞춰서 해소한다. 3회 재시도 후에도 실패 시 `ℹ️ plan_guard 가 3회 실패했습니다. 사용자가 직접 개입해주세요.` 안내 후 종료. 이 검사는 실행 단계의 원본 그대로 보존 방식이 성립하기 위한 전제이자, 계획서에 코드가 실리도록 강제하는 유일한 장치다.
 
 ### Step 5 — verifying-spec 자동 실행
 
