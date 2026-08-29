@@ -1931,3 +1931,34 @@ grep -cF "## 스킬목록 홈 전체 조회 결합" CLAUDE.md
 - `commands/list-skills.md` + `scripts/skill_scan.py` (신규) + `scripts/tests/test_skill_scan.py` (신규) + `README.md` 2곳 + `CLAUDE.md` (v2.7 메모 개정 + 본 섹션). 버전 bump 는 main 전용 룰에 따라 main 에서
 - `commands/new-skill.md` / `commands/remove-skill.md` — 변경 0 (출처 표식 규약 그대로. 3 커맨드 동시 수정 룰은 규약 변경 시에만 발동)
 - og-* / auto-* / worktree 계열 / `scripts/preflight.py` / hooks 영향 0
+
+## 워크트리 브랜치 네이밍 제안 결합 (재분기 `부모__자식`)
+
+`/worktree` 에서 이름 없이 작업 설명만 주면 AI 가 브랜치 이름을 제안한다. 재분기 판별은 브랜치 비교 (`BASE_BRANCH` ≠ `MAIN_BRANCH`) — 스택 구조 안내 (v2.9.0+) 와 동일 기준. 재분기면 `<부모브랜치>__<자식이름>` 형식으로 누적되고, 사용자 명시 이름은 그대로 존중한다. spec: `docs/features/2026-08-29-워크트리-재분기-네이밍/`.
+
+### 핵심 룰
+
+- **N-1 명시 이름 존중** — 사용자가 이름을 주면 개명 · 제안 없이 그대로 (FR-4). 제안은 이름 미지정일 때만
+- **N-2 판별 = 브랜치 비교** — 경로 (워크트리 안인지) 가 아니라 분기 기준 브랜치 ≠ 메인 브랜치. 메인 워크트리에서 feature 브랜치 체크아웃 상태로 분기해도 접두어가 붙는다 (의도)
+- **N-3 생성 이름 제약** — AI 가 새로 짓는 부분에 `__` 금지 (구분자 예약). `/` 는 자식 이름에 금지 (새 중첩 층 방지 — 부모에게서 물려받은 `/` 는 수용), 메인 기준 이름은 저장소 관례를 따름. 명시 이름에는 미적용
+- **N-4 skill ↔ commands 동기** — 마커 리터럴 `부모브랜치__자식이름` 이 양쪽에 존재해야 함. 한쪽만 고치면 안내와 동작이 어긋난다
+- **N-5 훅 · Step 4 불변** — 이름 해석은 Step 1 에서 끝난다. `git worktree add ` 개별 호출 규칙 (v2.9.0) 과 `hooks/worktree-memory-symlink` 변경 0
+
+### 회귀 catch grep
+
+```bash
+grep -cF "부모브랜치__자식이름" skills/setting-up-worktrees/SKILL.md commands/worktree.md
+# expected: 각 1 이상
+
+grep -c "Parse branch names" skills/setting-up-worktrees/SKILL.md
+# expected: 0
+
+test -f skills/js-super-sub-driven/tests/H20-worktree-naming/README.md && echo OK
+# expected: OK
+```
+
+### 영향 범위
+
+- skill 본문 1 + commands 1 + fixture 2 (신규 README + 인덱스) + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
+- `worktree-merge-back` / `worktree-remove` — 변경 0 (`__` 파싱 부모 판별은 범위 밖, tech-design §2 승계)
+- `hooks/` / `scripts/` / og-* / auto-* 영향 0. 기존 워크트리 · 브랜치 이름 소급 변경 없음
