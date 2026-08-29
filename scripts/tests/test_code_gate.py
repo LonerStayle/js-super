@@ -24,6 +24,7 @@ import json
 import math
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -42,22 +43,39 @@ from scripts.code_gate import (
     _forbidden_arg,
     _js_outcome,
     _match_glob,
+    _merge_mutation_languages,
+    _ko_topic,
+    _mutation_budget,
     _mutation_changed_files,
+    _mutation_changed_python_files,
     _mutation_detail_line,
+    _mutation_distribution,
     _mutation_gaps,
     _mutation_no_report,
     _mutation_outcome,
     _mutation_partial,
     _mutation_targets,
     _mutation_timing,
+    _mutmut_incremental_guard,
+    _mutmut_link,
+    _mutmut_reclaim,
+    _mutmut_link_name,
+    _mutmut_no_result,
+    _mutmut_partial,
+    _mutmut_source_roots,
+    _mutmut_targets,
+    _mutmut_test_roots,
     _run,
     _stryker_glob,
     _stryker_project_config,
+    _write_mutmut_config,
     _write_stryker_config,
+    build_mutmut_records,
     build_parser,
     check_complexity,
     check_layers,
     check_mutation,
+    check_tests,
     collect_changes,
     compute_crap,
     crap_score,
@@ -65,14 +83,24 @@ from scripts.code_gate import (
     load_config,
     mutation_score,
     mutation_state_file,
+    mutmut_change,
+    mutmut_def_lines,
+    mutmut_function_name,
+    mutmut_gate_status,
+    mutmut_status,
+    mutmut_work_dir,
     parse_diff,
     parse_lizard_csv,
     parse_mutation_events,
     parse_mutation_report,
+    parse_mutmut_run,
+    python_decorated_skips,
     resolve_coverage,
+    resolve_python,
     run_checks,
     slice_lines,
     slice_source,
+    summarize_mutants,
     unknown_mutant_statuses,
 )
 
@@ -105,7 +133,7 @@ def _changeset(files, lines=None):
 def _no_tools(python_exe=sys.executable):
     """전부 설치 안 된 상태 — probe_tools 가 만드는 것과 같은 모양."""
     tools = {}
-    for name in ("pytest", "coverage", "lizard"):
+    for name in ("pytest", "coverage", "lizard", "mutmut"):
         tools[name] = {"available": False, "path": None,
                        "install_hint": f"{python_exe} -m pip install {name}"}
     tools["jscpd"] = {"available": False, "path": None, "install_hint": "npm i -D jscpd"}
@@ -128,6 +156,18 @@ class _FakeProc:
 
     def __init__(self, stdout="", stderr="", returncode=0):
         self.stdout, self.stderr, self.returncode = stdout, stderr, returncode
+
+
+@pytest.fixture(autouse=True)
+def _isolated_cache(tmp_path_factory, monkeypatch):
+    """홈 캐시를 테스트마다 격리한다.
+
+    뮤테이션 항목은 회차를 넘어 사는 증분 상태를 사용자 캐시(`XDG_CACHE_HOME`) 아래에 둔다.
+    격리하지 않으면 테스트를 돌릴 때마다 사용자의 진짜 캐시에 저장소 해시 디렉토리가 하나씩
+    쌓인다 (실제로 수백 개가 쌓여 있었다). 개별 테스트가 다시 `monkeypatch.setenv` 로 자기
+    자리를 지정하면 그쪽이 이긴다.
+    """
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path_factory.mktemp("xdg-cache")))
 
 
 def _ctx(tmp_path, files=(), lines=None, config=None, tools=None):
@@ -1187,10 +1227,12 @@ def test_mutation_disabled_in_config_is_skipped_not_ok(tmp_path):
     assert "통과" not in outcome["human_reason"]
 
 
-def test_mutation_without_changed_javascript_is_skipped(tmp_path):
-    outcome = check_mutation(_ctx(tmp_path, files=["pkg.py"], tools=_with_stryker(tmp_path)))
+def test_mutation_without_any_mutable_language_is_skipped(tmp_path):
+    """두 언어 어느 쪽도 안 바뀌었으면 재지 않는다. 건너뛴 사실은 남긴다 (R4)."""
+    outcome = check_mutation(_ctx(tmp_path, files=["README.md"], tools=_with_stryker(tmp_path)))
     assert outcome["status"] == "skipped"
-    assert "자바스크립트" in outcome["human_reason"]
+    assert "자바스크립트" in outcome["human_reason"] and "파이썬" in outcome["human_reason"]
+    assert "통과" not in outcome["human_reason"]
 
 
 def test_mutation_skipped_when_no_test_runner_plugin_is_installed(tmp_path):
@@ -1351,12 +1393,14 @@ def test_mutation_check_is_registered_with_a_detail_title():
 
 def test_mutation_config_reads_valid_values(tmp_path):
     path = _write(tmp_path / ".code-gate.json", json.dumps(
-        {"mutation": {"enabled": False, "score_threshold": 95, "timeout_seconds": 120, "javascript": "stryker"}}))
+        {"mutation": {"enabled": False, "score_threshold": 95, "timeout_seconds": 120,
+                      "javascript": "stryker", "python": "mutmut"}}))
     config = load_config(path)
     assert config.mutation_enabled is False
     assert config.mutation_score_threshold == 95.0
     assert config.mutation_timeout_seconds == 120
     assert config.mutation_javascript == "stryker"
+    assert config.mutation_python == "mutmut"
 
 
 def test_mutation_config_defaults_when_the_block_is_absent(tmp_path):
@@ -1365,12 +1409,15 @@ def test_mutation_config_defaults_when_the_block_is_absent(tmp_path):
     assert config.mutation_score_threshold == 80.0
     assert config.mutation_timeout_seconds == 600
     assert config.mutation_javascript == "stryker"
+    assert config.mutation_python == "mutmut"
 
 
 @pytest.mark.parametrize("block, note", [
     ("not-an-object", "mutation 항목이 객체가 아니라"),
     ({"enabled": "yes"}, "mutation.enabled 값이 참/거짓이 아니라"),
     ({"javascript": 7}, "mutation.javascript 값이 문자열이 아니라"),
+    ({"python": 7}, "mutation.python 값이 문자열이 아니라"),
+    ({"python": "   "}, "mutation.python 값이 문자열이 아니라"),
     ({"score_threshold": 0}, "mutation.score_threshold 값이 0 이하라"),
     ({"score_threshold": "높게"}, "mutation.score_threshold 값이 숫자가 아니라"),
     ({"timeout_seconds": -1}, "mutation.timeout_seconds 값이 0 이하라"),
@@ -1383,14 +1430,19 @@ def test_mutation_config_falls_back_with_a_reason(tmp_path, block, note):
     assert config.mutation_score_threshold == 80.0
     assert config.mutation_timeout_seconds == 600
     assert config.mutation_javascript == "stryker"
+    assert config.mutation_python == "mutmut"
     assert any(note in n for n in config.notes), config.notes
 
 
 def test_repo_config_file_declares_the_mutation_block():
-    """기준값을 낮추는 회귀를 잡는다 (R6). 0단계에서는 켜 두고 숫자만 낸다 (D7)."""
+    """기준값을 낮추는 회귀를 잡는다 (R6). 0단계에서는 켜 두고 숫자만 낸다 (D7).
+
+    언어 키는 나란히 두고 기준값 두 개는 공유한다 — 언어를 더해도 기준이 갈라지지 않는다.
+    """
     data = json.loads((REPO_ROOT / ".code-gate.json").read_text(encoding="utf-8"))
     assert data["mutation"] == {"enabled": True, "score_threshold": 80,
-                                "timeout_seconds": 600, "javascript": "stryker"}
+                                "timeout_seconds": 600, "javascript": "stryker",
+                                "python": "mutmut"}
 
 
 # --- 중재 보고서에서 확정된 지적의 회귀 방지 ------------------------------
@@ -1683,9 +1735,9 @@ def test_fractional_seconds_do_not_become_zero(tmp_path, key, block):
 def test_unknown_mutation_config_keys_are_reported(tmp_path):
     """M — 명령줄 오타는 알려 주면서 설정 파일 오타만 조용히 버리면 원인을 못 찾는다."""
     config = load_config(_write(tmp_path / ".code-gate.json", json.dumps(
-        {"mutation": {"enabled": True, "python": "mutmut", "typo_key": 123}})))
+        {"mutation": {"enabled": True, "ruby": "mutant", "typo_key": 123}})))
     note = [n for n in config.notes if "알 수 없는 키" in n]
-    assert note and "python" in note[0] and "typo_key" in note[0]
+    assert note and "ruby" in note[0] and "typo_key" in note[0]
 
 
 def test_detail_line_marks_an_incomplete_record():
@@ -1772,3 +1824,1105 @@ def test_vitest_command_has_no_reporter_flag(tmp_path, monkeypatch):
     assert outcome["status"] == "ok", outcome
     assert not any(c.startswith("--reporter") for c in seen["cmd"]), seen["cmd"]
     assert "--coverage" in seen["cmd"]
+
+
+# ---------------------------------------------------------------------------
+# 16 — 뮤테이션 파이썬 경로 (mutmut)
+#
+# 아래 고정 자료는 조사 단계에서 mutmut 3.7.0 을 py-sandbox 에 실제로 돌려 얻은 산출물이다.
+# 변이 함수 네 개(원본 + 1 + 4 + 8)만 남기고 `.spans` 의 줄 번호를 그에 맞춰 다시 셌다.
+# 나머지 값(종료 코드, 생성된 코드, 테스트 이름)은 실물 그대로다.
+# ---------------------------------------------------------------------------
+
+LOOPX_SOURCE = (
+    '"""반복문이 있는 모듈 — 무한루프 변이(timeout)가 나올 수 있다."""\n'
+    "\n"
+    "LIMIT = 3\n"
+    "\n"
+    "\n"
+    "def count_up(n):\n"
+    "    total = 0\n"
+    "    i = 0\n"
+    "    while i < n:\n"
+    "        total += i\n"
+    "        i += 1\n"
+    "    return total\n"
+)
+
+LOOPX_MUTANTS = (
+    '"""반복문이 있는 모듈 — 무한루프 변이(timeout)가 나올 수 있다."""\n'
+    "\n"
+    "LIMIT = 3\n"
+    "\n"
+    "\n"
+    "from mutmut.mutation.trampoline import wrap_in_trampoline as _mutmut_mutated, MutantDict\n"
+    "mutants_x_count_up__mutmut: MutantDict = {}  # type: ignore\n"
+    "\n"
+    "\n"
+    "@_mutmut_mutated(mutants_x_count_up__mutmut)\n"
+    "def count_up(n):\n"
+    "    total = 0\n"
+    "    i = 0\n"
+    "    while i < n:\n"
+    "        total += i\n"
+    "        i += 1\n"
+    "    return total\n"
+    "\n"
+    "\n"
+    "def x_count_up__mutmut_orig(n):\n"
+    "    total = 0\n"
+    "    i = 0\n"
+    "    while i < n:\n"
+    "        total += i\n"
+    "        i += 1\n"
+    "    return total\n"
+    "\n"
+    "\n"
+    "def x_count_up__mutmut_1(n):\n"
+    "    total = None\n"
+    "    i = 0\n"
+    "    while i < n:\n"
+    "        total += i\n"
+    "        i += 1\n"
+    "    return total\n"
+    "\n"
+    "\n"
+    "def x_count_up__mutmut_4(n):\n"
+    "    total = 0\n"
+    "    i = 1\n"
+    "    while i < n:\n"
+    "        total += i\n"
+    "        i += 1\n"
+    "    return total\n"
+    "\n"
+    "\n"
+    "def x_count_up__mutmut_8(n):\n"
+    "    total = 0\n"
+    "    i = 0\n"
+    "    while i < n:\n"
+    "        total += i\n"
+    "        i = 1\n"
+    "    return total"
+)
+
+LOOPX_SPANS = {
+    "version": 1,
+    "spans": {
+        "x_count_up__mutmut_orig": [18, 26],
+        "x_count_up__mutmut_1": [27, 35],
+        "x_count_up__mutmut_4": [36, 44],
+        "x_count_up__mutmut_8": [45, 53],
+    },
+}
+
+# 실측 종료 코드 그대로 — 1 은 잡힘, 0 은 살아남음, -24 는 무한루프(시간초과)다.
+LOOPX_META = {
+    "exit_code_by_key": {
+        "pysandbox.loopx.x_count_up__mutmut_1": 1,
+        "pysandbox.loopx.x_count_up__mutmut_4": 0,
+        "pysandbox.loopx.x_count_up__mutmut_8": -24,
+    },
+    "hash_by_function_name": {"x_count_up": "5b5649216622"},
+    "type_check_error_by_key": {},
+    "durations_by_key": {
+        "pysandbox.loopx.x_count_up__mutmut_1": 0.047347,
+        "pysandbox.loopx.x_count_up__mutmut_4": 0.044088,
+        "pysandbox.loopx.x_count_up__mutmut_8": 15.00681,
+    },
+    "estimated_durations_by_key": {},
+}
+
+LOOPX_TESTS = {
+    "pysandbox.loopx.x_count_up": ["tests/test_loopx.py::test_count_up_0부터_n_1까지_더한다"],
+}
+
+REL = "src/pysandbox/loopx.py"
+
+
+def _loopx_records(meta=None):
+    return build_mutmut_records(REL, meta or LOOPX_META, LOOPX_SPANS,
+                                LOOPX_MUTANTS, LOOPX_SOURCE, LOOPX_TESTS)
+
+
+def _with_mutmut(python_exe=sys.executable):
+    """mutmut 만 설치된 상태."""
+    tools = _no_tools(python_exe)
+    tools["mutmut"] = {"available": True, "path": f"{python_exe} -m mutmut", "install_hint": ""}
+    return tools
+
+
+def _mutmut_work_from(ctx):
+    """대상 프로젝트 밖의 mutmut 작업 디렉토리 — 테스트가 사본을 직접 놓을 자리."""
+    return mutmut_work_dir(ctx.repo_root, ctx.notes)
+
+
+def _fake_mutmut_run(rel=REL, meta=None, spans=None, mutants=None):
+    """mutmut 을 대신해 사본 산출물만 남기는 가짜 실행. 서브프로세스를 띄우지 않는다."""
+
+    def run(cmd, *, cwd, timeout):
+        target = Path(cwd) / "mutants" / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(mutants if mutants is not None else LOOPX_MUTANTS, encoding="utf-8")
+        target.with_suffix(".py.meta").write_text(
+            json.dumps(meta if meta is not None else LOOPX_META), encoding="utf-8")
+        target.with_suffix(".py.spans").write_text(
+            json.dumps(spans if spans is not None else LOOPX_SPANS), encoding="utf-8")
+        (Path(cwd) / "mutants" / "mutmut-stats.json").write_text(
+            json.dumps({"tests_by_mangled_function_name": LOOPX_TESTS}), encoding="utf-8")
+        return _FakeProc(returncode=0)
+
+    return run
+
+
+# --- D1 상태 어휘 변환 ----------------------------------------------------
+
+@pytest.mark.parametrize("word, gate", [
+    ("killed", "Killed"),
+    ("timeout", "Timeout"),
+    ("survived", "Survived"),
+    ("no tests", "NoCoverage"),
+    ("skipped", "Ignored"),
+    ("not checked", "Pending"),
+    ("check was interrupted by user", "Pending"),
+    ("segfault", "RuntimeError"),
+])
+def test_mutmut_words_map_into_the_gate_vocabulary(word, gate):
+    """도구 어휘는 어댑터에서 끝난다 — 점수 공식에는 게이트 어휘만 들어간다 (D1).
+
+    변환을 공식 쪽에 두면 점수 함수가 도구 이름을 알게 되고, 언어를 더할 때마다 그 함수가
+    갈라진다. 그래서 여기서만 바꾼다.
+    """
+    assert mutmut_gate_status(word) == gate
+
+
+def test_mutmut_statuses_land_in_the_three_d1_groups():
+    """세 묶음(분자 / 분모 / 제외)에 정확히 떨어지는지. 이 배분이 점수의 전부다 (D1)."""
+    scored = {mutmut_gate_status(w) for w in ("killed", "timeout", "survived", "no tests")}
+    assert scored == {"Killed", "Timeout", "Survived", "NoCoverage"}
+    counts = {mutmut_gate_status("killed"): 3, mutmut_gate_status("timeout"): 1,
+              mutmut_gate_status("survived"): 2, mutmut_gate_status("no tests"): 2}
+    assert mutation_score(counts) == 50.0
+    excluded = {mutmut_gate_status(w) for w in ("skipped", "not checked", "segfault",
+                                                "check was interrupted by user")}
+    assert unknown_mutant_statuses({name: 1 for name in excluded}) == ()
+    assert mutation_score({name: 9 for name in excluded}) is None
+
+
+@pytest.mark.parametrize("exit_code, word", [
+    (1, "killed"), (3, "killed"),
+    (0, "survived"),
+    (5, "no tests"), (33, "no tests"),
+    (34, "skipped"), (35, "suspicious"),
+    (36, "timeout"), (24, "timeout"), (-24, "timeout"), (152, "timeout"), (255, "timeout"),
+    (37, "caught by type check"), (2, "check was interrupted by user"),
+    (-11, "segfault"), (-9, "segfault"),
+    (None, "not checked"),
+])
+def test_mutmut_exit_codes_become_the_measured_statuses(exit_code, word):
+    """`.meta` 에는 상태 이름이 아니라 종료 코드가 들어 있다. 표는 mutmut 3.7.0 실측이다."""
+    assert mutmut_status(exit_code) == word
+
+
+def test_mutmut_unknown_status_is_not_silently_dropped():
+    """모르는 상태는 점수 분모에서 조용히 빠져 100% 가 나온다 — R4 가 금지한 형태다.
+
+    `suspicious` 와 `caught by type check` 는 실물을 못 만들어 봐서 대응을 정하지 않았다.
+    짐작으로 채우는 대신 모르는 채로 두고 이름을 적어 낸다.
+    """
+    assert mutmut_gate_status("suspicious") == "suspicious"
+    assert mutmut_status(99) == "unknown exit code 99"
+    summary = summarize_mutants(_loopx_records({"exit_code_by_key": {
+        "pysandbox.loopx.x_count_up__mutmut_1": 1,
+        "pysandbox.loopx.x_count_up__mutmut_4": 35,
+    }}))
+    assert summary["unknown"] == ("suspicious",)
+
+
+# --- 실제 출력 파싱 (D2) --------------------------------------------------
+
+def test_build_mutmut_records_reads_real_mutmut_output():
+    """조사에서 얻은 실제 산출물 그대로 — 종료 코드 세 개가 세 상태로 떨어진다."""
+    summary = summarize_mutants(_loopx_records())
+    assert summary["total"] == 3
+    assert summary["counts"] == {"Killed": 1, "Survived": 1, "Timeout": 1}
+    assert summary["score"] == 66.67          # (잡힘 1 + 시간초과 1) / 3
+    assert summary["files"] == [REL]
+
+
+def test_mutmut_record_line_points_at_the_original_file():
+    """mutmut 은 파일 안 줄 번호를 주지 않는다. 사본과 원본을 견줘 되짚은 값이 맞는지.
+
+    `i = 0` 은 원본 8번째 줄, `i += 1` 은 11번째 줄이다 (실측으로 확인한 자리다).
+    """
+    by_key = {r["mutant"]: r for r in _loopx_records()}
+    survived = by_key["pysandbox.loopx.x_count_up__mutmut_4"]
+    assert (survived["line"], survived["original"], survived["replacement"]) == (8, "    i = 0", "    i = 1")
+    timed_out = by_key["pysandbox.loopx.x_count_up__mutmut_8"]
+    assert (timed_out["line"], timed_out["original"], timed_out["replacement"]) == (11, "        i += 1", "        i = 1")
+
+
+def test_mutmut_record_leaves_the_columns_it_cannot_know_blank():
+    """없는 것을 지어내지 않는다 (D2). 열과 변이 종류는 mutmut 이 어떤 방법으로도 안 준다."""
+    record = _loopx_records()[1]
+    assert record["column"] is None
+    assert record["mutator"] is None
+    line = _mutation_detail_line(record)
+    assert f"{REL}:8:?" in line               # 열 자리는 물음표
+    assert "[변이 종류 없음]" in line          # None 을 그대로 찍지 않는다
+    assert "i = 0 → i = 1" in line             # 대신 원본과 바뀐 것으로 자리를 알린다
+
+
+def test_mutmut_tests_are_function_level_not_per_mutant():
+    """관련 테스트는 변이별이 아니라 함수 단위다. 같은 함수의 변이는 같은 목록을 갖는다."""
+    records = _loopx_records()
+    assert {tuple(r["tests"]) for r in records} == {
+        ("tests/test_loopx.py::test_count_up_0부터_n_1까지_더한다",)}
+    assert "테스트 1개" in _mutation_detail_line(records[1])
+
+
+def test_mutmut_change_is_blank_when_the_diff_is_not_one_place():
+    """자리가 한 군데가 아니면 비운다 — 틀린 자리를 적으면 없는 곳을 찾으러 간다 (D2)."""
+    orig = ["def x_f__mutmut_orig(a):", "    b = 1", "    c = 2", "    return b"]
+    two_places = ["def x_f__mutmut_2(a):", "    b = 2", "    c = 2", "    return b + 1"]
+    assert mutmut_change(orig, two_places) == (None, "", "")
+    assert mutmut_change([], []) == (None, "", "")
+    one_place = ["def x_f__mutmut_2(a):", "    b = 2", "    c = 2", "    return b"]
+    assert mutmut_change(orig, one_place) == (1, "    b = 1", "    b = 2")
+    # 붙어 있는 여러 줄이 한 번에 바뀐 것은 한 군데다 — 첫 줄을 자리로 삼는다.
+    block = ["def x_f__mutmut_3(a):", "    b = 2", "    c = 3", "    return b"]
+    assert mutmut_change(orig, block) == (1, "    b = 1\n    c = 2", "    b = 2\n    c = 3")
+
+
+def test_mutmut_line_is_blank_when_two_functions_share_a_name():
+    """이름이 겹치면 어느 쪽인지 가릴 수 없다. 그때는 줄을 비운다."""
+    source = "def f():\n    return 1\n\n\nclass A:\n    def f(self):\n        return 2\n"
+    lines = mutmut_def_lines(source)
+    assert lines[(None, "f")] == [1]
+    assert lines[("A", "f")] == [6]
+    twice = "def f():\n    return 1\n\n\ndef f():\n    return 2\n"
+    assert mutmut_def_lines(twice)[(None, "f")] == [1, 5]
+    assert mutmut_def_lines("def broken(:\n")== {}
+
+
+@pytest.mark.parametrize("mangled, expected", [
+    ("x_count_up", (None, "count_up")),
+    ("xǁCartǁtotal", ("Cart", "total")),
+    ("count_up", (None, None)),
+    ("x_", (None, None)),
+])
+def test_mutmut_function_name_reads_both_manglings(mangled, expected):
+    """모듈 함수는 `x_<이름>`, 메서드는 `xǁ<클래스>ǁ<이름>` 이다."""
+    assert mutmut_function_name(mangled) == expected
+
+
+def test_parse_mutmut_run_drops_files_outside_the_change_set(tmp_path):
+    """작업 디렉토리는 회차를 넘어 산다 — 거르지 않으면 지난 회차 파일이 점수에 들어간다 (R3)."""
+    mutants = tmp_path / "mutants" / "src" / "pysandbox"
+    mutants.mkdir(parents=True)
+    for name in ("loopx.py", "old.py"):
+        (mutants / f"{name}.meta").write_text(json.dumps(LOOPX_META), encoding="utf-8")
+        (mutants / f"{name}.spans").write_text(json.dumps(LOOPX_SPANS), encoding="utf-8")
+        (mutants / name).write_text(LOOPX_MUTANTS, encoding="utf-8")
+    _write(tmp_path / "mutants" / "mutmut-stats.json",
+           json.dumps({"tests_by_mangled_function_name": LOOPX_TESTS}))
+    _write(tmp_path / REL, LOOPX_SOURCE)
+    _write(tmp_path / "src" / "pysandbox" / "old.py", LOOPX_SOURCE)
+
+    assert parse_mutmut_run(tmp_path, tmp_path, [REL, "src/pysandbox/old.py"])["total"] == 6
+    narrowed = parse_mutmut_run(tmp_path, tmp_path, [REL])
+    assert narrowed["total"] == 3 and narrowed["files"] == [REL]
+
+
+@pytest.mark.parametrize("meta", [{}, {"exit_code_by_key": "망가진 값"}])
+def test_parse_mutmut_run_survives_a_broken_meta(tmp_path, meta):
+    """산출물이 어그러져도 게이트가 죽지 않는다. 재지 못한 것은 0 으로 남고 통과가 아니다."""
+    mutants = tmp_path / "mutants" / "src" / "pysandbox"
+    mutants.mkdir(parents=True)
+    (mutants / "loopx.py.meta").write_text(json.dumps(meta), encoding="utf-8")
+    assert parse_mutmut_run(tmp_path, tmp_path, [REL])["total"] == 0
+
+
+# --- 건너뜀 사유 (D6·R4) --------------------------------------------------
+
+def test_mutmut_missing_is_skipped_with_an_install_hint(tmp_path):
+    """도구가 없으면 건너뛰되 설치 방법을 함께 낸다 (D6). 조용한 통과는 없다 (R4)."""
+    outcome = check_mutation(_ctx(tmp_path, files=["pkg.py"]))
+    assert outcome["status"] == "skipped"
+    assert "mutmut" in outcome["human_reason"]
+    assert outcome["install_hint"] == f"{sys.executable} -m pip install mutmut"
+    assert "통과" not in outcome["human_reason"]
+
+
+def test_mutmut_unknown_tool_name_is_skipped(tmp_path):
+    path = _write(tmp_path / ".code-gate.json", json.dumps({"mutation": {"python": "cosmic-ray"}}))
+    ctx = _ctx(tmp_path, files=["pkg.py"], config=load_config(path), tools=_with_mutmut())
+    outcome = check_mutation(ctx)
+    assert outcome["status"] == "skipped"
+    assert "cosmic-ray" in outcome["human_reason"]
+
+
+def test_mutmut_is_skipped_when_the_python_tests_did_not_pass(tmp_path):
+    """mutmut 은 기준 테스트가 통과해야 돈다. 모르고 부르면 스위트를 두 번 더 돌리고 실패한다 (R1)."""
+    ctx = _ctx(tmp_path, files=["pkg.py"], tools=_with_mutmut())
+    ctx.python_tests_status = "findings"
+    outcome = check_mutation(ctx)
+    assert outcome["status"] == "skipped"
+    assert "테스트가 통과하지 않아" in outcome["human_reason"]
+
+
+def test_mutmut_targets_drop_test_files(tmp_path):
+    """테스트를 변이시켜도 얻을 것이 없고, 삭제된 파일을 넘기면 mutmut 이 준비에서 죽는다."""
+    _write(tmp_path / "pkg" / "core.py", "def f():\n    return 1\n")
+    _write(tmp_path / "pkg" / "test_core.py", "def test_f():\n    assert True\n")
+    _write(tmp_path / "conftest.py", "")
+    _write(tmp_path / "tests" / "helper.py", "")
+    targets, dropped = _mutmut_targets(tmp_path, [
+        "pkg/core.py", "pkg/core_test.py", "pkg/test_core.py", "conftest.py",
+        "tests/helper.py", "pkg/deleted.py"])
+    assert targets == ("pkg/core.py",)
+    assert set(dropped) == {"pkg/core_test.py", "pkg/test_core.py", "conftest.py",
+                            "tests/helper.py", "pkg/deleted.py"}
+
+
+def test_mutmut_all_targets_dropped_is_skipped_not_ok(tmp_path):
+    _write(tmp_path / "tests" / "test_a.py", "def test_x():\n    assert True\n")
+    outcome = check_mutation(_ctx(tmp_path, files=["tests/test_a.py"], tools=_with_mutmut()))
+    assert outcome["status"] == "skipped"
+    assert "통과" not in outcome["human_reason"]
+
+
+def test_mutmut_source_roots_take_the_top_level_name():
+    """mutmut 은 소스 루트를 설정으로 받는다. 최상위에 놓인 .py 는 그 파일 자체가 루트다."""
+    roots, unusable = _mutmut_source_roots(("src/a.py", "src/b.py", "app/c.py", "setup_helper.py"))
+    assert roots == ("src", "app", "setup_helper.py")
+    assert unusable == ()
+    _, clash = _mutmut_source_roots(("mutants/a.py",))
+    assert clash == ("mutants/a.py",)
+
+
+def test_mutmut_no_result_names_the_likely_cause():
+    """영어 원문만 나가면 "테스트가 없다" 와 "설정이 어긋났다" 가 구분되지 않는다."""
+    outcome = _mutmut_no_result(
+        _FakeProc(stderr="AssertionError: Module name starts with `src.`, which is invalid", returncode=1), 2.0)
+    assert outcome["status"] == "error"
+    assert "`src.` 로 시작하는 경로로 import" in outcome["human_reason"]
+    assert "Module name starts with" in outcome["reason"]      # 영어 원문은 남긴다
+    assert "통과" not in outcome["human_reason"]
+
+    stats = _mutmut_no_result(_FakeProc(stderr="failed to collect stats. runner returned 1", returncode=1), 2.0)
+    assert "기준 테스트가 실패" in stats["human_reason"]
+
+
+def test_mutmut_partial_counts_both_numbers_from_one_place(tmp_path):
+    """"몇 개 중 몇 개" 의 두 숫자가 같은 곳에서 나와야 한다 (D4).
+
+    mutmut 은 변이를 만들 때 모든 이름을 `.meta` 에 넣고, 돌린 것만 종료 코드를 채운다.
+    아직 안 돈 변이는 실행 안 됨(Pending)이라 점수 분모에서도 빠진다.
+    """
+    meta = {"exit_code_by_key": {
+        "pysandbox.loopx.x_count_up__mutmut_1": 1,
+        "pysandbox.loopx.x_count_up__mutmut_4": 0,
+        "pysandbox.loopx.x_count_up__mutmut_8": None,
+    }}
+    summary = summarize_mutants(_loopx_records(meta))
+    assert summary["counts"]["Pending"] == 1
+    assert summary["score"] == 50.0                       # 실행 안 됨은 분모에서 빠진다
+    outcome = _mutmut_partial(_ctx(tmp_path), summary, [REL], 600.0, 600)
+    assert outcome["status"] == "timeout"
+    assert "변이 3개 중 2개까지" in outcome["human_reason"]
+    assert "전체 점수가 아닙니다" in outcome["human_reason"]
+
+
+def test_partial_reports_say_which_files_were_never_reached(tmp_path):
+    """중단된 회차에도 "이 파일은 한 줄도 못 봤다" 를 적는다 (확정 14).
+
+    적지 않으면 남은 파일의 점수가 변경분 전체의 점수처럼 읽힌다. 두 언어가 같은 문장을 쓴다.
+    """
+    summary = summarize_mutants(_loopx_records())
+    outcome = _mutmut_partial(_ctx(tmp_path), summary, [REL, "src/pysandbox/other.py"], 600.0, 600)
+    assert "대상 파일 1개는 한 줄도 재지 못했습니다" in outcome["human_reason"]
+    assert "src/pysandbox/other.py" in outcome["human_reason"]
+
+    ctx = _ctx(tmp_path)
+    paths = {"events": tmp_path / "no-such-events"}
+    (tmp_path / "a.js").write_text("export const x = 1;\n", encoding="utf-8")
+    js = _mutation_partial(ctx, paths, ["a.js"], 5.0, 600)
+    assert js["status"] == "timeout"        # 중간 결과가 없으면 그 사실만 낸다
+
+
+# --- 대상 프로젝트를 건드리지 않는다 (D3) --------------------------------
+
+def test_mutmut_runs_outside_the_project_and_leaves_nothing_behind(tmp_path, monkeypatch):
+    """mutmut 은 사본 `mutants/` 를 **현재 작업 디렉토리** 아래 만든다.
+
+    대상 프로젝트에서 그냥 돌리면 저장소 안에 사본이 쌓인다. 작업 디렉토리를 사용자 캐시로
+    잡고 소스·테스트를 심링크로 걸면 프로젝트에는 아무것도 남지 않는다 (실측).
+    """
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("XDG_CACHE_HOME", str(cache))
+    project = tmp_path / "repo"
+    _write(project / REL, LOOPX_SOURCE)
+    _write(project / "tests" / "test_loopx.py", "def test_x():\n    assert True\n")
+    captured = {}
+
+    def run(cmd, *, cwd, timeout):
+        captured["cmd"] = [str(c) for c in cmd]
+        captured["cwd"] = Path(cwd)
+        return _fake_mutmut_run()(cmd, cwd=cwd, timeout=timeout)
+
+    monkeypatch.setattr(code_gate, "_run", run)
+    ctx = _ctx(project, files=[REL], tools=_with_mutmut())
+    ctx.repo_root = project
+    before = sorted(p.relative_to(project).as_posix() for p in project.rglob("*"))
+    outcome = check_mutation(ctx)
+
+    assert outcome["status"] == "findings"
+    assert str(cache.resolve()) in str(captured["cwd"])        # 프로젝트 밖에서 돌았다
+    assert str(project.resolve()) not in str(captured["cwd"])
+    after = sorted(p.relative_to(project).as_posix() for p in project.rglob("*"))
+    assert after == before                                      # 프로젝트에 새 파일 없음
+    assert _forbidden_arg(captured["cmd"]) is None               # 비-0 종료를 부르는 인자 없음 (R2)
+    assert not any(a in captured["cmd"] for a in ("--track", "--mode", "--flow"))   # R5
+    assert captured["cmd"][-3:] == ["-m", "mutmut", "run"]
+
+
+def test_mutmut_config_never_turns_on_covered_lines_only(tmp_path, monkeypatch):
+    """`mutate_only_covered_lines` 를 켜면 덮이지 않은 줄의 변이를 아예 만들지 않는다.
+
+    그러면 no_coverage 가 0 이 되어 테스트를 안 쓸수록 점수가 오른다 — D1 이 막으려던 상황이다.
+    설정 파일도 변경분 한정도 전부 작업 디렉토리 안이라 프로젝트에는 남지 않는다 (D3).
+    """
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("XDG_CACHE_HOME", str(cache))
+    project = tmp_path / "repo"
+    _write(project / REL, LOOPX_SOURCE)
+    monkeypatch.setattr(code_gate, "_run", _fake_mutmut_run())
+    ctx = _ctx(project, files=[REL], tools=_with_mutmut())
+    ctx.repo_root = project
+    check_mutation(ctx)
+
+    work = mutmut_work_dir(project, [])
+    body = (work / "setup.cfg").read_text(encoding="utf-8")
+    assert "mutate_only_covered_lines=False" in body
+    assert "only_mutate=\n\tsrc/pysandbox/loopx.py\n" in body     # 변경분만 (R3)
+    assert "source_paths=\n\tsrc\n" in body
+    assert not (project / "setup.cfg").exists()
+    assert (work / "src").is_symlink()
+
+
+def test_mutmut_work_dir_lives_outside_the_project(tmp_path, monkeypatch):
+    """증분 상태가 회차를 넘어 살아야 하는데 게이트 임시 디렉토리는 매 실행 지워진다.
+
+    Stryker 쪽은 파일 하나, mutmut 쪽은 디렉토리 하나라는 것만 다르다.
+    """
+    cache = tmp_path / "cache"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    monkeypatch.setenv("XDG_CACHE_HOME", str(cache))
+    work = mutmut_work_dir(repo, [])
+    assert work is not None and work.is_dir()
+    assert str(cache.resolve()) in str(work)
+    assert str(repo.resolve()) not in str(work)
+
+
+def test_mutmut_project_config_is_read_not_written(tmp_path, monkeypatch):
+    """프로젝트가 이미 갖고 있는 mutmut 설정은 이어 쓰되 파일은 건드리지 않는다 (D3)."""
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("XDG_CACHE_HOME", str(cache))
+    project = tmp_path / "repo"
+    _write(project / REL, LOOPX_SOURCE)
+    original = "[mutmut]\ntimeout_multiplier=3.0\nsource_paths=everything\n"
+    _write(project / "setup.cfg", original)
+    monkeypatch.setattr(code_gate, "_run", _fake_mutmut_run())
+    ctx = _ctx(project, files=[REL], tools=_with_mutmut())
+    ctx.repo_root = project
+    check_mutation(ctx)
+
+    body = (mutmut_work_dir(project, []) / "setup.cfg").read_text(encoding="utf-8")
+    assert "timeout_multiplier=3.0" in body                     # 프로젝트 값은 이어 쓴다
+    assert "everything" not in body                             # 소스 루트는 게이트가 정한다
+    assert (project / "setup.cfg").read_text(encoding="utf-8") == original
+    assert any("이어 썼습니다" in note for note in ctx.notes)
+
+
+# --- 두 언어를 한 항목으로 (D1·R1) ----------------------------------------
+
+def _skip_outcome():
+    return {"status": "skipped", "reason": "stryker missing",
+            "human_reason": "Stryker 가 설치돼 있지 않습니다.",
+            "install_hint": "npm i -D @stryker-mutator/core"}
+
+
+def _language_part(language, label, counts, seconds):
+    """언어 한 조각. 개수만 다르게 해 합산이 맞는지 본다."""
+    records = []
+    for status, number in counts.items():
+        records += [{"file": f"a.{language}", "line": 1, "column": None, "mutator": None,
+                     "original": "a", "replacement": "b", "status": status, "tests": []}
+                    for _ in range(number)]
+    summary = summarize_mutants(records)
+    score = summary["score"]
+    outcome = {"status": "findings" if (score or 0) < 80 else "ok",
+               "reason": f"mutation score {score}",
+               "human_reason": f"점수 {score:.1f}%. 실행 {seconds:.1f}초, 변이 {summary['total']}개",
+               "findings": summary["survivors"]}
+    return {"language": language, "label": label, "outcome": outcome, "summary": summary}
+
+
+def test_two_languages_share_one_score_and_show_each_one(tmp_path):
+    """점수는 개수를 합쳐 한 번만 계산한다 (D1). 언어별 점수도 함께 보여야 어디가 약한지 안다."""
+    parts = [
+        _language_part("javascript", "자바스크립트", {"Killed": 9, "Survived": 1}, 12.0),
+        _language_part("python", "파이썬", {"Killed": 1, "Survived": 1, "NoCoverage": 8}, 30.0),
+    ]
+    merged = _merge_mutation_languages(_ctx(tmp_path), parts)
+    assert "합산 점수 50.0%" in merged["human_reason"]           # (9+1) / 20
+    assert "변이 20개" in merged["human_reason"]
+    assert "자바스크립트 90.0% / 파이썬 10.0%" in merged["human_reason"]
+    assert merged["status"] == "findings"                        # 가장 나쁜 상태가 이긴다
+    assert len(merged["findings"]) == 10                         # 두 언어의 목록이 다 실린다
+
+
+def test_two_languages_report_their_seconds_separately(tmp_path):
+    """시간은 언어마다 자릿수가 다르다. 합쳐 버리면 다음 실행을 가늠할 수 없다 (R1)."""
+    parts = [
+        _language_part("javascript", "자바스크립트", {"Killed": 4}, 12.0),
+        _language_part("python", "파이썬", {"Killed": 4}, 30.0),
+    ]
+    human = _merge_mutation_languages(_ctx(tmp_path), parts)["human_reason"]
+    assert "자바스크립트: 점수 100.0%. 실행 12.0초" in human
+    assert "파이썬: 점수 100.0%. 실행 30.0초" in human
+
+
+def test_one_language_is_reported_as_is(tmp_path):
+    """한 언어만 바뀌었으면 합산 문장을 덧붙이지 않는다 — 없는 비교를 만들지 않는다."""
+    part = _language_part("python", "파이썬", {"Killed": 4}, 3.0)
+    assert _merge_mutation_languages(_ctx(tmp_path), [part]) is part["outcome"]
+
+
+def test_a_language_that_was_skipped_does_not_vanish_from_the_report(tmp_path):
+    """한쪽이 건너뛰어도 그 사실이 남는다. 잰 쪽 점수만 나가면 전체를 잰 것처럼 읽힌다 (R4).
+
+    한 언어만 쟀으면 "합산" 이라고 부르지 않는다 — 재지 못한 언어가 그 숫자 안에 있는 것처럼
+    읽힌다 (확정 12).
+    """
+    measured = _language_part("python", "파이썬", {"Killed": 4}, 3.0)
+    skipped = {"language": "javascript", "label": "자바스크립트", "summary": None,
+               "outcome": _skip_outcome()}
+    merged = _merge_mutation_languages(_ctx(tmp_path), [skipped, measured])
+    assert "Stryker 가 설치돼" in merged["human_reason"]
+    assert "파이썬 점수 100.0%" in merged["human_reason"]
+    assert "합산" not in merged["human_reason"]
+    assert "자바스크립트는 재지 못해 이 점수에 들어 있지 않습니다" in merged["human_reason"]
+    assert merged["install_hint"] == "npm i -D @stryker-mutator/core"
+
+
+def test_merged_head_says_which_language_is_below_the_threshold(tmp_path):
+    """합산 점수는 두 언어 비율 사이의 값이라 한쪽이 미달이어도 기준을 넘길 수 있다.
+
+    기준과의 비교가 나오는 자리는 머리말 하나뿐인데, 그 비교가 통과를 가리키면서 항목 판정은
+    발견이 되는 어긋남이 실제로 나왔다 (확정 12).
+    """
+    parts = [
+        _language_part("javascript", "자바스크립트", {"Killed": 5, "Survived": 5}, 2.0),
+        _language_part("python", "파이썬", {"Killed": 500}, 30.0),
+    ]
+    merged = _merge_mutation_languages(_ctx(tmp_path), parts)
+    assert merged["status"] == "findings"
+    assert "합산 점수 99.0%" in merged["human_reason"]
+    assert "자바스크립트는 기준에 못 미칩니다" in merged["human_reason"]
+
+
+@pytest.mark.parametrize("word, expected", [("자바스크립트", "는"), ("파이썬", "은"), ("java", "은")])
+def test_korean_topic_particle_follows_the_last_syllable(word, expected):
+    """안내문에 "자바스크립트 은" 같은 문장이 나가지 않게 한다."""
+    assert _ko_topic(word) == expected
+
+
+
+def test_python_files_are_picked_for_c7_without_touching_the_shared_language_split(tmp_path):
+    """C7 만의 확장자 목록을 따로 둔다 — PY_SUFFIXES 는 C1·C6 이 함께 쓴다."""
+    ctx = _ctx(tmp_path, files=["a.py", "b.js", "c.md"])
+    assert _mutation_changed_python_files(ctx) == ["a.py"]
+    assert _mutation_changed_files(ctx) == ["b.js"]
+    assert ctx.langs["python"] == ["a.py"]
+
+
+def test_both_languages_run_when_both_changed(tmp_path, monkeypatch):
+    """자바스크립트만 바뀌면 자바스크립트만, 파이썬만 바뀌면 파이썬만, 둘 다면 둘 다."""
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("XDG_CACHE_HOME", str(cache))
+    project = tmp_path / "repo"
+    _write(project / REL, LOOPX_SOURCE)
+    _write(project / "src" / "a.js", "export const x = 1;\n")
+    tools = _with_mutmut()
+    tools["stryker"] = {"available": True, "path": "/fake/stryker",
+                        "install_hint": "npm i -D @stryker-mutator/core"}
+    (project / "node_modules" / "@stryker-mutator" / "vitest-runner").mkdir(parents=True)
+
+    def run(cmd, *, cwd, timeout):
+        if "mutmut" in [str(c) for c in cmd]:
+            return _fake_mutmut_run()(cmd, cwd=cwd, timeout=timeout)
+        Path(cmd[2]).parent.joinpath("mutation.json").write_text(
+            json.dumps(_report_with(["Killed", "Killed", "Killed"])), encoding="utf-8")
+        return _FakeProc(returncode=0)
+
+    monkeypatch.setattr(code_gate, "_run", run)
+    ctx = _ctx(project, files=[REL, "src/a.js"], tools=tools)
+    ctx.repo_root = project
+    outcome = check_mutation(ctx)
+    assert "합산 점수" in outcome["human_reason"]
+    assert "자바스크립트:" in outcome["human_reason"] and "파이썬:" in outcome["human_reason"]
+    assert "변이 6개" in outcome["human_reason"]                 # 3 + 3
+
+
+def test_python_gap_notes_say_what_the_list_cannot_show(tmp_path, monkeypatch):
+    """빈칸으로 두면 자바스크립트 목록과 같은 것으로 읽힌다. 세 칸이 다르다는 것을 적는다 (D2)."""
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("XDG_CACHE_HOME", str(cache))
+    project = tmp_path / "repo"
+    _write(project / REL, LOOPX_SOURCE)
+    monkeypatch.setattr(code_gate, "_run", _fake_mutmut_run())
+    ctx = _ctx(project, files=[REL], tools=_with_mutmut())
+    ctx.repo_root = project
+    check_mutation(ctx)
+    joined = " ".join(ctx.notes)
+    assert "열 번호와 변이 종류 이름이 없습니다" in joined
+    assert "함수 단위" in joined
+    assert "사본을 만들어 돌렸습니다" in joined
+
+
+def test_mutmut_prepared_but_ran_nothing_is_an_error_not_a_quiet_skip(tmp_path, monkeypatch):
+    """준비 단계에서 죽으면 `.meta` 는 남고 종료 코드만 비어 있다.
+
+    그 상태를 "점수를 낼 변이가 없다" 로만 내면 도구가 남긴 사유가 사라져 원인을 찾을 수
+    없다. 실제로 한 번 그렇게 나가는 것을 보고 고쳤다 (R4).
+    """
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("XDG_CACHE_HOME", str(cache))
+    project = tmp_path / "repo"
+    _write(project / REL, LOOPX_SOURCE)
+    pending = {"exit_code_by_key": {k: None for k in LOOPX_META["exit_code_by_key"]}}
+
+    def run(cmd, *, cwd, timeout):
+        _fake_mutmut_run(meta=pending)(cmd, cwd=cwd, timeout=timeout)
+        return _FakeProc(stderr="failed to collect stats. runner returned 1", returncode=1)
+
+    monkeypatch.setattr(code_gate, "_run", run)
+    ctx = _ctx(project, files=[REL], tools=_with_mutmut())
+    ctx.repo_root = project
+    outcome = check_mutation(ctx)
+    assert outcome["status"] == "error"
+    assert "기준 테스트가 실패" in outcome["human_reason"]
+    assert "통과" not in outcome["human_reason"]
+    assert not any("열 번호와 변이 종류" in note for note in ctx.notes)   # 없는 목록을 설명하지 않는다
+
+
+# ---------------------------------------------------------------------------
+# 17 — 1b 검토에서 확인된 결함들
+#
+# 아래는 전부 실물 실행으로 재현된 것이다. 각 테스트의 문서 문자열에 그 회차에서 실제로
+# 나온 잘못된 출력을 적어 둔다 — 무엇을 막는 테스트인지가 이름만으로는 남지 않는다.
+# ---------------------------------------------------------------------------
+
+def test_the_interpreter_path_is_absolute(tmp_path, monkeypatch):
+    """상대 경로로 부르면 C7 의 파이썬 경로만 오류로 끝났다 (확정 11).
+
+    파이썬 경로는 이 인터프리터를 저장소 밖(캐시 작업 디렉토리)에서 부르는 유일한 자리다.
+    `--repo-root .` 로 부르면 `.venv/bin/python` 을 그 자리에서 찾지 못해
+    "FileNotFoundError: '.venv/bin/python'" 이 나갔다.
+    """
+    monkeypatch.delenv("VIRTUAL_ENV", raising=False)
+    _write(tmp_path / "system" / "python3.14", "")
+    (tmp_path / ".venv" / "bin").mkdir(parents=True)
+    (tmp_path / ".venv" / "bin" / "python").symlink_to(tmp_path / "system" / "python3.14")
+    monkeypatch.chdir(tmp_path)
+    resolved = resolve_python(Path("."))
+    assert Path(resolved).is_absolute()
+    assert Path(resolved).is_file()
+    # 심링크는 풀지 않는다 — 가상환경의 python 은 대개 시스템 인터프리터를 가리키는
+    # 심링크라, 풀면 가상환경 밖으로 나가 그 환경에만 있는 패키지(mutmut 등)가 사라진다.
+    assert resolved.endswith("/.venv/bin/python")
+
+
+def test_repo_root_is_always_absolute(tmp_path, monkeypatch):
+    """상대 경로 루트로 부르면 사본의 심링크가 아무 데도 가리키지 않았다 (확정 11).
+
+    "0 files mutated" 로 끝나고, 그 전에는 인터프리터 경로부터 못 찾아 그 항목만 오류였다.
+    """
+    monkeypatch.chdir(tmp_path)
+    assert code_gate._resolve_repo_root(".") == Path(tmp_path)
+    assert code_gate._resolve_repo_root("sub").is_absolute()
+
+
+def test_repo_root_falls_back_to_git_then_to_the_current_dir(tmp_path, monkeypatch):
+    """루트를 안 주면 git 최상위를, git 이 없으면 현재 디렉토리를 쓴다 (기존 동작 유지)."""
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(code_gate.shutil, "which", lambda name: "/usr/bin/git")
+    monkeypatch.setattr(code_gate, "_run",
+                        lambda cmd, *, cwd, timeout: _FakeProc(stdout=f"{tmp_path}\n"))
+    assert code_gate._resolve_repo_root(None) == Path(tmp_path)
+
+    monkeypatch.setattr(code_gate.shutil, "which", lambda name: None)
+    assert code_gate._resolve_repo_root(None) == Path.cwd()
+
+    monkeypatch.setattr(code_gate.shutil, "which", lambda name: "/usr/bin/git")
+    monkeypatch.setattr(code_gate, "_run", lambda cmd, *, cwd, timeout: _FakeProc(returncode=128))
+    assert code_gate._resolve_repo_root(None) == Path.cwd()
+
+    def boom(cmd, *, cwd, timeout):
+        raise OSError("git 을 띄우지 못했습니다")
+
+    monkeypatch.setattr(code_gate, "_run", boom)
+    assert code_gate._resolve_repo_root(None) == Path.cwd()   # 게이트는 죽지 않는다 (R2)
+
+
+def test_the_active_virtualenv_wins_over_the_project_one(tmp_path, monkeypatch):
+    """활성화된 가상환경이 프로젝트 것보다 앞이다 — 없으면 게이트 자신으로 물러선다."""
+    _write(tmp_path / "venvA" / "bin" / "python", "")
+    _write(tmp_path / ".venv" / "bin" / "python", "")
+    monkeypatch.setenv("VIRTUAL_ENV", str(tmp_path / "venvA"))
+    assert resolve_python(tmp_path) == str(tmp_path / "venvA" / "bin" / "python")
+    monkeypatch.delenv("VIRTUAL_ENV")
+    assert resolve_python(tmp_path) == str(tmp_path / ".venv" / "bin" / "python")
+    assert resolve_python(tmp_path / "nowhere") == sys.executable
+
+    class _Unreadable:
+        """읽을 수 없는 후보 — 권한이 없거나 경로가 망가진 경우."""
+
+        def is_file(self):
+            raise OSError("permission denied")
+
+    monkeypatch.setattr(code_gate, "_python_candidates",
+                        lambda root: [_Unreadable(), tmp_path / ".venv" / "bin" / "python"])
+    assert resolve_python(tmp_path) == str(tmp_path / ".venv" / "bin" / "python")
+
+
+def test_python_test_status_is_kept_when_the_suite_times_out(tmp_path, monkeypatch):
+    """C1 이 예산을 넘겨 죽으면 상태가 비어 있어 C7 의 가드가 통과됐다 (확정 7).
+
+    스위트 예산(3초)을 못 지킨 저장소에서 그 스위트를 뮤테이션 예산(기본 600초)으로 다시
+    돌리는 회차가 실제로 나왔다.
+    """
+    _write(tmp_path / "tests" / "test_a.py", "def test_x():\n    assert True\n")
+    _write(tmp_path / "pkg.py", "def f():\n    return 1\n")
+    tools = _with_mutmut()
+    tools["pytest"] = {"available": True, "path": "pytest", "install_hint": ""}
+    ctx = _ctx(tmp_path, files=["pkg.py"], tools=tools)
+
+    def run(cmd, *, cwd, timeout):
+        raise subprocess.TimeoutExpired(cmd, timeout)
+
+    monkeypatch.setattr(code_gate, "_run", run)
+    with pytest.raises(subprocess.TimeoutExpired):
+        check_tests(ctx)
+    assert ctx.python_tests_status == "timeout"
+
+    outcome = check_mutation(ctx)
+    assert outcome["status"] == "skipped"
+    assert "예산 안에 끝나지 않아" in outcome["human_reason"]
+
+
+def test_skipped_python_tests_do_not_tell_the_user_to_fix_them(tmp_path):
+    """C1 이 건너뛴 것과 실패한 것을 한 문장으로 묶으면 안 된다 (확정 8).
+
+    저장소 최상위에 test_*.py 를 둔 배치에서 pytest 는 통과하는데 게이트는
+    "파이썬 테스트가 통과하지 않아 ... 테스트를 먼저 고치십시오" 라고 말했다.
+    """
+    ctx = _ctx(tmp_path, files=["pkg.py"], tools=_with_mutmut())
+    ctx.python_tests_status = "skipped"
+    outcome = check_mutation(ctx)
+    assert outcome["status"] == "skipped"
+    assert "테스트 자체는 실패하지 않았습니다" in outcome["human_reason"]
+    assert "먼저 고치십시오" not in outcome["human_reason"]
+
+    ctx.python_tests_status = "findings"
+    assert "먼저 고치십시오" in check_mutation(ctx)["human_reason"]
+
+
+def test_mutation_on_the_def_line_is_not_lost(tmp_path):
+    """`def` 줄에서 일어난 변이가 세 칸을 모두 비운 채 나갔다 (확정 9).
+
+    기본 인자값 변이와 한 줄 def 이 그 자리다. 이름 줄을 떼어 내고 견주면 남는 것이 같아져
+    "자리를 알 수 없음" 으로 떨어졌는데, 정보는 사본에 멀쩡히 있었다.
+    """
+    orig = ["def x_retry__mutmut_orig(times=3):", "    return times"]
+    mutant = ["def x_retry__mutmut_1(times=4):", "    return times"]
+    assert mutmut_change(orig, mutant) == (0, "def retry(times=3):", "def retry(times=4):")
+
+    one_line = (["def x_double__mutmut_orig(a): return a * 2"],
+                ["def x_double__mutmut_2(a): return a * 3"])
+    assert mutmut_change(*one_line) == (0, "def double(a): return a * 2", "def double(a): return a * 3")
+
+    method = (["def xǁCartǁtotal__mutmut_orig(self):", "    return 1"],
+              ["def xǁCartǁtotal__mutmut_1(self):", "    return 2"])
+    assert mutmut_change(*method) == (1, "    return 1", "    return 2")
+
+
+def test_python_decorated_skips_names_what_mutmut_never_mutates():
+    """데코레이터가 붙은 함수와 클래스 안은 통째로 변이되지 않는데 아무 표시가 없었다 (확정 3).
+
+    커버리지 79% 인 파일이 뮤테이션 100% 통과로 나갔고, 금액 계산 함수 셋이 한 번도
+    변이되지 않았다. 파일 단위 안전망은 이 경우를 못 잡는다 — 그 파일에도 변이 가능한
+    함수가 하나 있었기 때문이다.
+    """
+    source = (
+        "import dataclasses\n"
+        "def route(fn):\n    return fn\n"
+        "@route\n"
+        "def price(x):\n    return x * 2\n"
+        "@dataclasses.dataclass\n"
+        "class Cart:\n"
+        "    def total(self):\n        return 1\n"
+        "    @property\n"
+        "    def count(self):\n        return 2\n"
+        "class Plain:\n"
+        "    @staticmethod\n"
+        "    def helper():\n        return 3\n"
+        "def version():\n    return 'v1'\n"
+    )
+    assert python_decorated_skips(source) == ("Cart.count", "Cart.total", "price")
+    assert python_decorated_skips("def broken(:\n") == ()
+
+
+def test_decorated_functions_are_reported_to_the_user(tmp_path, monkeypatch):
+    """빠진 함수가 사용자 눈에 보여야 한다 (확정 3·R4)."""
+    project = tmp_path / "repo"
+    _write(project / REL, LOOPX_SOURCE + "\n@staticmethod\n@property\ndef fee(x):\n    return x\n")
+    monkeypatch.setattr(code_gate, "_run", _fake_mutmut_run())
+    ctx = _ctx(project, files=[REL], tools=_with_mutmut())
+    ctx.repo_root = project
+    outcome = check_mutation(ctx)
+    assert "데코레이터가 붙어 있어 변이가 하나도 만들어지지 않았습니다" in outcome["human_reason"]
+    assert f"{REL}::fee" in outcome["human_reason"]
+    # 못 본 것이 있으면 통과로 내지 않는다 — 사본의 변이는 전부 잡혔지만 이 함수는 안 쟀다.
+    assert outcome["status"] == "findings"
+
+
+@pytest.mark.parametrize("rel, expected", [
+    ("tests", "tests"),
+    ("tests/unit", "tests"),
+    ("../sharedtests", ""),
+    ("/private/tmp/sharedtests", ""),
+    (".", ""),
+    ("mutants", ""),
+    ("setup.cfg", ""),
+])
+def test_link_names_must_live_inside_the_work_dir(rel, expected):
+    """이름을 검증하지 않아 작업 디렉토리 밖을 지웠다 (확정 5).
+
+    `testpaths = ../sharedtests` 하나로 캐시 디렉토리가 통째로 비었다 — 자바스크립트 증분
+    상태 파일까지 함께 사라졌고, 그 배치에서는 매 회차 반복됐다. 절대 경로면 그 자리에
+    `/` 가 온다.
+    """
+    assert _mutmut_link_name(rel) == expected
+
+
+def test_a_rejected_test_path_never_reaches_the_unlink_step(tmp_path):
+    """걸 수 없는 이름은 링크 단계 앞에서 멈춘다 — 지우는 쪽이 밖을 만지기 전이다 (확정 5)."""
+    outside = tmp_path / "outside"
+    _write(outside / "keep.txt", "지워지면 안 되는 파일")
+    work = tmp_path / "work"
+    work.mkdir()
+    assert "만들 수 없는 이름" in _mutmut_link(work, tmp_path, ["../outside"])
+    assert (outside / "keep.txt").is_file()
+
+    (tmp_path / "sharedtests").mkdir()          # 소스 루트 밖의 테스트 (모노레포 배치)
+    repo = tmp_path / "repo"
+    (repo / "tests").mkdir(parents=True)
+    (repo / "src").mkdir()
+    (repo / "tests" / "unit").mkdir()
+    _write(repo / "pytest.ini",
+           "[pytest]\ntestpaths = ../sharedtests . tests tests/unit src\n")
+    found, rejected = _mutmut_test_roots(repo, ("src",))
+    # tests 는 걸 수 있고, tests/unit 은 같은 최상위라 한 번만 센다. src 는 이미 소스 루트다.
+    assert found == ["tests"]
+    assert rejected == ["../sharedtests", "."]
+
+
+def test_a_stale_mutants_symlink_is_reclaimed(tmp_path):
+    """사본 자리에 링크가 걸리면 원인을 없애도 회차마다 프로젝트에 사본이 쌓였다 (추가 2)."""
+    project = tmp_path / "repo"
+    project.mkdir()
+    work = tmp_path / "work"
+    work.mkdir()
+    (work / "mutants").symlink_to(project)
+    notes: list = []
+    _mutmut_reclaim(work, notes)
+    assert not (work / "mutants").exists()
+    assert project.is_dir()                       # 프로젝트는 그대로 둔다
+    assert any("지난 회차의 링크가 걸려 있어 지웠습니다" in note for note in notes)
+
+
+def _work_with_mutants(tmp_path, targets):
+    """지난 회차 사본이 남아 있는 작업 디렉토리."""
+    work = tmp_path / "work"
+    (work / "mutants" / "src").mkdir(parents=True)
+    _write(work / "mutants" / "src" / "a.py.meta", "{}")
+    _write(work / code_gate._MUTMUT_STATE_NAME, json.dumps({"targets": list(targets)}))
+    return work
+
+
+def test_incremental_copy_is_dropped_when_the_tests_changed(tmp_path):
+    """확인문을 전부 지운 회차가 100% 로 통과했다 (확정 1).
+
+    같은 상태를 처음부터 돌리면 0% 다. mutmut 은 사본 안 결과를 함수 해시로만 무효화해서,
+    테스트가 바뀌어도 지난 회차의 "잡힘" 을 그대로 재사용한다.
+    """
+    work = _work_with_mutants(tmp_path, ["src/a.py"])
+    ctx = _ctx(tmp_path)
+    _mutmut_incremental_guard(ctx, work, ["src/a.py"], ["tests/test_a.py"])
+    assert not (work / "mutants").exists()
+    assert any("테스트 파일이 이번 변경분에 있어" in note for note in ctx.notes)
+
+
+def test_incremental_copy_is_dropped_when_the_target_set_changed(tmp_path):
+    """대상이 늘어난 회차에서 새 파일이 통째로 "덮은 테스트 없음" 으로 굳었다 (확정 2).
+
+    회차를 더 돌려도 회복되지 않았다 — mutmut 은 `only_mutate` 변경을 무효화 사유로 보지 않는다.
+    """
+    work = _work_with_mutants(tmp_path, ["src/a.py"])
+    ctx = _ctx(tmp_path)
+    _mutmut_incremental_guard(ctx, work, ["src/a.py", "src/b.py"], [])
+    assert not (work / "mutants").exists()
+    assert any("대상 파일 목록이 지난 회차와 달라" in note for note in ctx.notes)
+
+
+def test_incremental_copy_is_kept_when_nothing_relevant_changed(tmp_path):
+    """버릴 이유가 없으면 그대로 쓴다 — 매 회차 버리면 증분이 무의미해진다 (R1)."""
+    work = _work_with_mutants(tmp_path, ["src/a.py"])
+    ctx = _ctx(tmp_path)
+    _mutmut_incremental_guard(ctx, work, ["src/a.py"], [])
+    assert (work / "mutants").is_dir()
+    assert ctx.notes == []
+
+
+def test_a_run_that_stopped_early_is_not_a_pass(tmp_path, monkeypatch):
+    """종료 코드 1 로 죽었는데 지난 회차 사본이 남아 "통과 100%" 가 나갔다 (확정 4).
+
+    실측 문장: "점수 100.0% (기준 80%), 변이 7개 중 잡히지 않음 0개 — 잡힘 2 / 실행 안 됨 5".
+    같은 문장 안에서 "변이 7개" 와 "잡히지 않음 0개" 의 모수가 다르다 (D4).
+    """
+    project = tmp_path / "repo"
+    _write(project / REL, LOOPX_SOURCE)
+    mixed = {"exit_code_by_key": {
+        "pysandbox.loopx.x_count_up__mutmut_1": 1,
+        "pysandbox.loopx.x_count_up__mutmut_4": None,
+        "pysandbox.loopx.x_count_up__mutmut_8": None,
+    }}
+
+    def run(cmd, *, cwd, timeout):
+        _fake_mutmut_run(meta=mixed)(cmd, cwd=cwd, timeout=timeout)
+        return _FakeProc(stderr="failed to collect stats. runner returned 1", returncode=1)
+
+    monkeypatch.setattr(code_gate, "_run", run)
+    ctx = _ctx(project, files=[REL], tools=_with_mutmut())
+    ctx.repo_root = project
+    outcome = check_mutation(ctx)
+    assert outcome["status"] == "error"
+    assert "변이 3개 중 2개를 재지 못해 점수를 내지 않았습니다" in outcome["human_reason"]
+    assert "통과" not in outcome["human_reason"]
+
+
+def test_no_test_covering_the_change_is_a_zero_score_not_a_setup_error(tmp_path, monkeypatch):
+    """무테스트 파일만 바뀐 회차에서 점수 0% 대신 오류가 났고, 사유도 틀렸다 (확정 10).
+
+    D1 이 no_coverage 를 분모에 남기는 이유가 바로 이 경우인데, 이 경우에만 점수가 안 나왔다.
+    안내는 실제 원인 대신 설정 오류를 가리켜 사용자를 엉뚱한 데로 보냈다.
+    """
+    project = tmp_path / "repo"
+    _write(project / REL, LOOPX_SOURCE)
+    pending = {"exit_code_by_key": {k: None for k in LOOPX_META["exit_code_by_key"]}}
+
+    def run(cmd, *, cwd, timeout):
+        _fake_mutmut_run(meta=pending)(cmd, cwd=cwd, timeout=timeout)
+        return _FakeProc(
+            stderr="could not find any test case for any mutant, aborting", returncode=1)
+
+    monkeypatch.setattr(code_gate, "_run", run)
+    ctx = _ctx(project, files=[REL], tools=_with_mutmut())
+    ctx.repo_root = project
+    outcome = check_mutation(ctx)
+    assert outcome["status"] == "findings"
+    assert "점수 0.0%" in outcome["human_reason"]
+    assert "덮은 테스트 없음 3" in outcome["human_reason"]
+    assert any("덮는 테스트를 mutmut 이 하나도 찾지 못했습니다" in note for note in ctx.notes)
+
+
+def test_bracketed_paths_are_escaped_in_the_target_list(tmp_path):
+    """대괄호가 든 경로는 자기 자신과 안 맞아 어떤 회차에도 변이되지 않았다 (확정 13).
+
+    `only_mutate` 는 mutmut 이 fnmatch 로 맞추는 글롭이다. 소스 루트는 글롭이 아니라 경로라
+    이스케이프하지 않는다.
+    """
+    work = tmp_path / "work"
+    work.mkdir()
+    _write_mutmut_config(work, ("src",), ("src/pkg/legacy[old].py", "src/pkg/mathx.py"), (), {})
+    body = (work / "setup.cfg").read_text(encoding="utf-8")
+    assert "src/pkg/legacy[[]old].py" in body
+    assert "src/pkg/mathx.py" in body
+    assert "source_paths=\n\tsrc\n" in body
+
+
+def test_the_budget_belongs_to_the_check_not_to_each_language(tmp_path, monkeypatch):
+    """두 언어가 예산을 각자 통째로 잡아 C7 하나가 설정값의 두 배까지 돌았다 (확정 6).
+
+    실측: 설정 2초에 항목 4.04초. 기본값 600 에서는 최대 1,200초다.
+    """
+    ctx = _ctx(tmp_path, files=["a.py"])
+    assert _mutation_budget(ctx) == ctx.config.mutation_timeout_seconds   # 마감이 없으면 전부
+    ctx.mutation_deadline = time.perf_counter() + 5
+    assert 0 < _mutation_budget(ctx) <= 5
+    ctx.mutation_deadline = time.perf_counter() - 1
+    assert _mutation_budget(ctx) == 0
+
+    project = tmp_path / "repo"
+    _write(project / REL, LOOPX_SOURCE)
+    _write(project / "src" / "a.js", "export const x = 1;\n")
+
+    def burn(inner_ctx, js_files):
+        """자바스크립트가 예산을 다 쓴 회차."""
+        inner_ctx.mutation_deadline = time.perf_counter() - 1
+        return {"language": "javascript", "label": "자바스크립트", "summary": None,
+                "outcome": _skip_outcome()}
+
+    monkeypatch.setattr(code_gate, "_check_mutation_javascript", burn)
+    # 준비 단계에서 예산이 바닥나도 같은 문장이 나간다 — 0초로 띄우면 "중간 결과가 없다" 가
+    # 되어 재지 못한 이유가 바뀐다.
+    exhausted = _ctx(tmp_path)
+    exhausted.mutation_deadline = time.perf_counter() - 1
+    outcome, summary = code_gate._mutmut_run(exhausted, tmp_path, ["true"], (), [])
+    assert summary is None and "앞 언어가 뮤테이션 예산" in outcome["human_reason"]
+
+    ctx = _ctx(project, files=[REL, "src/a.js"], tools=_with_mutmut())
+    ctx.repo_root = project
+    outcome = check_mutation(ctx)
+    assert "앞 언어가 뮤테이션 예산" in outcome["human_reason"]
+    assert "파이썬은 재지 못했습니다" in outcome["human_reason"]
+
+
+def test_python_sources_named_spec_are_not_mistaken_for_tests(tmp_path):
+    """자바스크립트 관례(`spec` / `__mocks__` / `_spec`)로 파이썬 소스가 빠졌다 (추가 1).
+
+    실측: 사양 문서를 파싱하는 `src/spec/parser.py` 가 "테스트·삭제된 파일" 로 보고되며
+    한 번도 변이되지 않았다.
+    """
+    for rel in ("src/spec/parser.py", "src/api_spec.py", "src/__mocks__/fake.py",
+                "tests/test_a.py", "pkg/core_test.py"):
+        _write(tmp_path / rel, "def f():\n    return 1\n")
+    targets, dropped = _mutmut_targets(tmp_path, [
+        "src/spec/parser.py", "src/api_spec.py", "src/__mocks__/fake.py",
+        "tests/test_a.py", "pkg/core_test.py"])
+    assert set(targets) == {"src/spec/parser.py", "src/api_spec.py", "src/__mocks__/fake.py"}
+    assert set(dropped) == {"tests/test_a.py", "pkg/core_test.py"}
+
+
+def test_unknown_status_names_are_marked_as_unknown_in_korean():
+    """게이트 어휘 밖의 이름이 한국어 문장에 영어 그대로 실려 정상 항목처럼 읽혔다 (추가 3).
+
+    이름은 지어내지 않고 그대로 두되, 모르는 것임을 함께 적는다 (R4).
+    """
+    text = _mutation_distribution({"Killed": 9, "suspicious": 3, "caught by type check": 2})
+    assert "잡힘 9" in text
+    assert "모르는 상태 'suspicious' 3" in text
+    assert "모르는 상태 'caught by type check' 2" in text

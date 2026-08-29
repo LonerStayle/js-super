@@ -10,7 +10,8 @@
     "enabled": true,
     "score_threshold": 80,
     "timeout_seconds": 600,
-    "javascript": "stryker"
+    "javascript": "stryker",
+    "python": "mutmut"
   },
   "timeout_seconds": 60,
   "timeout_seconds_tests": 300,
