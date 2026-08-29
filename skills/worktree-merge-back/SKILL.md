@@ -1,17 +1,17 @@
 ---
 name: worktree-merge-back
-description: 커맨드 /merge-back-worktree 명시 호출로만 진입 — 자유 요청에서 자동 선택 금지. feature 워크트리 안에서 parent 브랜치를 먼저 흡수해 충돌을 sandbox 에서 해소한 뒤 parent 로 안전 머지 + env 동기화. worktree-only (main 에서 호출 시 차단).
+description: 커맨드 /merge-back-worktree 명시 호출로만 진입 — 자유 요청에서 자동 선택 금지. feature 워크트리 안에서 생성 시 기록된 직계 부모 브랜치를 먼저 흡수해 충돌을 sandbox 에서 해소한 뒤 그 부모로 안전 머지 + env 동기화. worktree-only (main 에서 호출 시 차단).
 ---
 
 # Worktree Merge-Back (v2.5.2 — auto)
 
-워크트리에서 진행한 feature 작업을 parent (main) 워크트리로 안전하게 머지 + 환경 파일 동기화. "Merge down before merging up" 패턴 — 충돌 해결은 feature sandbox 에서만, parent 워크트리는 항상 깨끗. v2.5.1+ 에서 자동화 강화 (parent 로컬 흡수 + 재귀 머지 자동 + env LLM 판단 + `/remove-worktree` 안내). v2.5.2+ 에서 dirty working tree 자동 커밋 추가 (커밋 안 된 변경이 있으면 묻지 않고 자동 커밋 후 진행 — 사용자 명시 요청).
+워크트리에서 진행한 feature 작업을 직계 부모 워크트리로 안전하게 머지 + 환경 파일 동기화. "Merge down before merging up" 패턴 — 충돌 해결은 feature sandbox 에서만, parent 워크트리는 항상 깨끗. v2.5.1+ 에서 자동화 강화 (parent 로컬 흡수 + 재귀 머지 자동 + env LLM 판단 + `/remove-worktree` 안내). v2.5.2+ 에서 dirty working tree 자동 커밋 추가 (커밋 안 된 변경이 있으면 묻지 않고 자동 커밋 후 진행 — 사용자 명시 요청). 머지 대상은 워크트리 생성 시 기록된 직계 부모 브랜치다 — 재분기 워크트리는 최상위가 아니라 자기를 분기시킨 브랜치로 머지된다. 판별이 불확실하면 자동 진행하지 않고 사용자에게 확인한다.
 
 **Announce at start:** "I'm using the worktree-merge-back skill — feature → parent merge with sandbox conflict resolution + env sync."
 
 ## Other / 모호 응답 처리 (v2.1.1+)
 
-본 skill 은 v2.5.1+ 에서 AskUserQuestion 게이트가 0건이다 (구 Step 3 충돌 게이트가 재귀 머지 자동 + prose 안내로 대체됨 — 아래 Process 섹션 참조). 따라서 이 "Other / 모호 응답" 룰은 **현재 흐름에서 비활성**이다. (향후 게이트가 다시 도입될 경우에만 적용: 사용자가 "Other" 자유 응답 또는 "모르겠음 / 이해 안 됨" 류 답변 catch 시 → 그 질문만 단독 재호출 + prose 설명 추가, 자동 진행 X.)
+본 skill 은 Step 2 판별 실패 시 머지 대상 확인 게이트 1건을 갖는다 (부모브랜치기준 개선으로 재도입). 사용자가 "Other" 자유 응답 또는 "모르겠음 / 이해 안 됨" 류 답변 catch 시 → 그 질문만 단독 재호출 + prose 설명 추가. 자동 진행 X.
 
 ## When to Use
 
@@ -41,11 +41,11 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || {
 
 추가로 `git worktree list` 결과가 1개 (main 만 존재) 면 차단 — feature 워크트리 없음.
 
-## Process (v2.5.2+ — 게이트 0건, prose 보고 + 자동 진행)
+## Process (v2.5.2+ — 게이트 1건: Step 2 판별 실패 시, prose 보고 + 자동 진행)
 
-v2.0.5 의 Step 3 충돌 게이트 1건도 v2.5.1+ 에서 prose 안내로 대체 (재귀 머지 자동 + semantic conflict 만 prose 안내). 신규 Step 4.5 env 동기화 추가. v2.5.2+ 에서 Step 1 dirty 자동 커밋 추가 (즉시 종료 폐기 — 커밋 전 파일 목록 prose 알림). 모든 단계 default 권장사항 자동 진행 + 안전성 안내문.
+v2.0.5 의 Step 3 충돌 게이트 1건은 v2.5.1+ 에서 prose 안내로 대체 (재귀 머지 자동 + semantic conflict 만 prose 안내). 신규 Step 4.5 env 동기화 추가. v2.5.2+ 에서 Step 1 dirty 자동 커밋 추가 (즉시 종료 폐기 — 커밋 전 파일 목록 prose 알림). 부모브랜치기준 개선으로 Step 2 판별 실패 시에만 사용자 확인 게이트 1건이 재도입됐다 — 나머지 단계는 default 권장사항 자동 진행 + 안전성 안내문 그대로.
 
-`Other / 모호 응답 처리 (v2.1.1+)` 섹션은 Step 3 게이트가 없어진 v2.5.1+ 흐름에서는 비활성 — Step 4.5 env 동기화 prose 보고에 대한 사용자 자유 응답은 메인이 prose 로 follow-up.
+`Other / 모호 응답 처리 (v2.1.1+)` 섹션은 Step 2 판별 실패 게이트에 적용된다 — Step 4.5 env 동기화 prose 보고에 대한 사용자 자유 응답은 메인이 prose 로 follow-up.
 
 ### Step 1 — Working tree 검사 + 자동 커밋 (v2.5.2+ — 게이트 X, 알림 후 자동 진행)
 
@@ -87,13 +87,29 @@ git commit -m "<생성된 메시지>"
 
 → Step 2 자동 진행. 게이트 없음 (사용자에게 묻지 않음). 위 prose 알림이 유일한 안전장치 — 사용자가 목록 보고 stop 가능. 커밋은 로컬 이력 추가라 되돌리기 쉬움 (`git reset`) — destructive 아님.
 
-### Step 2 — Parent worktree 추론 (자동)
+### Step 2 — 직계 부모 판별 (기록 기반, 검증 4건)
+
+머지 대상은 `git worktree list` 순서나 커밋 히스토리 추정이 아니라, 워크트리 생성 시 `setting-up-worktrees` 가 기록해 둔 직계 부모 브랜치다.
 
 ```bash
-MAIN_INFO=$(git worktree list --porcelain | head -3)
-MAIN_PATH=$(echo "$MAIN_INFO" | awk '/^worktree / {print $2; exit}')
-MAIN_BRANCH=$(echo "$MAIN_INFO" | awk '/^branch / {print $2; exit}' | sed 's|refs/heads/||')
+FEATURE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+PARENT_BRANCH=$(git config "branch.$FEATURE_BRANCH.js-super-parent" || true)
+PARENT_BASE=$(git config "branch.$FEATURE_BRANCH.js-super-parent-base" || true)
 
+# 검증 4건 — 하나라도 실패 시 판별 실패 → 사용자 확인 게이트
+# 1) 기록 존재 + 자기 자신 아님
+[ -n "$PARENT_BRANCH" ] && [ "$PARENT_BRANCH" != "$FEATURE_BRANCH" ]
+# 2) 부모 브랜치가 로컬에 실존
+git show-ref --verify --quiet "refs/heads/$PARENT_BRANCH"
+# 3) 부모 브랜치가 어떤 워크트리에 체크아웃되어 있음 (머지를 실행할 경로 확보)
+PARENT_PATH=$(git worktree list --porcelain \
+  | awk -v b="refs/heads/$PARENT_BRANCH" '/^worktree /{p=$2} $0=="branch "b{print p; exit}')
+[ -n "$PARENT_PATH" ]
+# 4) 기록된 분기점이 현재 히스토리의 조상 — 스킬 밖 동명 재생성으로 물려받은 stale 기록 차단
+[ -n "$PARENT_BASE" ] && git merge-base --is-ancestor "$PARENT_BASE" HEAD
+```
+
+```bash
 WT_COUNT=$(git worktree list | wc -l)
 if [ "$WT_COUNT" -lt 2 ]; then
   echo "❌ feature 워크트리 없음. 현재 main 워크트리 1개만 존재."
@@ -101,14 +117,26 @@ if [ "$WT_COUNT" -lt 2 ]; then
 fi
 ```
 
-추론 실패 (multi-parent / nested) → 명시 차단 + 종료.
+최상위 브랜치 이름도 별도로 확보해둔다 — 아래 판별 실패 게이트의 선택지 나열과 Step 5 의 스택 안내 (부모 ≠ 최상위일 때) 에만 쓰고, 머지 대상 결정에는 쓰지 않는다.
+
+```bash
+TOP_BRANCH=$(git worktree list --porcelain | awk '/^branch /{print $2; exit}' | sed 's|refs/heads/||')
+```
+
+**판별 실패 게이트** — 검증 4건 중 하나라도 실패하면 조용한 fallback 없이 `AskUserQuestion` 으로 사용자에게 머지 대상을 확인한다:
+
+- 실패 사유 1줄을 질문 본문에 포함: 기록 없음 / 부모 브랜치 삭제됨 / 부모 미체크아웃 / 분기점이 조상이 아님
+- options = 최상위 브랜치 (`$TOP_BRANCH`) + 다른 워크트리에 체크아웃된 브랜치들 (자기 자신 제외, 4개 초과분은 Other 로 안내) + "중단" (항상 포함)
+- **중단** 선택 시 안내 1줄 출력 후 종료: "부모 워크트리를 먼저 만들고 (`/worktree <부모브랜치>`) 본 skill 을 재호출해주세요."
+- 사용자가 브랜치를 고르면 (Other 자유 응답 포함) 검증 ②③ (로컬 실존 + 워크트리 체크아웃) 을 그 브랜치에 재적용 — 실패하면 사유를 안내하고 게이트를 다시 연다 (탈출은 언제든 "중단")
+- 조용한 최상위 fallback / 히스토리 추정으로 자동 진행하는 것은 금지
 
 ### Step 3 — Parent 변경사항 흡수 (feature 쪽으로, 로컬 브랜치) — v2.5.1+ 자동화
 
-v2.5.1+ 에서 머지 대상이 `origin/$MAIN_BRANCH` (remote) 에서 **parent 워크트리의 로컬 브랜치** 로 변경됨. 사용자가 진입 전 remote 동기화가 필요했으면 별도 `git fetch` + pull 후 본 skill 호출.
+머지 대상은 직계 부모 브랜치 (Step 2 판별 결과) 의 로컬 워크트리다. 사용자가 진입 전 remote 동기화가 필요했으면 별도 `git fetch` + pull 후 본 skill 호출.
 
 ```bash
-git merge $MAIN_BRANCH
+git merge $PARENT_BRANCH
 ```
 
 **충돌 처리** — git default 재귀 머지 (3-way merge) 자동 시도. 결과는 두 가지:
@@ -133,7 +161,7 @@ git merge $MAIN_BRANCH
 Pre-check (R3 mitigation):
 
 ```bash
-git merge-base --is-ancestor $MAIN_BRANCH HEAD || {
+git merge-base --is-ancestor $PARENT_BRANCH HEAD || {
   echo "❌ Step 3 흡수 가정 깨짐. Step 3 중간 다른 작업 발생 의심. 수동 머지 필요."
   exit 1
 }
@@ -143,15 +171,15 @@ git merge-base --is-ancestor $MAIN_BRANCH HEAD || {
 
 ```bash
 FEATURE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-git -C "$MAIN_PATH" merge --no-ff "$FEATURE_BRANCH" \
-  -m "Merge branch '$FEATURE_BRANCH' into $MAIN_BRANCH"
+git -C "$PARENT_PATH" merge --no-ff "$FEATURE_BRANCH" \
+  -m "Merge branch '$FEATURE_BRANCH' into $PARENT_BRANCH"
 ```
 
-→ 게이트 없음. 메시지 customize 원하면 사용자가 직접 `git -C <main-path> commit --amend` 로 수정 (Step 4 이후 자유).
+→ 게이트 없음. 메시지 customize 원하면 사용자가 직접 `git -C <parent-path> commit --amend` 로 수정 (Step 4 이후 자유).
 
 ### Step 4.5 — 환경 파일 동기화 (v2.5.1+ 신규)
 
-`.env*` 같은 gitignored 로컬 빌드 환경 파일은 git 머지로 못 옮김. 워크트리에서 새 키 추가했으면 parent 가 stale 상태로 남음. Step 4.5 에서 LLM 변경 의미 판단 후 선택적 cp.
+`.env*` 같은 gitignored 로컬 빌드 환경 파일은 git 머지로 못 옮김. 워크트리에서 새 키 추가했으면 parent 가 stale 상태로 남음 — 환경 파일은 Step 2 에서 판별한 직계 부모 워크트리로 동기화한다. Step 4.5 에서 LLM 변경 의미 판단 후 선택적 cp.
 
 **대상 파일 감지**:
 
@@ -186,7 +214,7 @@ prose 보고 예시:
 **cp 실행** — `cp -p` (permission 보존) + `-P` (symlink 보존) default:
 
 ```bash
-cp -pP "$CURRENT_PATH/$FILE" "$MAIN_PATH/$FILE"
+cp -pP "$CURRENT_PATH/$FILE" "$PARENT_PATH/$FILE"
 ```
 
 symlink 발견 시 별도 prose 보고 후 사용자 선택. silent cp 절대 X.
@@ -204,12 +232,18 @@ symlink 발견 시 별도 prose 보고 후 사용자 선택. silent cp 절대 X.
 사후 처리 (worktree 제거 / 브랜치 삭제 / remote push) 는 모두 default no — skill 이 자동 실행하지 않음. 종료 메시지 한 줄로 안내:
 
 ```
-✅ Merge 완료. Feature 워크트리: <FEATURE_BRANCH> → <MAIN_BRANCH> (commit: <merge-sha>)
+✅ Merge 완료. Feature 워크트리: <FEATURE_BRANCH> → <PARENT_BRANCH> (commit: <merge-sha>)
 
 다음 단계 (필요 시 직접 실행):
   - 워크트리 + 브랜치 정리: /remove-worktree   (v2.5.1+ 신규 슬래시 명령, 단독 호출)
-  - Remote 동기화:         git -C <main-path> pull   (parent 로컬 stale 시)
-  - Remote push:           git -C <main-path> push origin <main-branch>
+  - Remote 동기화:         git -C <parent-path> pull   (parent 로컬 stale 시)
+  - Remote push:           git -C <parent-path> push origin <parent-branch>
+```
+
+`$PARENT_BRANCH` 가 `$TOP_BRANCH` 와 다르면 (재분기 워크트리) 종료 메시지에 스택 안내를 추가한다:
+
+```
+ℹ️ 이 머지는 직계 부모 (<PARENT_BRANCH>) 까지입니다. 최상위 (<TOP_BRANCH>) 반영은 부모 워크트리에서 `/merge-back-worktree` 를 다시 실행해주세요.
 ```
 
 → 사용자가 의도에 맞게 직접 선택. `setting-up-worktrees` 의 "keep worktree" / "discard" 자유 결정 보존. v2.5.1+ 에서 `/remove-worktree` 가 워크트리 + 브랜치 정리를 한 슬래시로 묶음 (chain X — 명시 호출만).
@@ -219,9 +253,12 @@ symlink 발견 시 별도 prose 보고 후 사용자 선택. silent cp 절대 X.
 | Wrong | Right |
 |---|---|
 | main 워크트리에서 invoke 후 그대로 진행 | HARD-GATE 차단. feature worktree 안에서만. |
+| 기록 없을 때 조용히 최상위로 머지 | NEVER — 판별 실패 게이트로 사용자 확인. |
+| 커밋 히스토리 추정으로 부모 자동 선택 | NEVER — 기록 + 검증 4건만 신뢰. |
+| 게이트에서 사용자가 고른 대상을 재검증 없이 머지 | 검증 ②③ 재적용 후 진행. |
 | Step 3 충돌을 자동 해결 (`--strategy ours` / `theirs`) | NEVER. 안전성 핵심. 사용자가 명시 플래그 안 주면 자동 적용 X. (v2.0.4+ 룰 v2.5.1+ 유지) |
 | Step 3 git default 재귀 머지 자체를 차단 | OK. git default 3-way merge 는 안전 (conflict marker 발생 시 자동 stop). v2.5.1+ 자동화 정상 흐름. |
-| Step 3 머지 대상에 `origin/$MAIN_BRANCH` 사용 | v2.5.1+ 에서 로컬 `$MAIN_BRANCH` 로 변경. remote 동기화 원하면 사용자가 진입 전 별도 `git fetch` + pull. |
+| 머지 대상을 remote (origin) 로 잡기 | 로컬 직계 부모 브랜치로 머지. remote 동기화 원하면 사용자가 진입 전 별도 fetch + pull. |
 | Step 4 를 Step 3 흡수 검증 없이 진행 | merge-base 검증 필수 (R3). |
 | Step 4.5 env cp 를 silent 로 실행 | NEVER. 각 파일 1줄 prose 보고 + 사용자 stop 가능 시점 보장 (R-2). |
 | Step 4.5 env LLM 판단 없이 모든 파일 자동 cp | 변경 의미 판단 후 선택적 cp. 임시 디버그 / 주석만 변경 제외. |
@@ -243,12 +280,12 @@ symlink 발견 시 별도 prose 보고 후 사용자 선택. silent cp 절대 X.
 ## Why v2.5.1
 
 - v2.0.5 출시 후 사용자 dogfood 결과 4 가지 마찰 catch:
-  1. 머지 대상이 `origin/$MAIN_BRANCH` (remote) 라 parent 워크트리의 로컬 commit 이 머지 흐름에 자동 반영 X — 사용자가 별도 push 필요.
+  1. 머지 대상이 `origin/<메인 브랜치>` (remote) 라 parent 워크트리의 로컬 commit 이 머지 흐름에 자동 반영 X — 사용자가 별도 push 필요.
   2. Step 3 충돌 게이트가 모든 충돌에서 사용자 응답 wait — 자동화 의도와 충돌.
   3. `.env*` 같은 gitignored 환경 파일이 git 머지로 못 옮겨짐 — 새 키 추가하면 parent stale.
   4. 사후 처리 안내가 한 줄 안내만 — 사용자가 매번 `git worktree remove` + `git branch -d` 수동 입력.
 - 해결:
-  1. **D-1** Step 3 머지 대상 `origin/$MAIN_BRANCH` → 로컬 `$MAIN_BRANCH` (사용자 의도 그대로)
+  1. **D-1** Step 3 머지 대상 `origin/<메인 브랜치>` → 로컬 `<메인 브랜치>` (사용자 의도 그대로)
   2. **D-2** 충돌 처리 = git default 재귀 머지 자동 + semantic conflict 만 prose 안내 (자동화 ↑, 안전성 유지)
   3. **D-3** Step 4.5 신규 — env 파일 LLM 판단 + 선택적 cp (silent 절대 X)
   4. **D-4** `/remove-worktree` 신규 슬래시 명령 (독립, chain X) — Step 5 안내에 호출 추가
@@ -264,8 +301,14 @@ symlink 발견 시 별도 prose 보고 후 사용자 선택. silent cp 절대 X.
   3. **E-3** 안전장치 = 커밋 전 파일 목록 + 생성 메시지 prose 알림 (silent 금지 — 원치 않는 파일 섞임 catch, 사용자 stop 가능).
 - 안전성 판단: 자동 커밋은 destructive 아님 (로컬 이력 추가, `git reset` 으로 되돌리기 쉬움). `git push --force` / `rm` / `--strategy ours/theirs` 같은 데이터 손실 계열과 다름 — v2.0.4+ / v2.5.1+ 안전성 핵심과 충돌 X. HARD-GATE worktree-only / 충돌 자동 해결 금지 모두 유지.
 
+## Why 부모브랜치 기준
+
+- 재분기 워크트리에서 머지 대상을 `git worktree list` 첫 entry (최상위) 로 고정했던 게 문제 — 모델이 상황을 보고 우연히 막아주던 상태였을 뿐, 구조적 보장이 없었다.
+- 해결: 워크트리 생성 시 기록해 둔 직계 부모 (`js-super-parent` / `js-super-parent-base`) 를 판별 근거로 삼고, 검증 4건 + 판별 실패 게이트로 대체했다.
+- 조용한 최상위 fallback 은 금지 — 판별이 불확실하면 항상 사용자에게 확인한다 (사용자 결정).
+
 ## Related Skills
 
-- `setting-up-worktrees` — 워크트리 생성 페어 (영향 0)
+- `setting-up-worktrees` — 워크트리 생성 페어 — 분기 부모 기록 (`js-super-parent` / `js-super-parent-base`) 을 이 skill 이 판독
 - `finishing-a-development-branch` — 테스트 게이트 + 종료 메시지 (자동 호출 X)
 - `change-history` — 본 skill 영향 0 (git 조작만, MD 안 건드림)
