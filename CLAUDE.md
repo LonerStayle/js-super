@@ -2208,6 +2208,26 @@ grep -c "분할 계획서 예외 (하위 문서)" skills/change-history/SKILL.md
 - **워크트리는 제안만** — 부모 관계를 알려주는 데까지. 만드는 일은 `setting-up-worktrees` 가 한다
 - **자동 흐름 비적용** — `auto-brainstorming` 계열에는 넣지 않는다 (요구사항 범위 밖)
 
+## 검사 게이트 ↔ 두 실행 흐름 결합
+
+`scripts/code_gate.py` (0단계 6항목 + C7 뮤테이션) 를 실행 흐름 둘에 붙였다. 게이트를 부르는 곳이 하나도 없어 사용자가 직접 명령을 치기 전에는 아무 일도 일어나지 않던 상태를 없앤 것이다. 붙는 자리는 두 흐름 모두 **커밋 직전** — 커밋 뒤에 재면 변경분이 사라진다. 손으로 부르는 자리로 `commands/check-code.md` 를 함께 뒀다.
+
+### 핵심 룰
+
+- **두 흐름 동시 수정** — `js-super-sub-driven` (W-4 안 하위 단계 `(a2)`) 와 `executing-plans` (두 모드 Phase 2 의 `3.5.` + 전용 섹션 "변경분 검사 리포트 (커밋 직전, 리포트 전용)") 는 짝이다. 한쪽만 고치면 실행 모드에 따라 검사가 되기도 안 되기도 하고, 사용자는 어느 모드를 골랐는지로 검사 유무가 갈린다는 것을 알 수 없다
+- **호출은 `--base HEAD` 고정** — 생략하면 기본값이 `main` 이라 브랜치 시작부터의 누적분을 잰다. 웨이브 5의 리포트에 웨이브 1~4가 다시 들어오고 같은 변이가 반복 노출된다. `--repo-root` / `--config` / `--json` 은 주지 않는다 (cwd 의 git 최상위가 검사 대상이고, 기준값은 대상 프로젝트의 `.code-gate.json` 이 정하며, 기본 출력이 이미 한국어 표다)
+- **가상환경 없이 `python3`** — 게이트가 검사 대상 프로젝트의 가상환경을 스스로 찾는다 (`code_gate.resolve_python`: `VIRTUAL_ENV` → `.venv` → `venv` → 현재 인터프리터 순). 여기서 js-super 의 가상환경을 켜면 `VIRTUAL_ENV` 가 1순위로 잡혀 **대상 프로젝트가 아닌 인터프리터**로 재게 된다. "게이트가 표준 라이브러리만 쓰니까" 는 근거가 아니다 — 그것은 게이트 본체의 성질이고, 게이트가 부르는 도구 (pytest / coverage / lizard) 의 탐색 경로와는 다른 얘기다. 근거를 이렇게 적어 두지 않으면 다음 세션이 "그럼 도구가 없겠네" 로 읽고 venv 프리픽스를 붙인다
+- **호출에 `timeout: 600000` 을 준다** — Bash 도구 기본값은 120초인데 게이트의 테스트 상한이 300초, 뮤테이션 상한이 600초다. 게이트는 끝에 한 번에 렌더링하므로 잘리면 출력이 0바이트다. 흐름은 안 죽지만 (실행 실패 행이 흡수) 무거운 저장소에서 매번 시간만 버리고 아무것도 못 낸다 — 검사가 가장 필요한 규모에서 값이 정확히 0 이 된다. 도구 상한이 600초라 뮤테이션 상한까지 덮지는 못한다 (완화이지 완치가 아니다)
+- **경로 해석은 플러그인 캐시 find → `scripts/code_gate.py` → `GATE_ABSENT`** — `commands/list-skills.md` 와 같은 패턴이다. `${CLAUDE_PLUGIN_ROOT}` 는 Bash 도구 환경에서 채워지지 않아 쓰지 않는다
+- **리포트 전용** — 게이트 결과로 commit 을 막거나 되돌리거나 사용자에게 되묻지 않는다. 강제는 커버리지가 서브프로세스 실행을 못 잡아 CRAP 이 거짓으로 터지는 문제 때문에 막혀 있고, 지금 켜면 통합 테스트를 쓰는 프로젝트가 통째로 차단된다
+- **critical 7 표에 행을 더하지 않는다** — 게이트 발견은 재질문 사유가 아니다. `using-superpowers` 도 손대지 않는다 (v2.3.5+ 결합과 정면 충돌)
+- **건너뜀 사유를 고정 문구로 적지 않는다** — 사유는 도구 미설치 · 테스트 경로 없음 · git 저장소 아님 · 규칙 파일 없음 처럼 여러 종류다. "(도구 미설치)" 로 뭉치면 사용자가 원인을 못 찾는다. 그리고 **한 항목도 검사하지 못한 회차를 `발견 없음` 으로 내지 않는다** — 통과로 읽힌다. 도구 없는 프로젝트에서는 이것이 예외가 아니라 기본값이라 첫인상이 그 한 줄이다
+- **인라인의 발견 없는 회차는 wave 단위로 합산 보고** — 매 task 리포트는 룰 2 의 보고 빈도 (매 task X, 매 wave 단위) 와 정면으로 어긋난다. 발견이 있는 task 만 그 자리에서 전문을 낸다. 웨이브 흐름은 원래 wave 당 1회라 이 문제가 없다
+- **출력은 게이트가 찍은 것 그대로** — 살아남은 변이 한 줄에 파일 · 줄 · 변이 종류 · 원본→변경 · 관련 테스트가 들어 있고, 메인이 요약하면 그것이 사라진다. 발견이 없을 때만 한 줄로 줄인다. 긴 목록은 게이트가 이미 15줄에서 자르고 `... 외 N건` 을 붙이므로 메인이 다시 자르지 않는다
+- **게이트 부재는 정상 경로** — 한 줄 알리고 그대로 commit 진행. 재시도 · 보조 에이전트 · `AskUserQuestion` · W-6 failure isolation 연결 모두 금지. 알림은 실행당 1회
+- **흐름 구분 인자를 만들지 않는다** — 게이트는 `--track` / `--mode` / `--flow` / `--stage` / `--only` / `--fail-under` 를 일부러 갖고 있지 않다 (게이트 docstring 계약 4). 스킬이 넘기면 무시되고 참고란에 찍힌다
+- **auto-executing-plans 에 본문을 따로 적지 않는다** — 자동 흐름은 자체 wave 절차가 없고 Step 3 에서 `js-super:js-super-sub-driven` 을 통째로 부른다. 즉 위임만으로 W-4 `(a2)` 가 **이미 돈다.** 여기에 self-contained 사본을 적으면 wave 당 게이트가 두 번 — 프로젝트 테스트 스위트가 두 번 더 — 돈다. 아래 회귀 탐지의 `code_gate` 개수 0 은 "아직 안 붙였다" 가 아니라 "위임으로 충분하니 사본 금지" 라는 뜻이다
+
 ### 회귀 패턴
 
 | 누락 / 변경 | 증상 |
@@ -2222,3 +2242,261 @@ grep -c "분할 계획서 예외 (하위 문서)" skills/change-history/SKILL.md
 
 ### 회귀 catch grep
 
+| 한쪽 스킬만 수정 | 실행 모드에 따라 검사 유무가 갈림 — 사용자가 원인을 알 수 없다 |
+| `--base HEAD` 를 뺌 | 브랜치 누적분을 매번 재서 같은 변이가 반복 노출, 시간도 누적 |
+| 호출 자리를 commit 뒤로 옮김 | working tree 가 비어 "변경된 파일이 없습니다" 로 매번 통과 |
+| `source .venv/bin/activate` 를 붙임 | 사용자 프로젝트에 가상환경이 없어 항상 실패 |
+| 게이트 결과를 critical 7 에 넣음 | 리포트가 흐름을 멈춤 — 도입 전제 파괴 |
+| 게이트 부재를 오류로 처리 | 플러그인만 설치한 사용자의 실행이 매번 멈춤 |
+| `timeout` 을 빼고 호출 | 무거운 저장소에서 120초마다 0바이트 출력 — 검사가 가장 필요한 규모에서 값이 0 |
+| 건너뜀 사유를 고정 문구로 적음 | 여러 원인이 "(도구 미설치)" 로 뭉쳐 사용자가 못 고침 |
+| 전부 건너뛴 회차를 `발견 없음` 으로 냄 | 검사하지 않은 것이 통과로 읽힘 (게이트 docstring 계약 3 위반) |
+| 인라인이 매 task 리포트를 냄 | 룰 2 의 보고 빈도와 어긋나고 두 실행 모드의 보고가 갈림 |
+| `auto-executing-plans` 에 사본을 적음 | 위임 경로와 겹쳐 wave 당 게이트 2회 — 테스트 스위트 중복 실행 |
+| 살아남은 변이를 메인이 요약 | 파일 · 줄 · 테스트가 사라져 도구의 값이 없어짐 |
+| W-1~W-6 번호를 바꾸거나 W-7 을 신설 | 룰 4 / Anti-Patterns / Related Skills 가 번호를 참조해 전부 깨짐 |
+| Process Flow dot 만 고치고 본문 삭제 (또는 반대) | 다음 세션이 한쪽만 보고 단계를 빠뜨림 |
+| dot 노드 이름을 선언과 간선에서 다르게 적음 | 없는 노드를 가리키는 간선이 생겨 그래프가 깨짐 |
+
+### 회귀 탐지
+
+```bash
+grep -lF "code_gate.py" skills/js-super-sub-driven/SKILL.md skills/executing-plans/SKILL.md | wc -l
+# expected: 2
+```
+
+```bash
+grep -c -- "--base HEAD" skills/js-super-sub-driven/SKILL.md skills/executing-plans/SKILL.md
+# expected: 각 1 이상
+```
+
+```bash
+grep -c -- "--track\|--fail-under\|--only\|code_gate.*--json" skills/js-super-sub-driven/SKILL.md skills/executing-plans/SKILL.md
+# expected: 각 0
+```
+
+```bash
+grep -c "activate.*code_gate\|code_gate.*activate" skills/js-super-sub-driven/SKILL.md skills/executing-plans/SKILL.md
+# expected: 각 0
+```
+
+```bash
+grep -cE "^### W-[1-6]\." skills/js-super-sub-driven/SKILL.md
+# expected: 6
+```
+
+```bash
+grep -cF "(a2)" skills/js-super-sub-driven/SKILL.md
+# expected: 5
+```
+
+```bash
+grep -cF "변경분 검사 리포트" skills/js-super-sub-driven/SKILL.md skills/executing-plans/SKILL.md
+# expected: 각 2 이상
+```
+
+```bash
+grep -c "code_gate" skills/auto-executing-plans/SKILL.md
+# expected: 0 (위임으로 이미 적용 — 사본 금지)
+```
+
+```bash
+grep -c "변경분 검사 리포트" skills/executing-plans/SKILL.md
+# expected: 9
+```
+
+```bash
+test -f commands/check-code.md && test ! -d skills/check-code && echo OK
+# expected: OK
+```
+
+```bash
+grep -c "disable-model-invocation: true" commands/check-code.md
+# expected: 1
+```
+
+```bash
+grep -c '변경분 검사 리포트\\n(커밋 직전, 막지 않음)' skills/executing-plans/SKILL.md
+# expected: 5
+```
+
+### 영향 범위
+
+- 스킬 본문 2 (`js-super-sub-driven` / `executing-plans`) + 커맨드 1 신규 (`commands/check-code.md`) + `README.md` 유틸리티 커맨드 표 1행 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
+- `scripts/code_gate.py` / `scripts/mutation/` **무변경** — 게이트는 완성돼 있고, 붙이는 작업이 도구를 바꾸면 테스트 626개의 전제가 흔들린다
+- `scripts/preflight.py` / `plan_byte_check.py` / `plan_guard.py` / `dag_builder.py` / `changelog_buffer.py` 무변경 — 각자 결합 번들이 있고 이번 변경은 이들을 읽지도 않는다. 게이트는 Pre-flight 가 아니라 커밋 직전 단계다
+- W-2 / `implementer-prompt.md` / `reorder-prompt.md` / `spec-reviewer-prompt.md` 무변경 — v2.0.0 byte-copy 4파일 atomic 번들. 보조 에이전트는 게이트를 알 필요가 없다
+- `using-superpowers` / auto-* / og-* / `hooks/` 영향 0. `.code-gate.json` 기본 설정 파일을 저장소에 추가하지 않는다 (기준값은 검사 대상 프로젝트가 정한다)
+- 리포트를 파일로 저장하지 않는다 (`docs/audit/` 등). 화면 출력이 전부다
+
+### 알아 둘 비용
+
+인라인 흐름은 **task 마다** 게이트를 돌린다. 게이트의 C1 은 프로젝트 테스트를 다시 돌리므로, 테스트가 무거운 저장소에서 task 12개면 스위트가 12번 더 돈다. 게이트에는 항목별 on/off 설정이 없다 (`mutation.enabled` 만 있다). Trivial-Edit 경로도 예외가 없어 타이포 하나에 스위트가 한 번 더 돈다.
+
+시간 상한도 절벽이다. `timeout: 600000` 을 줘도 도구 상한이 600초라 게이트의 뮤테이션 상한 (600초) 하나를 겨우 맞추는 수준이고, 테스트가 그보다 오래 걸리는 저장소에서는 출력이 통째로 없다 (게이트가 끝에 한 번에 찍는다). 흐름은 안 멈추지만 그 시간은 그냥 버려진다.
+
+이 비용이 실측으로 문제가 되면 **재설계하지 말고** 다음 한 가지만 바꾼다. 인라인의 호출 자리를 Phase 3 (End-of-Run Consolidator) 첫 단계로 옮기고 `--base <실행 시작 SHA>` 를 준다. 웨이브 흐름 (W-4) 은 그대로 둔다 — 그쪽은 wave 당 1회라 이미 저렴하다.
+
+## 슬라이스 흐름 (`/slice`) — 두 번째 실행 흐름 결합
+
+기존 흐름 (요구사항 → 기술설계 → 구현계획 → 실행) 과 **나란히** 두는 두 번째 실행 흐름. 엉클밥(Robert C. Martin) 인터뷰의 에이전트 방식을 우리 자산 위에 옮긴 것이다. 원전은 저장소 루트의 `uncle_bob_ai_fundamentals_transcript.md`, 설계 근거의 행 번호는 그 파일 기준이다. 기존 흐름의 스킬 본문 · `scripts/` · 6 manifest 는 한 줄도 고치지 않았다.
+
+### 왜 커맨드 하나인가
+
+스킬은 description 이 매 세션 컨텍스트에 상주한다. 트랙 B 는 명시 호출로만 도는 실험 흐름이라 상주 비용이 순손실이다 (og-* 를 커맨드로 옮길 때와 같은 판단). 역할 프롬프트도 별도 파일로 빼지 않고 커맨드 본문에 인라인했다 — 슬래시 커맨드의 Bash 환경에서 `${CLAUDE_PLUGIN_ROOT}` 가 채워지지 않아 별도 파일을 찾으려면 플러그인 캐시를 `find` 로 뒤져야 하고 실패 갈래가 하나 더 생긴다. `commands/audit-risk.md` 가 같은 이유로 이미 인라인이다. `skills/slice*` 를 만들지 않으므로 커맨드 이름과 스킬 디렉토리 이름이 겹치는 사고도 원천적으로 없다.
+
+### 핵심 룰
+
+- **S-1 역할 셋** — Specifier → Coder → Hardener. 원전의 다섯 중 Cleaner 와 Hardener 를 합치고 QA Agent 를 두지 않았다. 합친 이유는 우리 게이트가 일곱 항목을 **한 번에** 재는 단일 명령이고 항목을 골라 재는 인자가 없기 때문이다 — 나누면 Cleaner 가 쓰지도 않을 뮤테이션 비용(상한 600초)을 매번 낸다. 순서 감각은 Hardener 한 컨텍스트 안의 두 패스(구조 → 테스트)로 살렸다. 이 순서를 뒤집으면 지저분한 구조 위에 테스트가 먼저 채워져 그 구조가 고정된다. 같은 이유로 게이트를 부르는 역할도 Hardener 하나다 — Coder 가 게이트를 돌리면 쓰지도 않을 뮤테이션 비용을 슬라이스마다 한 번 더 내게 되어 합친 근거와 어긋난다
+- **S-2 완료 판정 3층** — 막는 것은 셋뿐이다: 인수 테스트 전부 통과 / 테스트 실패 없음 / C6 의존 방향 발견 없음. 이 셋은 사람도 면제할 수 없다. C3 · C4 · C5 · C7 은 루프하고 남으면 사람이 면제한다. C2 커버리지는 보고만 한다. 게이트 종료 코드가 항상 0 이라 판정 기준은 커맨드 본문이 들고 있다
+- **S-2' 못 잰 것과 어긴 것을 가른다** — `skipped` 항목이 있거나 게이트를 아예 못 돌린 경우(`GATE_ABSENT` · 종료 코드 · 시간 초과 · 내부 오류)는 `REMAINING` 이다. `CLEAN` 은 일곱 항목이 모두 `ok` 일 때만 쓰고, `BLOCKED` 은 막는 셋을 실제로 어겼을 때만 쓴다. 못 잰 것을 `BLOCKED` 으로 올리면 커밋 갈래가 사라지고, `CLEAN` 으로 내리면 아무것도 재지 않은 슬라이스가 통과로 읽힌다. 게이트가 아직 릴리즈에 안 실린 동안 `GATE_ABSENT` 가 기본 경로라 이 구분이 상시 발동한다
+- **S-3 `skipped` 를 `ok` 로 옮겨 적지 않는다** — C1 테스트는 파이썬 · 자바스크립트 계열만 돌고 C7 뮤테이션은 다섯 언어인데 자바 어댑터만 기본 꺼짐이다. 그래서 자바 프로젝트는 C1 도 C7 도 안 재지고, 고 · C# 프로젝트는 테스트를 안 재면서 뮤테이션만 잰다. Coder 는 프로젝트 자체 테스트 명령 한 줄을 찾아 보고에 적고, Hardener 는 C1 이 `skipped` 거나 게이트를 못 돌렸을 때 그 명령을 매 바퀴 직접 돌린다. 명령이 없으면 막는 셋의 두 번째 항목을 못 넘은 것으로 본다 — 패스 1 에서 구조를 실제로 고치는 역할이라 회귀를 잴 수단이 없으면 통과시킬 수 없다
+- **S-4 슬라이스 크기는 Specifier 가 정한다** — 인수 테스트 1~3 개로 덮이는 크기. 안 덮이면 `TOO_BIG` + 2~4 조각 분할안. task 개수 · 파일 개수 · 줄 수 척도는 쓰지 않는다 (그건 계획서의 문법이고 이 흐름에는 계획서가 없다)
+- **S-5 전달은 저장소 파일 + 프롬프트 텍스트뿐** — 인수 테스트 자체가 인계 문서다. 매니페스트 buffer 파일을 쓰지 않는다 (그건 wave 병렬용 장치인데 이 흐름은 직렬이라 붙잡을 중간 상태가 없다). 앞 역할의 보고는 마지막 메시지에서 그대로 복사해 다음 프롬프트에 붙인다
+- **S-6 실패는 루프, 롤백 없음** — Hardener 가 게이트를 최대 세 바퀴 돈다. 넘으면 남은 발견을 그대로 들고 사람에게 간다. C4 CRAP 발견은 고치기 전에 서브프로세스 거짓 발견을 먼저 의심하고, 맞으면 코드를 고치지 않고 보고만 한다
+- **S-7 회피 금지** — `.code-gate.json` · `.code-gate-layers.json` 수정, `exclude` 추가, 테스트 약화, 인수 테스트 수정 전부 금지. 보조 에이전트는 커밋하지 않는다 (커밋은 메인이 슬라이스당 하나)
+- **S-8 산출물은 슬라이스 노트 하나** — `docs/slices/YYYY-MM.md` 에 슬라이스당 12줄 이하 한 블록. 존재 이유는 **면제한 것과 그 이유**를 남기는 것이다. 변경이력 꼬리말 · RISK 주석 · 용어집은 붙이지 않는다 (기존 흐름의 거버넌스를 끌어오면 두 흐름이 섞인다)
+- **S-9 아키텍처 정리는 권유만** — 세 슬라이스마다 캐묻기 질문 셋을 던져 답을 보여주는 데까지. 정리 자체는 하지 않는다. 원전이 자동화에 실패했다고 두 번 말한 자리다
+- **S-10 상호 호출 금지** — `/slice` 안에서 기존 흐름의 스킬을 부르지 않고, 기존 흐름에서 `/slice` 를 부르지 않는다. 나란히 두는 것이지 섞는 것이 아니다
+- **S-11 프롬프트 줄 수 상한** — 공통 35 / Specifier 60 / Coder 55 / Hardener 75. 한 역할에게 실제로 가는 프롬프트는 공통 + 역할이라 최대 110줄이고, 커맨드 본문 전체는 320줄이다. 원전이 "최초 프롬프트를 절대 최소로" 라고 못박은 자리라 이 상한이 이 흐름의 설계 원리다. 룰을 산문으로 늘리지 말고 도구가 판정하게 한다
+
+### 원전과 갈라선 지점 (정직성)
+
+| 원전 | 우리 | 사유 |
+|---|---|---|
+| Cleaner 와 Hardener 를 나눔 | 하나로 합침 (두 패스) | 게이트가 일곱 항목을 한 번에 재고 항목 선택 인자가 없다. 대신 원전 Cleaner 의 일반 코드 리뷰(117행)는 게이트가 재는 범위로 좁혀졌고, 그 밖의 것은 고치지 않고 3건까지 지적만 한다 |
+| QA Agent 가 QA 문서를 스크립트로 | 역할 없음. 절차서는 사람 체크리스트로 노트에 | UI 전제 + 구동 도구 부재 + 인수 테스트가 이미 그 일을 한다 |
+| Specifier 가 Gherkin 을 낸다 | 프로젝트 러너로 도는 인수 테스트 | 실행기 부재. `.feature` 는 게이트 C1 밖, 네이티브 테스트는 게이트 안 |
+| 루프 상한 없음 | 게이트 세 바퀴 | 원전이 침묵. 게이트 최악 시간(뮤테이션 600초 + 테스트 300초)에 맞춤 |
+| 매 스토리 커밋 승인 게이트는 없음 (사람은 스토리 한둘마다 구조를 보고 개입 — 191행, CRAP 점수와 표본 점검 — 59행) | 슬라이스 경계에 명시 확인 | 역할 사이에는 우리도 확인이 없다. 게이트가 아무것도 막지 않으므로 면제 판단자가 필요하다 |
+| 커버리지 100% 목표 | 저장소 설정값 유지 | 임계는 사람만 고치는 값이다 |
+| 아키텍처 정리 자동화 시도 | 시도하지 않음 | 원전이 두 번 실패했다고 말한 자리다 |
+
+### 회귀 패턴
+
+| 누락 / 변경 | 증상 |
+|---|---|
+| 기존 흐름 스킬 본문을 함께 수정 | 나란히 두기로 한 결정 자체가 무너진다. 두 흐름이 서로를 오염시킨다 |
+| `disable-model-invocation` 제거 | 대화 중 자동 발동 → 기존 흐름 한복판에서 슬라이스가 시작된다 |
+| 역할 프롬프트를 별도 파일로 분리 | 슬래시 커맨드에서 플러그인 루트가 안 채워져 파일 탐색 실패 갈래가 는다 |
+| 프롬프트 줄 수 상한 초과 | 원전의 "lost in the middle" 회귀 — 앞머리 룰이 중간으로 밀려 무시된다 |
+| 막는 것 셋을 루프선으로 내림 | 인수 테스트가 깨진 채로 커밋된다 |
+| 못 잰 것(`skipped` · 게이트 부재)을 `BLOCKED` 으로 올림 | 커밋 갈래가 사라진다. 인수 테스트가 통과하고 구현이 끝난 슬라이스가 어디로도 못 간다 |
+| 되돌리기 계열 git 명령을 금지 목록에서 뺌 | Hardener 의 C7 확인이 `git checkout --` 으로 되돌려 커밋 안 된 슬라이스 전체가 사라진다 |
+| Step 5 를 `git add -A` 로 되돌림 | 슬라이스와 무관한 변경이 마지막 커밋에 섞인다. 이 흐름은 커밋 없이 끝나는 갈래가 있어 오염이 쌓인다 |
+| C4 거짓 발견 의심 규칙 삭제 | 멀쩡한 코드를 잘못 잰 숫자에 맞춰 쪼갠다 |
+| 매니페스트 buffer 도입 | 기존 흐름의 `detect_stale_buffer` 가 이 흐름의 파일을 자기 것으로 집는다 |
+| 변경이력 · RISK · 용어집 유입 | 두 흐름이 섞여 비교 실험이 무의미해진다 |
+| `skipped` 를 `ok` 로 표기 | 검사하지 않은 것을 통과로 읽는다 |
+
+### 회귀 catch grep
+
+```bash
+test -f commands/slice.md && test ! -d skills/slice && echo OK
+# expected: OK
+```
+
+```bash
+grep -c "disable-model-invocation: true" commands/slice.md
+# expected: 1
+```
+
+```bash
+grep -c "code_gate.py" commands/slice.md
+# expected: 1
+```
+
+```bash
+grep -c "GATE_ABSENT" commands/slice.md
+# expected: 3
+```
+
+커맨드 본문 전체 상한 320줄.
+
+```bash
+awk 'END{print (NR<=320)?0:1}' commands/slice.md
+# expected: 0
+```
+
+역할 프롬프트 블록별 상한 (공통 35 / Specifier 60 / Coder 55 / Hardener 75). 상한을 넘긴 블록 수를 센다.
+
+```bash
+awk '/^## /{if(!f) h=($0~/^## 프롬프트 —/)?$0:""} /^[`][`][`]/{if(h)f=!f; next} h&&f{c[h]++} END{n=0;for(k in c){m=(k~/공통/)?35:(k~/Specifier/)?60:(k~/Coder/)?55:75; if(c[k]>m)n++} print n}' commands/slice.md
+# expected: 0
+```
+
+상태값 세 줄이 그대로 있는가 (메인의 분기표가 이 문자열을 읽는다).
+
+```bash
+grep -cF "Status: SPEC_READY | TOO_BIG | UNCLEAR" commands/slice.md
+# expected: 1
+```
+
+```bash
+grep -cF "Status: GREEN | BLOCKED" commands/slice.md
+# expected: 1
+```
+
+```bash
+grep -cF "Status: CLEAN | REMAINING | BLOCKED" commands/slice.md
+# expected: 1
+```
+
+두 흐름이 섞이지 않았는가. 커맨드 본문이 기존 흐름의 스킬 이름을 부르면 안 되고, 기존 흐름의 스킬이 이 커맨드를 부르면 안 된다.
+
+```bash
+grep -cE "brainstorming|tech-design|writing-plans|executing-plans|js-super-sub-driven" commands/slice.md
+# expected: 0
+```
+
+```bash
+grep -l "/slice" skills/brainstorming/SKILL.md skills/tech-design/SKILL.md skills/writing-plans/SKILL.md skills/executing-plans/SKILL.md skills/js-super-sub-driven/SKILL.md | wc -l
+# expected: 0
+```
+
+기존 흐름의 거버넌스가 유입되지 않았는가.
+
+```bash
+grep -cE "변경이력|RISK\(|용어집" commands/slice.md
+# expected: 0
+```
+
+되돌리기 계열 git 명령이 금지 목록에 있는가. 커밋 안 된 슬라이스를 지우는 유일한 경로다.
+
+```bash
+grep -c "git checkout -- / git restore / git stash / git reset 금지" commands/slice.md
+# expected: 1
+```
+
+마지막 커밋이 범위를 골라 담는가.
+
+```bash
+grep -cF '`git add -A` 를 쓰지 않고' commands/slice.md
+# expected: 1
+```
+
+```bash
+test -f commands/slice-tests/H26-e2e/README.md && echo OK
+# expected: OK
+```
+
+fixture 번호가 겹치지 않는가. 이 커맨드가 쓰는 네 곳만 본다 — 저장소 전체가 아니다 (`skills/worktree-merge-back/tests/` 는 이 명령 밖이고, 그쪽과 겹치는 기존 번호가 이미 있다).
+
+```bash
+ls skills/js-super-sub-driven/tests commands/understand-tests commands/slice-tests tests/eval-fixtures 2>/dev/null | grep -oE '^H[0-9]+' | sort | uniq -d | wc -l
+# expected: 0
+```
+
+```bash
+grep -c "## 슬라이스 흐름 (\`/slice\`) — 두 번째 실행 흐름 결합" CLAUDE.md
+# expected: 1
+```
+
+### 영향 범위
+
+- 신규 2 파일 (`commands/slice.md` / `commands/slice-tests/H26-e2e/README.md`) + `README.md` 워크플로 표 1행과 안내 문단 + 본 섹션. 그 밖에는 아무것도 바뀌지 않았다
+- `skills/` 전체 변경 0 — 기존 흐름 (`brainstorming` / `tech-design` / `writing-plans` / `executing-plans` / `js-super-sub-driven`) 도, `auto-*` 도, 보조 스킬도 손대지 않았다
+- `scripts/` 변경 0 — 게이트 (`scripts/code_gate.py` + `scripts/mutation/`) 는 완성돼 있어 부르기만 한다. 게이트 위치 해석 한 줄은 기존 두 스킬 본문의 것을 그대로 답습했다
+- `hooks/` / `agents/` / `evals/` / 6 manifest 변경 0. 버전 bump 는 main 전용 룰에 따라 main 에서
+- 자동 발동 경로 없음 — `disable-model-invocation: true`, 명시 슬래시 호출만
+- 이 흐름이 만드는 유일한 산출물은 `docs/slices/YYYY-MM.md` 다. 기존 흐름의 `docs/features/` 구조와 겹치지 않는다

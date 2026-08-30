@@ -132,7 +132,7 @@ Task tool (general-purpose):
 
 - [ ] Entry Guard (preflight + user-gate)
 - [ ] Plan Analysis & Wave Build (DAG 추론, 1회)
-- [ ] Wave 별 Sequence (W-1 시작 안내 → W-2 pair-parallel dispatch → W-3 재dispatch → W-4 finalization → W-5 완료 요약 → W-6 failure isolation)
+- [ ] Wave 별 Sequence (W-1 시작 안내 → W-2 pair-parallel dispatch → W-3 재dispatch → W-4 충돌 검출 → 변경분 검사 리포트 → 커밋 → W-5 완료 요약 → W-6 failure isolation)
 - [ ] End-of-Run Consolidator (§1~§5)
 - [ ] finishing-a-development-branch invoke
 
@@ -203,13 +203,27 @@ print(conflicts)
 "
 ```
 
-- 비어있으면 정상 → step (b) 진행
+- 비어있으면 정상 → step (a2) 진행
 - 충돌 발견 시: plan order 늦은 task 의 working tree 변경 stash → 다음 wave 로 이동:
 
 ```bash
 git checkout -- <late_task_files>
 # manifest 도 다음 wave 로 이동 (rename task-NN.md → task-NN.md.deferred)
 ```
+
+```bash
+# (a2) 변경분 검사 리포트 — 이번 wave 가 바꾼 것만, 커밋 전에 잰다
+G=$(find "$HOME/.claude/plugins/cache" -maxdepth 6 -path "*/js-super/*/scripts/code_gate.py" 2>/dev/null | sort -V | tail -1); [ -f "$G" ] || G=scripts/code_gate.py; if [ -f "$G" ]; then python3 "$G" --base HEAD; else echo "GATE_ABSENT"; fi
+```
+
+- 가상환경을 켜지 않는다. 게이트가 검사 대상 프로젝트의 가상환경을 스스로 찾기 때문이다 (`resolve_python`: `VIRTUAL_ENV` → `.venv` → `venv` → 현재 인터프리터 순). 여기서 js-super 의 가상환경을 켜면 `VIRTUAL_ENV` 가 1순위로 잡혀 **대상 프로젝트가 아닌 인터프리터**로 재게 된다. "도구가 없을 테니 켜자" 는 반대 방향이다.
+- 이 Bash 호출에는 `timeout: 600000` 을 준다. 도구 기본값 120초는 게이트에 모자란다 (게이트의 테스트 상한이 300초, 뮤테이션 상한이 600초다). 게이트는 끝에 한 번에 찍으므로 중간에 잘리면 출력이 통째로 없다. 도구 상한이 600초라 뮤테이션 상한까지 덮지는 못한다 — 완화이지 완치가 아니다.
+- `--base HEAD` 고정. 직전 wave 는 이미 commit 됐으므로 working tree = 이번 wave 변경분이다.
+- **이 시점의 working tree 는 이번 wave 가 commit 할 것보다 넓다.** 충돌로 다음 wave 로 미룬 task 의 변경과 W-6 에서 격리될 task 의 변경이 아직 남아 있어 함께 잡힌다. 리포트를 W-5 에 실을 때 그런 task 가 있으면 그 목록을 같이 밝힌다 (`지연·격리 예정: task 4` 한 줄). 밝히지 않으면 사용자가 리포트가 가리킨 파일을 열었을 때 그 코드가 없다.
+- 줄 번호는 아래 (b) 의 RISK 주석을 넣기 **전** 기준이다. 커밋본과 몇 줄 어긋날 수 있다는 것을 W-5 리포트에 한 줄로 밝힌다.
+- 머리글의 "변경 파일 N개" 는 코드 파일 수가 아니다. 대상 프로젝트가 `.js-super/` 를 `.gitignore` 에 넣지 않았으면 이번 wave 의 manifest 파일이 함께 세어진다 (검사 결과는 안 틀린다 — `.md` 는 모든 항목에서 건너뛴다). 이 숫자를 코드 변경 규모로 옮겨 적지 않는다.
+- 출력은 **W-5 에서 그대로** 보여준다 (여기서 요약하지 않는다).
+- `GATE_ABSENT` 이거나 실행이 실패하면 아래 "검사 리포트 처리" 의 게이트 부재 · 실패 규칙으로 넘어간다. **commit 은 그대로 진행한다.**
 
 ```bash
 # (b) For each task in plan order:
@@ -226,12 +240,52 @@ git commit -m "task <N>: <task.name>"
 Wave i/N 완료: <pass list>✓ <fail list>✗ (후행 차단: <list 또는 없음>)
 ```
 
+W-4 (a2) 의 검사 리포트를 이 요약 **바로 아래**에 싣는다. 형식은 아래 "검사 리포트 처리" 를 따른다.
+
 ### W-6. Failure isolation (D7)
 
 - spec-reviewer ❌ 가 retry loop 종료 후에도 ❌ → task 격리
 - 격리 task 의 working tree 변경 `git checkout --` 으로 폐기, manifest 도 삭제
 - DAG 에서 격리 task 의 후행 (deps 에 격리 task 포함) 모두 blocked 상태로 마킹
 - 다음 wave 진행 시 blocked task 는 dispatch 대상에서 제외
+
+### 검사 리포트 처리 (W-4 (a2) 출력 · 게이트 부재 · 실패)
+
+리포트 전용이다. **아무것도 막지 않는다** — 발견이 있어도 commit 을 미루거나 되돌리지 않고, 사용자에게 되묻지 않는다.
+
+**발견이 있을 때** — 게이트 출력 전문을 코드 블록에 그대로 붙인다. 메인이 다시 쓰거나 요약하지 않는다. 살아남은 변이 한 줄에는 파일 · 줄 · 변이 종류 · 원본→변경 · 관련 테스트가 들어 있고, 요약하면 그것이 사라진다.
+
+```
+검사 리포트 (참고용 — 아무것도 막지 않습니다)
+<게이트 출력 전문>
+```
+
+**발견이 없을 때** — 전문 대신 한 줄로 줄인다. 표 일곱 줄이 매 wave 반복되면 진짜 발견이 묻힌다. 건너뛴 사유는 **게이트 출력에 적힌 그대로** 옮긴다. 사유를 하나로 고정하지 않는다 — 도구 미설치 · 테스트 경로 없음 · git 저장소 아님 · 규칙 파일 없음 처럼 여러 종류이고, 뭉치면 사용자가 원인을 찾을 수 없다.
+
+```
+검사 리포트: 발견 없음 (0.10초, 변경 파일 2개) — 건너뜀 2항목 (coverage 미설치, 규칙 파일 없음)
+```
+
+**한 항목도 검사하지 못했을 때** — `발견 없음` 이라고 쓰지 않는다. 통과로 읽힌다. 검사한 것이 하나도 없다는 사실을 앞에 둔다.
+
+```
+검사 리포트: 검사한 항목 없음 (0.10초) — 7항목 모두 건너뜀 (파이썬 테스트 경로 없음, coverage 미설치, 규칙 파일 없음)
+```
+
+**목록이 길 때** — 메인이 자르지 않는다. 게이트가 이미 항목당 15줄에서 자르고 `... 외 N건` 을 붙인다. 가려진 N건을 표로 다시 볼 방법은 없다 — `/check-code` 로 다시 돌려도 같은 렌더러라 같은 15줄에서 잘린다. 잘린 표시가 보이면 사실대로 한 줄만 덧붙인다: `가려진 N건은 표에 나오지 않습니다.`
+
+**게이트 부재 · 실패** — 네 갈래 모두 한 줄 알리고 그대로 진행한다.
+
+| 상황 | 판별 | 행동 |
+|---|---|---|
+| 게이트 파일 없음 | 출력이 `GATE_ABSENT` | `ℹ️ 변경분 검사 게이트를 찾지 못해 이번 wave 검사는 건너뜁니다.` 한 줄 → 즉시 commit 진행 |
+| 실행 실패 | 종료 코드 ≠ 0 이거나 출력이 비었음 | `ℹ️ 변경분 검사를 실행하지 못해 건너뜁니다.` 한 줄 → 즉시 commit 진행 |
+| 시간 초과 | 도구가 시간 초과를 알리고 출력이 비었음 | `ℹ️ 변경분 검사가 제한 시간을 넘겨 건너뜁니다.` 한 줄 → 즉시 commit 진행 |
+| 게이트 내부 오류 리포트 | 출력 머리글에 `게이트 내부 오류:` | 출력 그대로 보여주고 진행 (게이트가 스스로 알리는 정상 경로) |
+
+- 재시도하지 않는다. 보조 에이전트를 띄우지 않는다. `AskUserQuestion` 을 부르지 않는다. W-6 failure isolation 과 연결하지 않는다.
+- 같은 실행 안에서 게이트가 계속 없어도 알림 한 줄은 첫 번째만 낸다.
+- 발견을 심각도로 재분류하거나 "이 변이는 무해합니다" 처럼 판정하지 않는다. 리포트를 근거로 코드를 고치지 않는다.
 
 ## End-of-Run Consolidator (v1.1.7 그대로)
 
@@ -359,10 +413,12 @@ Wave 1/3 시작: task 1, 2 병렬 실행…
 
 [Wave finalization, plan order]:
   - detect_conflicts(manifests) → []  (no conflict)
+  - (a2) code_gate.py --base HEAD  (timeout 600000)
   - task 1: git diff HEAD → 3-checklist → no RISK → git add + commit "task 1"
   - task 2: git diff HEAD → 3-checklist → side-effect trigger → Edit RISK comment → git add + commit "task 2" + follow-up "[risk-annotate] task 2"
 
 [Wave 1/3 완료: 1✓ 2✓ (2/2 통과)]
+검사 리포트: 발견 없음 (0.30초, 변경 파일 2개) — 건너뜀 2항목 (coverage 미설치, 규칙 파일 없음)
 
 ──────────────────────────────────────
 Wave 2/3 시작: task 3, 4 병렬 실행…

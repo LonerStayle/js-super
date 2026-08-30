@@ -26,6 +26,7 @@ Load plan, review critically, execute all tasks task-by-task, with strict per-ed
 - [ ] Step 1 — Plan 로드 + 비판적 검토 (Plan Loading)
 - [ ] Step 2 — Code Edit Discipline (git-fast / memory-fallback 모드 선택)
 - [ ] Per-edit — risk-annotation 3-checklist + RISK comments
+- [ ] Task 마다 — 커밋 직전에 변경분 검사 리포트 확인 (막지 않음, 발견 없으면 모아서 보고)
 - [ ] 변경이력 — git-fast: 전체 task 후 end-of-run 1회 batch entry / memory-fallback: task마다 consolidated entry (change-history)
 - [ ] Step 3 — Complete Development (테스트 + finishing-a-development-branch)
 
@@ -104,6 +105,7 @@ The chosen mode applies to the whole `/execute-plan` run. Do not switch mid-run.
 Per task: code-only commit (plan.md untouched). Footer entry is deferred to end-of-run consolidator (v1.1.7+). This batches N tasks into a single consolidated [코드-수정] entry, drastically reducing footer noise + Read/Edit cost.
 
 3. **Capture diff for accumulator** (NOT for footer): `git diff HEAD -- <code files only>` — parse hunks. Append `(task_id, file:line_range, summary, risk_categories, planned_commit_msg)` to in-memory accumulator. Do NOT touch <slug>-implementation-plan.md here.
+3.5. **변경분 검사 리포트**: "변경분 검사 리포트 (커밋 직전, 리포트 전용)" 섹션을 수행한다. 결과는 보여주기만 하고 commit 을 막지 않는다.
 4. **Commit (scoped, code only)**: `git add <explicit list of code files touched in this task>` then `git commit -m "<task summary>"`. NEVER use `git add -A` or `git add .`. The code-file list MUST come from the in-memory `(file:line, ...)` tuples tracked during Phase 1. plan.md is NOT included in this commit — it gets its own single `[log] all tasks` commit at end-of-run.
 
 **Phase 3 — End-of-Run Consolidator (v1.1.7+, runs ONCE after final task):**
@@ -125,12 +127,65 @@ This Phase 3 ordering is the **single source of truth for inline mode**. Subagen
 (Repeat. Track `(file:line, before, after, risk_categories)` tuples in memory.)
 
 **Phase 2 — Once per task, AFTER all edits + tests pass:**
+3.5. **변경분 검사 리포트**: "변경분 검사 리포트 (커밋 직전, 리포트 전용)" 섹션을 수행한다. 결과는 보여주기만 하고 commit 을 막지 않는다.
 4. **Batched log**: Read plan ONCE, append ONE consolidated [코드-수정] entry, Edit ONCE. Use in-memory snapshots for 변경 전 / 변경 후.
 5. Commit if possible (some plans skip).
 
 <HARD-GATE>
 NEVER skip logging. In git-fast mode, **strict ordering is mandatory**: per task, extract the diff (`git diff HEAD`) into the accumulator WHILE plan.md is untouched → commit code only (plan.md is NOT included in the per-task commit). Do the plan.md footer append + single `[log] all tasks` commit ONCE at end-of-run (Phase 3), AFTER every task's diff has been captured. Editing or committing plan.md per-task (before the diffs are captured) pollutes future `git diff HEAD` outputs with stale log appends. In memory-fallback mode, before-snapshots must be captured BEFORE each edit (otherwise originals are gone) and held in memory until Phase 2.
 </HARD-GATE>
+
+## 변경분 검사 리포트 (커밋 직전, 리포트 전용)
+
+task 의 테스트가 모두 통과한 뒤, 그 task 를 commit 하기 **직전**에 1회 실행한다. 두 모드 공통이다.
+
+```bash
+G=$(find "$HOME/.claude/plugins/cache" -maxdepth 6 -path "*/js-super/*/scripts/code_gate.py" 2>/dev/null | sort -V | tail -1); [ -f "$G" ] || G=scripts/code_gate.py; if [ -f "$G" ]; then python3 "$G" --base HEAD; else echo "GATE_ABSENT"; fi
+```
+
+- 가상환경을 켜지 않는다. 게이트가 검사 대상 프로젝트의 가상환경을 스스로 찾기 때문이다 (`resolve_python`: `VIRTUAL_ENV` → `.venv` → `venv` → 현재 인터프리터 순). 여기서 js-super 의 가상환경을 켜면 `VIRTUAL_ENV` 가 1순위로 잡혀 **대상 프로젝트가 아닌 인터프리터**로 재게 된다. "도구가 없을 테니 켜자" 는 반대 방향이다.
+- 이 Bash 호출에는 `timeout: 600000` 을 준다. 도구 기본값 120초는 게이트에 모자란다 (게이트의 테스트 상한이 300초, 뮤테이션 상한이 600초다). 게이트는 끝에 한 번에 찍으므로 중간에 잘리면 출력이 통째로 없다. 도구 상한이 600초라 뮤테이션 상한까지 덮지는 못한다 — 완화이지 완치가 아니다.
+- git 이 없어 memory-fallback 을 고른 경우 (모드 선택 표의 `git unavailable`) 는 이 단계를 통째로 건너뛴다. 게이트가 변경분을 git 으로 계산하므로 일곱 항목이 전부 건너뜀으로 나온다. 건너뛸 때 한 줄 알린다: `ℹ️ git 저장소가 아니라 변경분 검사를 건너뜁니다.` `commit_policy: single` / `none` 으로 memory-fallback 에 들어온 경우는 git 이 있으므로 그대로 실행한다.
+- `--base HEAD` 고정. 직전 task 는 이미 commit 됐으므로 working tree = 이번 task 변경분이다.
+  (`commit_policy: single` / `none` 은 commit 이 없어 누적분을 재게 된다 — 잘못된 결과가 아니라 범위가 넓어지는 것뿐이라 그대로 둔다.)
+- Trivial-Edit 경로도 예외 없이 1회 실행한다 (무엇을 건너뛸지는 게이트가 스스로 판단한다).
+- 리포트는 **아무것도 막지 않는다.** 발견이 있어도 commit 을 미루거나 되돌리지 않고, 사용자에게 되묻지 않는다.
+
+**발견이 있을 때** — 게이트 출력 전문을 코드 블록에 그대로 붙인다. 메인이 다시 쓰거나 요약하지 않는다. 살아남은 변이 한 줄에는 파일 · 줄 · 변이 종류 · 원본→변경 · 관련 테스트가 들어 있고, 요약하면 그것이 사라진다. 보고 빈도 룰 (아래 룰 2) 과 어긋나지 않게, **발견이 있는 task 의 리포트만** 그 자리에서 보여준다.
+
+```
+검사 리포트 (참고용 — 아무것도 막지 않습니다)
+<게이트 출력 전문>
+```
+
+**발견이 없을 때** — 그 자리에서 출력하지 않는다. 표 일곱 줄이 매 task 반복되면 진짜 발견이 묻히고, 매 task 보고는 아래 룰 2 의 보고 빈도와도 어긋난다. 결과를 들고 있다가 wave 단위 보고 (3~5 task) 에 한 줄로 합산한다.
+
+```
+task 3~5 검사 리포트: 발견 없음 (변경 파일 2개) — 건너뜀 2항목 (coverage 미설치, 규칙 파일 없음)
+```
+
+건너뛴 사유는 **게이트 출력에 적힌 그대로** 옮긴다. 사유를 하나로 고정하지 않는다 — 도구 미설치 · 테스트 경로 없음 · git 저장소 아님 · 규칙 파일 없음 처럼 여러 종류이고, 뭉치면 사용자가 원인을 찾을 수 없다.
+
+**한 항목도 검사하지 못했을 때** — `발견 없음` 이라고 쓰지 않는다. 통과로 읽힌다. 검사한 것이 하나도 없다는 사실을 앞에 둔다.
+
+```
+task 3~5 검사 리포트: 검사한 항목 없음 — 7항목 모두 건너뜀 (파이썬 테스트 경로 없음, coverage 미설치, 규칙 파일 없음)
+```
+
+**목록이 길 때** — 메인이 자르지 않는다. 게이트가 이미 항목당 15줄에서 자르고 `... 외 N건` 을 붙인다. 가려진 N건을 표로 다시 볼 방법은 없다 — `/check-code` 로 다시 돌려도 같은 렌더러라 같은 15줄에서 잘린다. 잘린 표시가 보이면 사실대로 한 줄만 덧붙인다: `가려진 N건은 표에 나오지 않습니다.`
+
+**게이트 부재 · 실패** — 네 갈래 모두 한 줄 알리고 그대로 진행한다.
+
+| 상황 | 판별 | 행동 |
+|---|---|---|
+| 게이트 파일 없음 | 출력이 `GATE_ABSENT` | `ℹ️ 변경분 검사 게이트를 찾지 못해 이번 task 검사는 건너뜁니다.` 한 줄 → 즉시 commit 진행 |
+| 실행 실패 | 종료 코드 ≠ 0 이거나 출력이 비었음 | `ℹ️ 변경분 검사를 실행하지 못해 건너뜁니다.` 한 줄 → 즉시 commit 진행 |
+| 시간 초과 | 도구가 시간 초과를 알리고 출력이 비었음 | `ℹ️ 변경분 검사가 제한 시간을 넘겨 건너뜁니다.` 한 줄 → 즉시 commit 진행 |
+| 게이트 내부 오류 리포트 | 출력 머리글에 `게이트 내부 오류:` | 출력 그대로 보여주고 진행 (게이트가 스스로 알리는 정상 경로) |
+
+- 재시도하지 않는다. 보조 에이전트를 띄우지 않는다. `AskUserQuestion` 을 부르지 않는다.
+- 같은 실행 안에서 게이트가 계속 없어도 알림 한 줄은 첫 번째만 낸다.
+- 발견을 심각도로 재분류하거나 "이 변이는 무해합니다" 처럼 판정하지 않는다. 리포트를 근거로 코드를 고치지 않는다.
 
 ## Trivial-Edit Exception (skip full discipline for tiny changes)
 
@@ -191,6 +246,7 @@ digraph exec_flow {
     "Apply Edit (with RISK comments)" [shape=box];
     "Run tests for this task" [shape=box];
     "All pass?" [shape=diamond];
+    "변경분 검사 리포트\n(커밋 직전, 막지 않음)" [shape=box];
     "[git-fast] git diff HEAD -- <code>\n→ accumulate (file:lines, summary, risk)\nNO footer yet" [shape=box];
     "[git-fast] git add <code> only\n+ commit (code-only, plan untouched)" [shape=box];
     "[memory-fallback] BATCHED LOG:\nONE [코드-수정] entry for this task\n(Read+Edit 구현계획서.md once)" [shape=box];
@@ -217,11 +273,13 @@ digraph exec_flow {
     "Apply Edit (with RISK comments)" -> "More edits in task?";
     "More edits in task?" -> "Run tests for this task" [label="no — task edits done"];
     "Run tests for this task" -> "All pass?";
-    "All pass?" -> "[git-fast] git diff HEAD -- <code>\n→ accumulate (file:lines, summary, risk)\nNO footer yet" [label="yes (git-fast)"];
-    "All pass?" -> "[memory-fallback] BATCHED LOG:\nONE [코드-수정] entry for this task\n(Read+Edit 구현계획서.md once)" [label="yes (memory-fallback)"];
+    "All pass?" -> "[git-fast] git diff HEAD -- <code>\n→ accumulate (file:lines, summary, risk)\nNO footer yet" [label="yes\n(git-fast)"];
+    "All pass?" -> "변경분 검사 리포트\n(커밋 직전, 막지 않음)" [label="yes\n(memory-fallback)"];
+    "변경분 검사 리포트\n(커밋 직전, 막지 않음)" -> "[memory-fallback] BATCHED LOG:\nONE [코드-수정] entry for this task\n(Read+Edit 구현계획서.md once)" [label="memory-fallback"];
     "All pass?" -> "Fix and retry" [label="no"];
     "Fix and retry" -> "Apply Edit (with RISK comments)";
-    "[git-fast] git diff HEAD -- <code>\n→ accumulate (file:lines, summary, risk)\nNO footer yet" -> "[git-fast] git add <code> only\n+ commit (code-only, plan untouched)";
+    "[git-fast] git diff HEAD -- <code>\n→ accumulate (file:lines, summary, risk)\nNO footer yet" -> "변경분 검사 리포트\n(커밋 직전, 막지 않음)";
+    "변경분 검사 리포트\n(커밋 직전, 막지 않음)" -> "[git-fast] git add <code> only\n+ commit (code-only, plan untouched)" [label="git-fast"];
     "[git-fast] git add <code> only\n+ commit (code-only, plan untouched)" -> "Mark task [x]";
     "[memory-fallback] BATCHED LOG:\nONE [코드-수정] entry for this task\n(Read+Edit 구현계획서.md once)" -> "[memory-fallback] Commit if possible";
     "[memory-fallback] Commit if possible" -> "Mark task [x]";

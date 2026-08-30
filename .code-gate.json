@@ -1,0 +1,20 @@
+{
+  "_주의": "이 파일은 사람만 수정합니다. 에이전트는 이 파일의 값을 바꾸지 않습니다. 게이트를 통과하지 못하면 기준값을 낮추거나 exclude 를 늘리지 말고 코드를 고치십시오. exclude 추가는 기준값 낮추기와 같은 회피입니다.",
+  "crap_threshold": 6,
+  "complexity_threshold": 10,
+  "duplication": {
+    "min_lines": 5,
+    "min_tokens": 50
+  },
+  "mutation": {
+    "enabled": true,
+    "score_threshold": 80,
+    "timeout_seconds": 600,
+    "javascript": "stryker",
+    "python": "mutmut"
+  },
+  "timeout_seconds": 60,
+  "timeout_seconds_tests": 300,
+  "layers_file": ".code-gate-layers.json",
+  "exclude": []
+}
