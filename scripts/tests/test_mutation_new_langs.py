@@ -1,17 +1,18 @@
 """자바 / 고 / C# / 러스트 어댑터 단위 테스트 (1d).
 
-자바는 실물(pitest 1.22.0 + Gradle)로, 러스트는 실물(cargo-mutants 27.1.0 + cargo
-1.98.0)로 돌려 본 어댑터이고, 고와 C# 은 도구가 이 기계에 없어 **한 회차도 돌려 보지
-못한** 어댑터다. 그래서 네 어댑터의 검증 무게가 다르다.
+자바(pitest 1.22.0 + Gradle), 러스트(cargo-mutants 27.1.0 + cargo 1.98.0), 고
+(gremlins v0.6.0 + go 1.27.0)는 실물로 돌려 본 어댑터이고, C# 은 도구가 이 기계에 없어
+**한 회차도 돌려 보지 못한** 어댑터다. 그래서 네 어댑터의 검증 무게가 다르다.
 
   - 네 어댑터 공통으로 검증하는 것: 대상 고르기, 리포트 → 기록 변환, 어휘 변환,
     선행 조건(설정 값·도구 부재·프로젝트 형태), 명령 조립, 리포트 없음·중단 처리.
     전부 서브프로세스 없이 도는 순수 함수이거나, `gate._run` 을 바꿔치기한 경로다.
-  - **검증되지 않는 것**: 고와 C# 이 실제로 내는 리포트의 내용. 여기 쓰인 표본은
-    두 도구의 소스에서 읽은 자료 구조를 그대로 옮긴 것이지 실행 산출물이 아니다.
-    도구를 깔 수 있는 기계에서 한 번은 실물로 맞대 봐야 한다.
-  - 러스트 표본은 다르다. 아래 러스트 묶음의 리포트 조각은 실제로 돌린
-    `mutants.out/outcomes.json` 에서 칸 이름과 값을 그대로 옮긴 것이다.
+  - **검증되지 않는 것**: C# 이 실제로 내는 리포트의 내용. 그 표본은 Stryker.NET 소스에서
+    읽은 자료 구조를 옮긴 것이지 실행 산출물이 아니다. 도구를 깔 수 있는 기계에서 한 번은
+    실물로 맞대 봐야 한다.
+  - 러스트와 고 표본은 다르다. 러스트 묶음의 리포트 조각은 실제로 돌린
+    `mutants.out/outcomes.json` 에서, 고 묶음의 `_GO_REAL_*` 표본은 실제로 돌린
+    `gremlins.json` 에서 칸 이름과 값을 그대로 옮긴 것이다.
 """
 
 import json
@@ -437,7 +438,138 @@ def test_java_changed_files_pick_java_only(tmp_path):
 
 # ---------------------------------------------------------------------------
 # 고 (gremlins)
+#
+# 아래 `_GO_REAL_*` 셋은 go 1.27.0 + gremlins v0.6.0 을 실제로 돌려 받은 `gremlins.json`
+# 전문이다 (칸 이름·값·항목 순서 그대로). 대상 모듈은 `_GO_REAL_SOURCE` 이고, 세 갈래가
+# 다 나오게 일부러 짰다.
+#   5행  `return a + b`  테스트가 값을 확인한다        → KILLED
+#   10행 `return v > 0`  테스트가 부르지만 확인 안 한다 → LIVED 둘 (경계·부정)
+#   15행 `return v * 2`  테스트가 없다                  → NOT COVERED
 # ---------------------------------------------------------------------------
+
+_GO_REAL_SOURCE = """package sandbox
+
+// Add 는 두 수를 더한다. 테스트가 결과를 확인한다 — 변이가 잡힌다.
+func Add(a, b int) int {
+\treturn a + b
+}
+
+// IsPositive 는 0 보다 큰지 본다. 테스트가 부르지만 결과를 확인하지 않는다.
+func IsPositive(v int) bool {
+\treturn v > 0
+}
+
+// Double 은 두 배로 만든다. 테스트가 없다.
+func Double(v int) int {
+\treturn v * 2
+}
+"""
+
+# `--diff` 없이 모듈 전체를 돌린 회차.
+_GO_REAL_REPORT = {
+    "go_module": "sandbox",
+    "files": [{"file_name": "calc.go", "mutations": [
+        {"type": "ARITHMETIC_BASE", "status": "NOT COVERED", "line": 15, "column": 11},
+        {"type": "CONDITIONALS_BOUNDARY", "status": "LIVED", "line": 10, "column": 11},
+        {"type": "CONDITIONALS_NEGATION", "status": "LIVED", "line": 10, "column": 11},
+        {"type": "ARITHMETIC_BASE", "status": "KILLED", "line": 5, "column": 11}]}],
+    "test_efficacy": 33.33333333333333, "mutations_coverage": 75,
+    "mutants_total": 3, "mutants_killed": 1, "mutants_lived": 2,
+    "mutants_not_viable": 0, "mutants_not_covered": 1,
+    "elapsed_time": 0.949210625,
+    "mutator_statistics": {"arithmetic_base": 2, "conditionals_negation": 1,
+                           "conditionals_boundary": 1},
+}
+
+# 같은 모듈을 `--diff HEAD` 로 돌린 회차. 바뀐 줄이 문맥과 번갈아 나와 뒤쪽 둘이
+# gremlins 의 구간 밖으로 떨어졌고, 남은 하나는 제한시간에 걸렸다.
+_GO_REAL_DIFF_REPORT = {
+    "go_module": "sandbox",
+    "files": [{"file_name": "calc.go", "mutations": [
+        {"type": "ARITHMETIC_BASE", "status": "SKIPPED", "line": 15, "column": 11},
+        {"type": "CONDITIONALS_BOUNDARY", "status": "SKIPPED", "line": 10, "column": 11},
+        {"type": "CONDITIONALS_NEGATION", "status": "SKIPPED", "line": 10, "column": 11},
+        {"type": "ARITHMETIC_BASE", "status": "TIMED OUT", "line": 5, "column": 11}]}],
+    "test_efficacy": 0, "mutations_coverage": 0,
+    "mutants_total": 0, "mutants_killed": 0, "mutants_lived": 0,
+    "mutants_not_viable": 0, "mutants_not_covered": 0,
+    "elapsed_time": 0.318833666,
+    "mutator_statistics": {"arithmetic_base": 2, "conditionals_negation": 1,
+                           "conditionals_boundary": 1},
+}
+
+# 하위 패키지가 있는 다른 모듈. 이름이 어떤 형태로 실리는지 보려고 따로 돌렸다.
+_GO_REAL_SUB_REPORT = {
+    "go_module": "subsandbox",
+    "files": [
+        {"file_name": "root.go", "mutations": [
+            {"type": "ARITHMETIC_BASE", "status": "LIVED", "line": 3, "column": 33}]},
+        {"file_name": "pkg/util/util.go", "mutations": [
+            {"type": "ARITHMETIC_BASE", "status": "KILLED", "line": 3, "column": 33}]}],
+    "test_efficacy": 50, "mutations_coverage": 100,
+    "mutants_total": 2, "mutants_killed": 1, "mutants_lived": 1,
+    "mutants_not_viable": 0, "mutants_not_covered": 0,
+    "elapsed_time": 0.722270334,
+    "mutator_statistics": {"arithmetic_base": 2},
+}
+
+
+def test_go_real_report_scores_three_kinds_of_mutant(tmp_path):
+    """실측 리포트 전문이 게이트 어휘로 정확히 옮겨진다.
+
+    잡힘 1 / 살아남음 2 / 덮은 테스트 없음 1 → 점수 25%. 도구가 낸 `test_efficacy`
+    33.33 과 다른 것이 정상이다 — 도구는 NOT COVERED 를 분모에서 빼고 게이트는 넣는다.
+    """
+    _write(tmp_path / "calc.go", _GO_REAL_SOURCE)
+    summary = mutation_go.parse_gremlins_report(_GO_REAL_REPORT, tmp_path, {"calc.go"})
+    assert summary["total"] == 4
+    assert summary["counts"] == {"Killed": 1, "Survived": 2, "NoCoverage": 1}
+    assert summary["score"] == 25.0
+    assert summary["unknown"] == ()
+    assert [(s["line"], s["status"], s["original"]) for s in summary["survivors"]] == [
+        (10, "Survived", "return v > 0"),
+        (10, "Survived", "return v > 0"),
+        (15, "NoCoverage", "return v * 2"),
+    ]
+    assert summary["survivors"][0]["mutator"] == "CONDITIONALS_BOUNDARY"
+    assert summary["survivors"][0]["column"] == 11
+
+
+def test_go_real_diff_report_turns_skipped_into_excluded(tmp_path):
+    """`--diff` 회차의 SKIPPED 는 '제외됨' 이라 분모에서 빠진다 (실측 리포트 전문).
+
+    변이 4개 중 3개가 빠지고 남은 하나가 TIMED OUT 이라 점수가 100% 로 나온다. 잰 것이
+    거의 없는데도 통과처럼 보이는 자리라, 참고에 그 사실이 실려야 한다 (R4).
+    """
+    _write(tmp_path / "calc.go", _GO_REAL_SOURCE)
+    summary = mutation_go.parse_gremlins_report(_GO_REAL_DIFF_REPORT, tmp_path, {"calc.go"})
+    assert summary["counts"] == {"Ignored": 3, "Timeout": 1}
+    assert summary["score"] == 100.0 and summary["survivors"] == []
+
+
+def test_go_timeout_note_says_the_score_can_be_inflated(tmp_path):
+    """TIMED OUT 이 있으면 제한시간이 어떻게 정해지는지 참고에 적는다."""
+    ctx = _ctx(tmp_path)
+    mutation_go._go_note_timeouts(ctx, {"counts": {"Ignored": 3, "Timeout": 1}})
+    assert any("TIMED OUT" in note and "timeout-coefficient" in note for note in ctx.notes)
+    # 없으면 아무것도 남기지 않는다 — 정상 회차에 잡음을 얹지 않는다.
+    quiet = _ctx(tmp_path)
+    mutation_go._go_note_timeouts(quiet, {"counts": {"Killed": 2}})
+    mutation_go._go_note_timeouts(quiet, None)
+    assert quiet.notes == []
+
+
+def test_go_real_report_keeps_the_package_directory(tmp_path):
+    """리포트의 이름은 모듈 루트 기준 상대 경로다 — 디렉토리째 그대로 맞는다 (실측)."""
+    _write(tmp_path / "root.go", "package subsandbox\n\nfunc Root(v int) int { return v + 1 }\n")
+    _write(tmp_path / "pkg/util/util.go", "package util\n\nfunc Util(v int) int { return v * 3 }\n")
+    targets = {"root.go", "pkg/util/util.go"}
+    summary = mutation_go.parse_gremlins_report(_GO_REAL_SUB_REPORT, tmp_path, targets)
+    assert summary["files"] == ["pkg/util/util.go", "root.go"]
+    assert summary["score"] == 50.0
+    assert summary["survivors"][0]["file"] == "root.go"
+    assert mutation_go.unmatched_report_files(_GO_REAL_SUB_REPORT, tmp_path, targets) == []
+
 
 def test_go_targets_drop_tests_and_generated(tmp_path):
     for name in ("a.go", "a_test.go", "api.pb.go", "x.gen.go"):
@@ -533,11 +665,15 @@ def test_go_command_passes_the_base_and_zeroes_thresholds(tmp_path):
     assert cmd[1] == "unleash"
     assert "--diff" in cmd and cmd[cmd.index("--diff") + 1] == "main"
     assert cmd[cmd.index("--threshold-efficacy") + 1] == "0"
-    assert any("검증하지 않았습니다" in note for note in notes)
+    assert cmd[cmd.index("--threshold-mcover") + 1] == "0"
     # `--diff` 를 준 회차에 gremlins 는 **바뀐 줄 범위 안의 변이만** 돌린다 (확정 8).
     # 파일 단위라고 말하면 실제보다 넓게 쟀다고 알리는 셈이다.
     assert any("바뀐 줄 범위 안의 변이만" in note for note in notes)
     assert not any("바뀌지 않은 줄도 함께 변이됩니다" in note for note in notes)
+    # 실측으로 확인한 거친 범위 계산과, 그래서 빠지는 몫을 함께 말한다.
+    assert any("앞 문맥 다음 줄부터" in note and "제외됨" in note for note in notes)
+    # 실물로 검증한 뒤로는 "미검증" 경고를 달지 않는다 — 거짓말이 된다.
+    assert not any("검증하지 않았습니다" in note for note in notes)
 
 
 def test_go_command_without_a_base_runs_everything(tmp_path):
@@ -568,20 +704,37 @@ def test_go_end_to_end_with_a_stubbed_tool(tmp_path, monkeypatch):
     assert part["outcome"]["status"] == "findings"
 
 
-def test_unverified_warning_survives_a_failed_round(tmp_path, monkeypatch):
-    """"이 어댑터는 미검증" 경고가 완주 회차에만 붙었다 (확정 5).
+def test_go_scope_note_survives_a_failed_round(tmp_path, monkeypatch):
+    """범위 안내가 완주 회차에만 붙던 문제 (확정 5).
 
-    실측: 리포트를 안 쓰는 도구로 돌리면 참고에 그 경고가 통째로 없었다. 경고가 가장
-    필요한 순간은 성공했을 때가 아니라 실패했을 때다 — 사용자는 도구 문제인지 한 번도
-    검증되지 않은 명령줄 조립 문제인지 가를 단서를 잃는다 (R4).
+    실측: 리포트를 안 쓰는 도구로 돌리면 참고에 안내가 통째로 없었다. 무엇을 어디까지
+    재려 했는지가 가장 필요한 순간은 성공했을 때가 아니라 실패했을 때다 — 도구 문제인지
+    범위 문제인지 가를 단서가 그것뿐이다 (R4).
     """
     _write(tmp_path / "go.mod", "module x\n")
     _write(tmp_path / "a.go", "package p\n")
     ctx = _ctx(tmp_path, tools=_tool_present("gremlins"))
-    monkeypatch.setattr(code_gate, "_run", lambda *a, **k: _proc(0, "리포트를 쓰지 않음"))
+    monkeypatch.setattr(code_gate, "_run", lambda *a, **k: _proc(1, "리포트를 쓰지 않음"))
     outcome, summary = mutation_go._run_mutation_go(ctx, ["a.go"])
     assert outcome["status"] == "error" and summary is None
-    assert any("실물로 검증하지 않았습니다" in note for note in ctx.notes)
+    assert any("바뀐 줄 범위 안의 변이만" in note for note in ctx.notes)
+
+
+def test_go_no_report_with_exit_zero_is_not_an_error(tmp_path, monkeypatch):
+    """변이가 없으면 리포트 파일 자체가 안 생기고 종료 코드는 0 이다 (실측).
+
+    그것을 오류로 내던 동안, 구조체 선언만 든 파일을 바꾼 멀쩡한 회차가
+    "리포트가 나오지 않았습니다 (종료 코드 0)" 로 나갔다. 통과로 내지도 않는다 (R4).
+    """
+    _write(tmp_path / "go.mod", "module x\n")
+    _write(tmp_path / "a.go", "package p\n")
+    monkeypatch.setattr(code_gate, "_run",
+                        lambda *a, **k: _proc(0, "No results to report."))
+    outcome, summary = mutation_go._run_mutation_go(_ctx(tmp_path, tools=_tool_present("gremlins")),
+                                                    ["a.go"])
+    assert outcome["status"] == "skipped" and summary is None
+    assert "변이가 하나도 만들어지지 않아" in outcome["human_reason"]
+    assert outcome["reason"] == "no mutants for changed files"
 
 
 def test_go_reports_when_nothing_is_written(tmp_path, monkeypatch):

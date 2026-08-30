@@ -1,24 +1,67 @@
 """C7 뮤테이션 — 고 어댑터 (gremlins).
 
-**미검증 어댑터다.** 이 기계에 Go 툴체인이 없어 한 회차도 돌려 보지 못했다. 아래
-사실은 gremlins v0.6.0 태그의 **소스를 직접 읽어** 확인한 것과, 공식 문서를 읽은 것,
-그리고 아직 확인하지 못한 것 셋으로 갈라 적는다. 확인 못 한 것은 그렇게 적었다 —
-짐작으로 채운 파싱은 반드시 틀린다.
+**실물로 검증했다.** go 1.27.0 darwin/arm64 에 `go install
+github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0` 으로 깐 바이너리를, 일부러 세
+갈래(테스트가 값을 확인하는 함수 / 부르기만 하고 확인하지 않는 함수 / 테스트가 없는
+함수)를 넣은 장난감 모듈에 돌려 아래를 하나씩 봤다. 직접 본 것은 [실측], 소스만 읽은
+것은 [소스 확인], 아직 못 본 것은 [미확인] 으로 적는다.
 
-  - [소스 확인] 결과 JSON 의 모양 (`internal/report/internal/structure.go`):
-    `{"go_module", "files":[{"file_name", "mutations":[{"type","status","line","column"}]}], ...}`
-  - [소스 확인] 상태 낱말 일곱 (`internal/mutator/mutator.go` 의 `Status.String()`):
-    `NOT COVERED` / `RUNNABLE` / `SKIPPED` / `LIVED` / `KILLED` / `NOT VIABLE` / `TIMED OUT`.
-    **공백이 든 철자다** — 밑줄이 아니다.
-  - [소스 확인] 명령줄 이름 (`cmd/unleash.go`): `unleash [path]`, `--output`,
-    `--diff`, `--exclude-files`(정규식), `--threshold-efficacy`, `--threshold-mcover`.
-  - [소스 확인] 오염 없음 (`cmd/unleash.go:116`): 소스를 `os.MkdirTemp(os.TempDir(), …)`
-    로 통째 복사해 그 안에서 변이하고 정상 종료 시 지운다. 사용자 소스를 여는 단계가 없다.
-  - [미확인] `file_name` 이 어떤 형태인지 (임시 사본의 절대 경로인지 모듈 상대 경로인지).
-    그래서 경로 되돌리기에 접미사 대조 폴백을 둔다 — 아래 `_go_report_path` 참조.
-  - [미확인] 실제 실행 시간, 종료 코드, 중단 시 임시 폴더 잔류량, `RUNNABLE` 이 나오는 조건.
+  - [실측] 결과 JSON 의 모양: `{"go_module", "files":[{"file_name",
+    "mutations":[{"type","status","line","column"}]}], "test_efficacy",
+    "mutations_coverage", "mutants_total", "mutants_killed", "mutants_lived",
+    "mutants_not_viable", "mutants_not_covered", "elapsed_time",
+    "mutator_statistics"}. 게이트는 `files` 만 읽는다 — 도구의 합계는 NOT COVERED 를
+    `mutants_total` 에서 빼는 등 셈법이 게이트와 달라, 개수는 게이트가 다시 센다.
+  - [실측] `file_name` 은 **모듈 루트 기준 상대 경로**다 (`calc.go`,
+    `pkg/util/util.go`). 절대 경로도, 도구가 만드는 임시 사본 안의 경로도 아니었고,
+    gremlins 를 어느 디렉토리에서 부르든 같았다. 그래서 뼈대의 경로 정규화만으로
+    대상과 맞는다 — `_go_report_path` 의 접미사 대조는 그 뒤에 남겨 둔 보호막이다.
+  - [실측] 상태 낱말은 **공백이 든 철자**다 (밑줄이 아니다). 다섯은 직접 봤다:
+    `KILLED` / `LIVED` / `NOT COVERED` / `SKIPPED` / `TIMED OUT`. `RUNNABLE` 은
+    `--dry-run` 회차에서만 나왔다 [실측]. `NOT VIABLE` 은 만들어 보지 못해
+    [소스 확인] 으로 남는다 (`internal/mutator/mutator.go` 의 `Status.String()`).
+  - [실측] 명령줄: `unleash [path]`, `--output`, `--diff`, `--exclude-files`(파일 경로
+    정규식. `--help` 상 stringArray 라 여러 번 줄 수 있다), `--threshold-efficacy`,
+    `--threshold-mcover`, `--timeout-coefficient`, `--dry-run`.
+  - [실측] 종료 코드: 정상 0 / 모듈이 아닌 경로 1 / 없는 `--diff` ref 1 /
+    `.gremlins.yaml` 의 `unleash.threshold.efficacy` 미달 10 / `mutant-coverage`
+    미달 11. `--config` 로 준 파일을 못 읽으면 1 [소스 확인]. 이름으로 찾아 읽는
+    `.gremlins.yaml` 이 깨져 있으면 오류 없이 무시하고 그냥 돈다 [실측].
+  - [실측] 임계값을 명령줄에 주면 **판정에 쓰이지 않는다.** v0.6.0 이 쓰는 viper 판이
+    float64 플래그를 문자열로 돌려주고, 도구는 그것을 float64/int 로 단언해 읽어 둘 다
+    0 이 된다 (0 은 "검사 안 함"). 그런데 플래그를 명시하면 그 값이 설정 파일 값을
+    가려, 결과적으로 임계 검사가 꺼진다 — 아래 `_go_command` 가 0 을 박아 넣는 이유다.
+    설정 파일에 임계값 90 을 두고 플래그 없이 돌리면 종료 코드 10, 같은 설정에
+    `--threshold-efficacy 0 --threshold-mcover 0` 을 붙이면 0 이었다 [실측].
+  - [실측] `--diff <ref>` 는 gremlins 가 **자기 현재 디렉토리에서**
+    `git diff --merge-base <ref>` 를 돌려 만든다. 범위 계산이 거칠다: 헝크마다
+    "새 위치 + 앞 문맥 줄 수" 부터 "추가된 줄 수" 만큼만 한 구간으로 본다
+    (`internal/diff/diff.go` 의 `newChanges`). 추가된 줄이 문맥과 번갈아 나오면 뒤쪽
+    변경이 구간 밖으로 떨어져 그 변이가 `SKIPPED` 로 실린다 — 장난감 모듈에서 변이
+    4개 중 3개가 그렇게 빠졌다 [실측].
+  - [실측] 오염 없음. 실행 전후로 프로젝트 안의 파일 목록이 같았다. 도구는 소스를
+    `os.MkdirTemp(os.TempDir(), "gremlins-")` 아래로 복사해 그 안에서 변이하고 정상
+    종료 시 지운다.
+  - [실측] 강제 종료(SIGKILL) 하면 리포트가 없고 그 임시 폴더가 **남는다**. 변이 도중
+    죽인 회차에서 22MB 였다 (Go 빌드 캐시 + 작업자별 소스 사본). 게이트의 예산 초과
+    경로가 바로 이 강제 종료다.
+  - [실측] 변이가 하나도 없으면 `--output` 파일을 **아예 만들지 않고** 종료 코드 0 으로
+    끝난다 ("No results to report."). 구조체 선언만 든 파일을 바꿨을 때가 그렇다.
+  - [실측] 변이 하나의 제한시간은 **커버리지 수집에 걸린 시간 × 계수(기본 3)** 다
+    (`internal/engine/executor.go`). 빌드 캐시가 더워 커버리지가 100ms 에 끝나면
+    제한시간이 0.3초가 되어 멀쩡한 변이도 `TIMED OUT` 으로 실린다 — 같은 모듈이 첫
+    회차에 KILLED 1 / LIVED 2 였다가 다음 회차에 TIMED OUT 3 이 됐다. 게이트는
+    Timeout 을 잡은 것으로 세므로 점수가 부풀 수 있다. `_go_note_timeouts` 가 그 사실을
+    참고에 남긴다 (R4).
+  - [실측] 시간: 장난감 모듈(변이 4개) 0.5초. 함수 40개짜리 모듈(변이 160개) 47.7초,
+    변이당 0.30초. 준비 비용(커버리지 수집 한 번)이 앞에 얹힌다.
+  - [실측] `go install` 은 바이너리를 `go env GOPATH`/bin 에 놓는다. 그 자리가 PATH 에
+    없으면 뼈대의 PATH 조회가 도구를 못 찾아 이 언어가 통째로 건너뛰어진다 (러스트의
+    `~/.cargo/bin` 과 같은 자리다). 설치 안내가 그 사실을 함께 말한다.
+  - [미확인] `NOT VIABLE` 이 실제로 나오는 조건. 컴파일되지 않는 변이를 만드는 입력을
+    찾지 못했다.
 
-증분 실행은 없다 (문서에 회차를 넘겨 결과를 재사용하는 장치가 없다). 대상 한정은
+증분 실행은 없다 (회차를 넘겨 결과를 재사용하는 장치가 없다). 대상 한정은
 `--diff <기준 ref>` 로 하고, 점수를 낼 때 이번 변경분 목록으로 한 번 더 거른다 —
 도구의 대상 판정과 게이트의 변경분 판정이 어긋나도 점수는 R3 를 지킨다.
 
@@ -40,11 +83,14 @@ MUTATION_GO_SUFFIXES = frozenset({".go"})
 MUTATION_TARGET_KO = "고 (Go 모듈만)"
 
 # gremlins 어휘 → 게이트 어휘. 일곱 낱말 모두 v0.6.0 소스의 `Status.String()` 에서
-# 철자를 그대로 옮겼다 [소스 확인]. 뜻은 같은 파일의 주석을 근거로 짝지었다:
+# 철자를 옮겼고, 그중 여섯은 실물 리포트에서도 그대로 봤다 [실측 — NOT VIABLE 만 못 봤다].
+# 뜻은 같은 파일의 주석과 실측을 근거로 짝지었다:
 #   NotCovered "identified, but is not covered by tests"      → NoCoverage
 #   Runnable   "covered by tests, which means it can be executed" (아직 안 돌았다) → Pending
+#              — `--dry-run` 회차에서만 나온다 [실측]
 #   Lived      "tested, but the tests did pass"               → Survived
 #   Killed     "tested and the tests failed"                  → Killed
+#   Skipped    `--diff` 로 좁힌 구간 밖의 변이 [실측]         → Ignored
 # 표 밖 낱말은 원어 그대로 통과해 unknown 경로가 잡고 분모에서 뺀다 (R4).
 GREMLINS_STATUS_TO_GATE = {
     "KILLED": "Killed",
@@ -57,7 +103,9 @@ GREMLINS_STATUS_TO_GATE = {
 }
 
 _INSTALL_HINT = ("gremlins 를 설치하십시오 "
-                 "(go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0).")
+                 "(go install github.com/go-gremlins/gremlins/cmd/gremlins@v0.6.0). "
+                 "설치 자리는 `go env GOPATH`/bin 이라, 그 자리가 PATH 에 있어야 "
+                 "게이트가 찾습니다.")
 
 # 변이 대상에서 빼는 이름 — 테스트 코드와 생성된 코드.
 _GO_TEST_SUFFIX = "_test.go"
@@ -86,13 +134,15 @@ def _go_targets(repo_root: Path, files) -> tuple:
 def _go_report_path(repo_root: Path, raw: str, targets) -> str | None:
     """리포트의 파일 이름을 저장소 상대 경로로. 못 맞추면 None.
 
-    gremlins 는 소스를 임시 폴더로 복사해 그 안에서 파싱한다. 리포트에 실리는 이름이
-    그 사본 안의 절대 경로인지 모듈 상대 경로인지 **확인하지 못했다.** 그래서 두 단계다.
+    리포트의 이름은 **모듈 루트 기준 상대 경로**였다 [실측: `calc.go`,
+    `pkg/util/util.go`]. 도구가 소스를 임시 폴더로 복사해 그 안에서 변이하는데도 사본
+    경로가 새 나오지 않았고, gremlins 를 어느 디렉토리에서 부르든 같았다. 그래서
+    실무에서는 1단계에서 끝난다. 2단계는 남겨 둔 보호막이다 — 도구가 판을 올리며 이름
+    형태를 바꾸면 여기서 흡수하고, 못 맞추면 조용히 세지 않는 대신 이름을 알린다.
       1) 뼈대의 경로 정규화를 그대로 지난다 — 저장소 안의 경로면 여기서 끝난다
       2) 그래도 이번 대상에 없으면, 대상 목록 중 **접미사가 일치하는 것이 하나뿐일 때만**
          그것으로 본다. 둘 이상이면 맞추지 않는다 — 잘못 맞추면 다른 파일의 점수가 된다
-    맞추지 못한 변이는 세지 않고, 그 파일은 실행 뒤 대조(`_mutation_gaps`)가
-    "한 줄도 재지 못한 파일" 로 잡아 사용자에게 보인다 (R4).
+    맞추지 못한 변이는 세지 않고, 그 이름은 `_go_note_unmatched` 가 참고에 남긴다 (R4).
     """
     rel = gate._rel_to_repo(Path(repo_root), raw)
     if rel in targets:
@@ -213,8 +263,10 @@ def parse_gremlins_report(report: dict, repo_root: Path, targets) -> dict:
 def _go_preconditions(ctx: gate.GateContext) -> dict | None:
     """고 경로만의 사유. 있으면 그 결과를, 없으면 None (R4).
 
-    Go 툴체인(`go`) 유무는 따로 묻지 않는다. gremlins 가 안에서 `go test` 를 부르므로
-    없으면 실행이 실패하고, 그 출력이 사유에 그대로 실린다.
+    Go 툴체인(`go`) 유무는 따로 묻지 않는다. gremlins 가 안에서 `go` 를 부르므로 없으면
+    실행이 실패하고, 그 출력이 사유에 그대로 실린다 [실측: 종료 코드 1 과
+    `failed to gather coverage: … exec: "go": executable file not found in $PATH` 가
+    사람용 표에 그대로 나왔다].
     """
     configured = ctx.config.mutation_tool(GO_ADAPTER.language)
     if configured != GO_ADAPTER.tool:
@@ -254,25 +306,29 @@ def _go_command(ctx: gate.GateContext, report: Path, targets) -> tuple:
     """(실행할 명령, 결과가 나온 뒤에 남길 안내).
 
     임계값 둘을 0 으로 명시한다 — 프로젝트의 `.gremlins.yaml` 에 임계값이 있으면
-    점수가 낮을 때 종료 코드가 10/11 이 되어 R2 가 깨진다. 명령줄이 설정 파일보다
-    세다는 것은 **[미확인]** 이라, 그래도 비-0 이 나오면 종료 코드 대신 리포트를 본다.
+    점수가 낮을 때 종료 코드가 10/11 이 되어 R2 가 깨진다 [실측: 설정만 두고 돌리니
+    종료 코드 10]. 명령줄에 0 을 붙이면 그 값이 설정 파일 값을 가려 임계 검사가 꺼진다
+    [실측: 같은 설정에 0 두 개를 붙이니 종료 코드 0]. 그래도 비-0 이 나오는 회차에
+    대비해 판정은 종료 코드가 아니라 리포트로 한다.
     """
     cmd = [gate._tool(ctx, "gremlins")["path"], "unleash", str(ctx.repo_root),
            "--output", str(report),
            "--threshold-efficacy", "0", "--threshold-mcover", "0"]
-    notes = ["고 어댑터는 실물로 검증하지 않았습니다 (이 기계에 Go 툴체인이 없습니다). "
-             "결과가 이상하면 gremlins 를 직접 돌린 값과 맞대 보십시오."]
+    notes: list = []
     base = getattr(ctx.change, "base", "") or ""
     if base and base != gate.EMPTY_TREE:
         cmd += ["--diff", base]
-        # gremlins 는 `--diff` 를 주면 **바뀐 줄 범위 안의 변이만** 돌린다
-        # (v0.6.0 `internal/diff/diff.go` 의 IsChanged 를 `internal/engine` 이 변이마다
-        # 묻는다) [소스 확인]. 여기서 파일 단위라고 말하면 실제보다 넓게 쟀다고 알리는
-        # 셈이고, 사용자가 높은 점수를 "이 파일 전체가 잘 덮였다" 로 읽는다.
+        # gremlins 는 `--diff` 를 주면 **바뀐 줄 범위 안의 변이만** 돌린다. 그 범위를
+        # 헝크마다 "앞 문맥 다음 줄부터 추가된 줄 수만큼" 한 구간으로 잡아, 추가된 줄이
+        # 문맥과 번갈아 나오면 뒤쪽 변경이 구간 밖으로 떨어진다 [실측: 장난감 모듈에서
+        # 변이 4개 중 3개가 SKIPPED]. 파일 단위라고 말하면 실제보다 넓게 쟀다고 알리는
+        # 셈이고, 빠진 몫을 말하지 않으면 좁게 잰 점수가 변경분 전체처럼 읽힌다.
         notes.append(
             f"고 뮤테이션은 gremlins 의 --diff {base} 로 이번에 바뀐 줄 범위 안의 변이만 "
-            f"돌렸습니다 (대상 파일 {len(targets)}개). 같은 파일의 바뀌지 않은 줄은 재지 "
-            "않았습니다. 점수는 게이트의 변경분 목록으로 한 번 더 걸렀습니다.")
+            f"돌렸습니다 (대상 파일 {len(targets)}개). gremlins 는 그 범위를 헝크마다 앞 "
+            "문맥 다음 줄부터 추가된 줄 수만큼으로 잡아, 바뀐 줄이 흩어져 있으면 뒤쪽 "
+            "변경이 범위 밖으로 떨어져 '제외됨' 으로 실립니다. 제외된 변이는 점수 분모에 "
+            "없습니다. 점수는 게이트의 변경분 목록으로 한 번 더 걸렀습니다.")
     else:
         notes.append(
             f"비교 기준이 없어 모듈 전체를 돌렸습니다. 대상 파일 {len(targets)}개는 파일 "
@@ -291,20 +347,37 @@ def _go_tail(proc) -> str:
     return " ".join(detail.split())[-500:]
 
 
-def _go_no_report(proc, elapsed: float) -> dict:
-    """리포트가 없으면 통과가 아니라 오류다 (R4)."""
-    code = proc.returncode if proc is not None else "?"
+def _go_no_report(proc, targets, elapsed: float) -> dict:
+    """리포트 파일이 없을 때. 종료 코드 0 이면 오류가 아니라 "변이가 없었다" 다.
+
+    gremlins 는 변이 목록이 비면 "No results to report." 만 찍고 `--output` 파일을
+    아예 만들지 않은 채 0 으로 끝난다 [실측: 구조체 선언만 든 파일을 바꾼 회차].
+    이것을 오류로 내던 동안, 멀쩡히 끝난 회차가 "리포트가 나오지 않았습니다 (종료 코드
+    0)" 로 나갔다 — 진짜 실패(모듈이 아닌 경로·없는 diff ref, 둘 다 종료 코드 1 [실측])
+    와 구분이 사라진다. 비-0 은 그대로 오류다. 통과로 내지는 않는다 (R4).
+    """
+    code = proc.returncode if proc is not None else None
+    if code == 0:
+        return gate._skip(
+            f"대상 파일 {len(targets)}개에서 변이가 하나도 만들어지지 않아 gremlins 가 "
+            f"리포트를 남기지 않았습니다. 실행 {elapsed:.1f}초",
+            "no mutants for changed files")
     return {
         "status": "error",
-        "reason": f"gremlins produced no report (exit {code})",
-        "human_reason": (f"고 뮤테이션 리포트가 나오지 않았습니다 (종료 코드 {code}). "
+        "reason": f"gremlins produced no report (exit {code if code is not None else '?'})",
+        "human_reason": (f"고 뮤테이션 리포트가 나오지 않았습니다 "
+                         f"(종료 코드 {code if code is not None else '?'}). "
                          f"실행 {elapsed:.1f}초  {_go_tail(proc)}"),
         "findings": [],
     }
 
 
 def _go_timed_out(summary: dict, targets, elapsed: float, budget: int) -> dict:
-    """예산을 넘겨 중단됐을 때. gremlins 는 끝에 한 번 쓰므로 대개 리포트가 아예 없다 (D4)."""
+    """예산을 넘겨 중단됐을 때. gremlins 는 끝에 한 번 쓰므로 리포트가 아예 없다 (D4).
+
+    예산 초과는 `gate._run` 이 SIGKILL 로 끝낸다. 변이 도중 그렇게 죽인 회차에서
+    리포트가 없었고, 도구가 쓰던 `$TMPDIR/gremlins-*` 는 남았다 [실측 — 22MB].
+    """
     total = summary["total"] if summary else 0
     return {
         "status": "timeout",
@@ -320,8 +393,8 @@ def _go_run(ctx: gate.GateContext, report: Path, cmd: list, targets, scope_notes
     """실행하고 (결과, 요약) 을 만든다. 걸린 시간은 리포트를 다 읽은 뒤에 잰다."""
     budget = score_mod._mutation_budget(ctx)
     # 범위 안내는 실행 **전에** 남긴다. 완주 분기에만 두었더니 중단·리포트 없음 회차에서
-    # "이 어댑터는 실물로 검증하지 않았다" 는 경고가 통째로 사라졌다 (실측). 그 경고가
-    # 가장 필요한 순간이 바로 실패한 회차다 (R4).
+    # 안내가 통째로 사라졌다 (실측). 무엇을 어디까지 재려 했는지가 가장 필요한 순간이
+    # 바로 실패한 회차다 — 도구 문제인지 범위 문제인지 가를 단서가 그것뿐이다 (R4).
     ctx.notes.extend(scope_notes)
     started = time.perf_counter()
     proc = None
@@ -335,11 +408,32 @@ def _go_run(ctx: gate.GateContext, report: Path, cmd: list, targets, scope_notes
     summary = parse_gremlins_report(payload, ctx.repo_root, set(targets)) if payload else None
     elapsed = time.perf_counter() - started
     _go_note_unmatched(ctx, payload, set(targets))
+    _go_note_timeouts(ctx, summary)
     if timed_out:
         return _go_timed_out(summary, targets, elapsed, budget), summary
     if summary is None:
-        return _go_no_report(proc, elapsed), None
+        return _go_no_report(proc, targets, elapsed), None
     return score_mod._mutation_outcome(ctx, summary, elapsed, targets), summary
+
+
+def _go_note_timeouts(ctx: gate.GateContext, summary) -> None:
+    """TIMED OUT 이 섞였으면 그 뜻을 적는다 — 게이트는 이것을 잡은 것으로 센다 (R4).
+
+    gremlins 는 변이 하나의 제한시간을 커버리지 수집에 걸린 시간의 3배로 잡는다
+    [실측]. 테스트가 빨리 끝나는 저장소에서는 그 3배가 컴파일 시간에도 못 미쳐, 멀쩡히
+    살아남았어야 할 변이가 TIMED OUT 으로 실린다 — 같은 모듈이 회차에 따라 KILLED 1 /
+    LIVED 2 에서 TIMED OUT 3 으로 바뀌었다 (점수 33% → 100%). 말하지 않으면 그 100% 가
+    "다 잡았다" 로 읽힌다.
+    """
+    count = (summary or {}).get("counts", {}).get("Timeout", 0)
+    if not count:
+        return
+    ctx.notes.append(
+        f"고 변이 {count}개가 제한시간을 넘겨(TIMED OUT) 끝났고, 게이트는 이것을 잡은 "
+        "것으로 셉니다. gremlins 는 변이 하나의 제한시간을 커버리지 수집에 걸린 시간의 "
+        "3배로 잡아, 테스트가 빨리 끝나는 저장소에서는 멀쩡한 변이도 여기 걸립니다. "
+        "점수가 실제보다 높을 수 있으니, 프로젝트의 .gremlins.yaml 에서 "
+        "unleash.timeout-coefficient 를 올려 다시 재 보십시오.")
 
 
 def _go_note_unmatched(ctx: gate.GateContext, payload, targets) -> None:
@@ -386,23 +480,28 @@ GO_ADAPTER = score_mod.AdapterSpec(
     label="고",
     tool="gremlins",
     config_key="mutation.go",
-    # 변환표 = GREMLINS_STATUS_TO_GATE. 철자는 v0.6.0 소스에서 옮겼다 [소스 확인].
-    # 비항등이라 적용을 지우면 계약 테스트가 잡는다.
+    # 변환표 = GREMLINS_STATUS_TO_GATE. 철자는 v0.6.0 소스에서 옮겼고 여섯은 실물
+    # 리포트에서도 봤다 [실측]. 비항등이라 적용을 지우면 계약 테스트가 잡는다.
     status_map=GREMLINS_STATUS_TO_GATE,
-    measure_unit="expression",             # 토큰 단위로 바꾼다 [문서]
-    skip_report=("SKIPPED 상태로 결과에 실린다 [소스 확인]. 무엇이 왜 건너뛰어지는지는 "
-                 "확인하지 못했다 [미확인]"),
-    incremental=False,                     # 회차를 넘겨 재사용하는 장치가 문서에 없다
+    measure_unit="expression",             # 한 줄에서 여러 변이가 나온다 [실측: `return v > 0` 한 줄에 2개]
+    skip_report=("SKIPPED 상태로 결과에 실린다 [실측]. `--diff` 로 좁혔을 때 그 구간 밖에 "
+                 "있는 변이가 이 상태로 실리고, 게이트는 '제외됨' 으로 옮겨 점수 분모에서 "
+                 "뺀다. `--diff` 를 주지 않은 회차에서는 SKIPPED 가 나오지 않았다 [실측]"),
+    incremental=False,                     # 회차를 넘겨 재사용하는 장치가 없다
     incremental_triggers=(),
-    target_syntax=("파일별 지정이 없다. 모듈 경로 하나를 위치 인자로 주고 `--diff <ref>` 로 "
-                   "범위를 좁힌다 (`--exclude-files` 는 정규식). 글롭이 아니라 이스케이프가 "
-                   "필요 없고, 점수의 범위는 게이트가 리포트를 걸러 정한다"),
+    target_syntax=("파일별 지정이 없다. 모듈 경로 하나를 위치 인자로 주고 `--diff <git ref>` "
+                   "로 범위를 좁힌다 — diff 파일이 아니라 ref 이고, gremlins 가 자기 현재 "
+                   "디렉토리에서 `git diff --merge-base <ref>` 를 직접 돌린다 [실측]. 빼는 "
+                   "쪽은 `--exclude-files <정규식>` 이고 여러 번 줄 수 있다 [실측]. 글롭이 "
+                   "아니라 이스케이프가 필요 없고, 점수의 범위는 게이트가 리포트를 걸러 정한다"),
     field_confidence={"line": "tool", "column": "tool", "mutator": "tool",
                       "tests": "absent"},
     requires=(),                           # 게이트에 고 테스트 항목이 없다
     workspace=("게이트 임시 디렉토리에 리포트 하나(매 실행 삭제). 어댑터는 사본을 만들지 "
-               "않는다 — 도구가 스스로 `os.TempDir()/gremlins-*` 로 소스를 복사하고 정상 "
-               "종료 시 지운다 [소스 확인]. 강제 종료 시 잔류량은 확인하지 못했다. "
-               "만료·정리 정책: 없음"),
+               "않는다 — 도구가 스스로 `$TMPDIR/gremlins-*` 로 소스를 복사하고 정상 종료 "
+               "시 지운다 [실측: 실행 전후로 그 자리에 아무것도 남지 않았다]. **강제 종료 "
+               "시에는 남는다** [실측: 변이 도중 죽인 회차에서 22MB — Go 빌드 캐시와 "
+               "작업자별 소스 사본]. 프로젝트 안에는 아무것도 쓰지 않는다 [실측: 실행 전후 "
+               "파일 목록 동일]. 만료·정리 정책: 없음"),
     copy_limitations=(),                   # 어댑터가 만드는 사본이 없다 (도구 사본은 workspace 에)
 )
