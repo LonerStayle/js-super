@@ -52,6 +52,24 @@ _MUTATION_TEST_STEMS = (".test", ".spec", "_test", "_spec")
 MUTATION_SUFFIXES = frozenset(gate.JS_SUFFIXES | {".vue", ".svelte", ".html", ".htm"})
 
 
+# Stryker 어휘 → 게이트 어휘 변환표. 지금은 항등이다 — 철자가 같은 것은 게이트 어휘가
+# 이 스키마에서 온 역사적 우연이고, 두 어휘가 같다는 보장은 없다. 표를 선언만 해 두고
+# 변환하지 않으면 도구가 어휘를 바꾼 날 조용히 unknown 경로로 새 나가므로, 기록을 만들 때
+# 반드시 이 표를 지난다(_gate_status). 표에 없는 상태는 원어 그대로 통과해 unknown 경로로
+# 간다 (R4).
+STRYKER_STATUS_TO_GATE = {
+    "Killed": "Killed", "Timeout": "Timeout",
+    "Survived": "Survived", "NoCoverage": "NoCoverage",
+    "CompileError": "CompileError", "RuntimeError": "RuntimeError",
+    "Ignored": "Ignored", "Pending": "Pending",
+}
+
+
+def _gate_status(word):
+    """도구가 쓴 낱말을 게이트 어휘로. 표에 없으면 원어 그대로 (unknown 경로)."""
+    return STRYKER_STATUS_TO_GATE.get(word, word)
+
+
 def _mutant_record(rel: str, mutant: dict, original: str, tests) -> dict:
     """D2 가 요구하는 항목을 한 모양으로 맞춘다 — 최종 리포트와 이벤트 파일 양쪽이 쓴다.
 
@@ -70,7 +88,7 @@ def _mutant_record(rel: str, mutant: dict, original: str, tests) -> dict:
         "mutator": mutant.get("mutatorName"),
         "original": original,
         "replacement": mutant.get("replacement") or "",
-        "status": mutant.get("status"),
+        "status": _gate_status(mutant.get("status")),
         "tests": [str(t) for t in tests],
     }
 
@@ -584,22 +602,18 @@ JAVASCRIPT_ADAPTER = score_mod.AdapterSpec(
     label="자바스크립트",
     tool="stryker",
     config_key="mutation.javascript",
-    # 항등 변환표. 지금까지는 "변환이 없다" 가 암묵이었는데, 규격 이후에는 "변환표가
-    # 항등이다" 를 명시한다 — 도구가 어휘를 바꾸면 이 표가 흡수하고 게이트 어휘는 흔들리지
-    # 않는다. 변환표 밖 상태는 원어 그대로 통과해 unknown 경로로 간다 (R4).
-    status_map={
-        "Killed": "Killed", "Timeout": "Timeout",
-        "Survived": "Survived", "NoCoverage": "NoCoverage",
-        "CompileError": "CompileError", "RuntimeError": "RuntimeError",
-        "Ignored": "Ignored", "Pending": "Pending",
-    },
+    # 변환표 = STRYKER_STATUS_TO_GATE. 지금은 항등이고, 항등이어도 기록은 이 표를 지난다
+    # (_gate_status) — 선언만 하고 안 쓰면 도구가 어휘를 바꾼 날 표가 아무것도 흡수하지
+    # 못한다. 변환표 밖 상태는 원어 그대로 통과해 unknown 경로로 간다 (R4).
+    status_map=STRYKER_STATUS_TO_GATE,
     measure_unit="expression",             # 파일 전체를 훑는다 — 건너뛰는 단위가 없다
     skip_report=None,
+    incremental=True,
     incremental_triggers=("소스 변경", "테스트 변경"),  # 도구가 스스로 본다
     target_syntax=("명령줄 글롭. 이스케이프는 어댑터가 _stryker_glob 로 한다. "
                    "쉼표는 못 풀어 실행 뒤 대조(_mutation_gaps)가 잡는다"),
-    field_confidence={"line": "tool", "column": "tool", "mutator": "tool", "tests": "tool"},
-    tests_granularity="per-mutant",
+    field_confidence={"line": "tool", "column": "tool", "mutator": "tool",
+                      "tests": "per-mutant"},
     requires=(),
     workspace=("게이트 임시 디렉토리(매 실행 삭제) + 캐시에 상태 파일 하나"
                "(mutation_state_file). 만료·정리 정책: 없음"),

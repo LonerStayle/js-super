@@ -593,7 +593,8 @@ def _mutmut_stale_reason(previous: dict, targets, changed_tests) -> str:
     return ""
 
 
-def _mutmut_incremental_guard(ctx: gate.GateContext, work: Path, targets, changed_tests) -> None:
+def _mutmut_incremental_guard(ctx: gate.GateContext, work: Path, targets, changed_tests,
+                              extra=(), carried=None) -> None:
     """쓸 수 없는 사본이면 버리고, 이번 회차의 기준을 남긴다 (R3).
 
     증분을 버리는 회차는 콜드 실행이라 그만큼 느리다. 그래도 틀린 점수보다는 낫다 —
@@ -604,7 +605,7 @@ def _mutmut_incremental_guard(ctx: gate.GateContext, work: Path, targets, change
                                   targets, changed_tests)
     if reason and mutants.exists() and not _mutmut_drop_mutants(ctx, mutants, reason):
         return
-    _mutmut_write_state(ctx, work, targets, changed_tests)
+    _mutmut_write_state(ctx, work, targets, changed_tests, extra, carried)
 
 
 def _mutmut_drop_mutants(ctx: gate.GateContext, mutants: Path, reason: str) -> bool:
@@ -622,16 +623,18 @@ def _mutmut_drop_mutants(ctx: gate.GateContext, mutants: Path, reason: str) -> b
     return True
 
 
-def _mutmut_write_state(ctx: gate.GateContext, work: Path, targets, changed_tests=()) -> None:
+def _mutmut_write_state(ctx: gate.GateContext, work: Path, targets, changed_tests=(),
+                        extra=(), carried=None) -> None:
     """다음 회차가 견줄 기준을 남긴다. 못 남기면 다음 회차가 사본을 새로 만든다.
 
-    상태에는 실패 각인의 입력 지문(대상 목록 + 변경분의 테스트 파일 목록 + 내용 지문)도
-    함께 남는다. 이 상태를 통째로 새로 쓰는 것이 지난 회차의 각인(baseline_failure)을
-    지우는 동작이기도 하다 — 실제로 도는 회차는 항상 여기를 지나므로, 각인은
-    "억제된 회차" 에서만 살아남는다.
+    상태에는 실패 각인의 입력 지문(대상 목록 + 변경분의 테스트 파일 목록 + 사본 구성의
+    내용 지문)도 함께 남는다. 이 상태를 통째로 새로 쓰는 것이 지난 회차의 각인
+    (baseline_failure)을 지우는 동작이기도 하다 — 실제로 도는 회차는 항상 여기를
+    지나므로, 각인은 "억제된 회차" 에서만 살아남는다.
     """
     state = {"targets": list(targets), "changed_tests": list(changed_tests),
-             "content": _mutmut_content_fingerprint(ctx, targets, changed_tests)}
+             "content": _mutmut_content_fingerprint(ctx, targets, changed_tests,
+                                                    extra, carried)}
     try:
         (Path(work) / _MUTMUT_STATE_NAME).write_text(
             json.dumps(state, ensure_ascii=False), encoding="utf-8")
@@ -645,28 +648,44 @@ def _mutmut_write_state(ctx: gate.GateContext, work: Path, targets, changed_test
 # 남기는 자리. 그 회차는 기준 테스트에 회차당 수십 초를 쓰고도 같은 오류만 되풀이하므로,
 # 입력이 같으면 다시 돌리지 않고 즉시 같은 오류를 낸다.
 #
-# 각인의 무효화 조건은 증분 무효화 선언(incremental_triggers)과 같은 것을 쓴다 —
-# 별도 조건을 만들면 두 무효화가 어긋나는 자리가 생긴다. 선언한 세 조건을 "지난 실패
-# 회차 이후 실제로 바뀌었는가" 로 평가한다:
+# 각인의 무효화는 증분 무효화 선언(incremental_triggers)보다 **넓다**. 두 무효화가 답하는
+# 질문이 다르기 때문이다 — 증분은 "지난 사본을 재사용해도 되는가", 각인은 "그 실패가
+# 사라졌을 수 있는가" 를 본다. 뒤쪽이 더 넓어서 같은 조건을 쓰면 낡은 오류가 굳는다.
+# 각인은 다음 네 축을 "지난 실패 회차 이후 실제로 바뀌었는가" 로 평가한다:
 #   대상 목록 변화        → 지문의 targets 목록 비교
 #   테스트 파일 변경분 포함 → 지문의 changed_tests 목록 + 그 파일들의 내용 지문 비교
 #   함수 해시(소스 변경)   → 대상 파일들의 내용 지문 비교
+#   사본 구성 변화        → 함께 걸 이름(extra)과 그 내용 + 이어 쓴 설정(carried) 비교
+# 마지막 축이 없으면 기준 단계 실패를 없애는 수정 대부분을 놓친다 (실측). 그런 수정은
+# 파이썬 파일이 아니라 pytest.ini / setup.cfg / pyproject.toml 에서 일어나고, 그중
+# pytest.ini 는 사본에 걸 이름을 실제로 정하는 파일이라 실행 결과를 바꾼다.
 # 목록만 비교하면 사용자가 테스트의 git 의존을 끊는 수정을 해도 각인이 남아 낡은 오류가
 # 나간다 — 그래서 내용 지문이 필요하다. 이 메커니즘은 이 어댑터의 상태 파일 안 필드다 —
 # 중립층과 합치는 층은 이것을 모른다.
 _MUTMUT_FAILURE_KEY = "baseline_failure"
 
 
-def _mutmut_content_fingerprint(ctx: gate.GateContext, targets, changed_tests) -> str:
-    """입력 파일들(대상 + 변경분의 테스트)의 내용 지문. 변경분 한정이라 비용이 작다 (R3)."""
+def _mutmut_content_fingerprint(ctx: gate.GateContext, targets, changed_tests,
+                                extra=(), carried=None) -> str:
+    """입력 파일들의 내용 지문. 변경분 한정 + 사본 구성이라 비용이 작다 (R3).
+
+    세는 것은 대상 파일, 변경분의 테스트 파일, 그리고 이번 회차에 사본으로 걸 이름
+    (extra)과 이어 쓸 프로젝트 설정(carried)이다. 뒤 둘이 실행 결과를 바꾸는 입력인데
+    파이썬 파일이 아니라, 앞 둘만 보면 설정 수정이 지문에 안 잡힌다.
+    걸 이름 중 디렉토리는 내용을 읽지 못해 이름만 센다 — 그 안의 테스트 파일 변경은
+    changed_tests 가 이미 본다.
+    """
     digest = hashlib.sha256()
-    for rel in sorted(set(targets) | set(changed_tests)):
+    for rel in sorted(set(targets) | set(changed_tests) | set(extra)):
         digest.update(rel.encode("utf-8", "replace") + b"\x00")
         try:
             digest.update((Path(ctx.repo_root) / rel).read_bytes())
         except OSError:
             digest.update(b"<unreadable>")
         digest.update(b"\x00")
+    for key, value in sorted((carried or {}).items()):
+        digest.update(b"carried\x00" + str(key).encode("utf-8", "replace") + b"\x00"
+                      + str(value).encode("utf-8", "replace") + b"\x00")
     return digest.hexdigest()
 
 
@@ -685,29 +704,30 @@ def _mutmut_imprint_failure(ctx: gate.GateContext, work: Path, outcome: dict) ->
 
 
 def _mutmut_imprint_matches(ctx: gate.GateContext, state: dict, targets,
-                            changed_tests) -> bool:
+                            changed_tests, extra=(), carried=None) -> bool:
     """지난 실패 회차의 입력 지문과 지금이 같은가 — 목록 둘과 내용 지문 전부."""
     if list(state.get("targets") or ()) != list(targets):
         return False
     if list(state.get("changed_tests") or ()) != list(changed_tests):
         return False
-    return state.get("content") == _mutmut_content_fingerprint(ctx, targets, changed_tests)
+    return state.get("content") == _mutmut_content_fingerprint(
+        ctx, targets, changed_tests, extra, carried)
 
 
 def _mutmut_imprinted_outcome(ctx: gate.GateContext, work: Path, targets,
-                              changed_tests) -> dict | None:
+                              changed_tests, extra=(), carried=None) -> dict | None:
     """지난 회차의 실패 각인이 아직 유효하면 그 오류를 즉시 낸다. 아니면 None.
 
-    유효 = 입력 지문(대상 목록 + 변경분의 테스트 파일 목록 + 내용 지문)이 실패한 회차와
-    같다 — 무효화 조건의 평가 방식은 _MUTMUT_FAILURE_KEY 주석 참조. status 는 지난 회차와
-    같은 error 라 판정이 바뀌지 않는다 — 바뀌는 것은 소요 시간(기준 테스트 생략)과
-    문장의 정확도뿐이다.
+    유효 = 입력 지문(대상 목록 + 변경분의 테스트 파일 목록 + 사본 구성의 내용 지문)이
+    실패한 회차와 같다 — 무효화 조건의 평가 방식은 _MUTMUT_FAILURE_KEY 주석 참조.
+    status 는 지난 회차와 같은 error 라 판정이 바뀌지 않는다 — 바뀌는 것은 소요 시간
+    (기준 테스트 생략)과 문장의 정확도뿐이다.
     """
     state = gate._read_json_object(Path(work) / _MUTMUT_STATE_NAME)
     imprint = state.get(_MUTMUT_FAILURE_KEY)
     if not isinstance(imprint, dict):
         return None
-    if not _mutmut_imprint_matches(ctx, state, targets, changed_tests):
+    if not _mutmut_imprint_matches(ctx, state, targets, changed_tests, extra, carried):
         return None
     last_human = imprint.get("human_reason") or imprint.get("reason") or "(기록 없음)"
     ctx.notes.append("지난 회차의 실패 각인이 유효해 기준 테스트를 다시 돌리지 않았습니다.")
@@ -717,7 +737,9 @@ def _mutmut_imprinted_outcome(ctx: gate.GateContext, work: Path, targets,
                    + (imprint.get("reason") or "")),
         "human_reason": (
             f"지난 회차와 입력이 같아 다시 돌지 않았습니다. 지난 사유: {last_human} "
-            f"다시 재려면 대상이나 테스트를 바꾸거나 사본 디렉토리를 지우십시오 ({work})."),
+            f"다시 재려면 대상이나 테스트를 바꾸거나 증분 상태 파일을 지우십시오 "
+            f"({Path(work) / _MUTMUT_STATE_NAME}). 사본 디렉토리({work}/mutants)만 "
+            f"지우면 각인은 그대로 남습니다."),
     }
 
 
@@ -1028,8 +1050,12 @@ def _mutmut_config_notes(ctx: gate.GateContext, extra, carried: dict) -> None:
         )
 
 
-def _mutmut_setup(ctx: gate.GateContext, targets, changed_tests) -> tuple:
-    """(작업 디렉토리, 소스 루트, 건너뜀 결과). 준비가 안 되면 재지 않고 사유를 낸다."""
+def _mutmut_roots_or_skip(ctx: gate.GateContext, targets) -> tuple:
+    """(소스 루트, 건너뜀 결과). 뺀 파일이 있으면 사유를 남긴다 (R4).
+
+    최상위 이름이 mutmut 의 작업 이름과 겹치는 파일은 사본에 걸 수 없다. 조용히 빼면
+    그 파일을 쟀다고 읽히므로 개수와 표본을 참고에 적는다.
+    """
     roots, unusable = _mutmut_source_roots(targets)
     if unusable:
         ctx.notes.append(
@@ -1037,19 +1063,32 @@ def _mutmut_setup(ctx: gate.GateContext, targets, changed_tests) -> tuple:
             "못했습니다: " + score_mod._sample_list(list(unusable))
         )
     if not roots:
-        return None, (), gate._skip("변이시킬 파이썬 소스 루트를 정하지 못했습니다.", "no python source root")
+        return (), gate._skip("변이시킬 파이썬 소스 루트를 정하지 못했습니다.", "no python source root")
+    return roots, None
+
+
+def _mutmut_setup(ctx: gate.GateContext, targets, changed_tests) -> tuple:
+    """(작업 디렉토리, 소스 루트, 건너뜀 결과). 준비가 안 되면 재지 않고 사유를 낸다."""
+    roots, skipped = _mutmut_roots_or_skip(ctx, targets)
+    if skipped is not None:
+        return None, (), skipped
 
     work, extra, blocked = _mutmut_workspace(ctx, roots)
     if blocked is not None:
         return None, (), blocked
-    imprinted = _mutmut_imprinted_outcome(ctx, work, targets, changed_tests)
-    if imprinted is not None:
-        # 지난 회차가 기준 단계에서 죽었고 입력이 그대로다 — 다시 돌아도 같은 오류에
-        # 수십 초만 쓴다. 증분 가드보다 먼저 본다 (가드가 상태를 새로 쓰면 각인이 지워진다).
-        return None, (), imprinted
-    _mutmut_incremental_guard(ctx, work, targets, changed_tests)
+    # 이어 쓸 설정은 각인 조회보다 먼저 읽는다 (읽기만 한다). 지문이 사본 구성까지 덮어야
+    # 설정 수정으로 실패가 사라진 회차에서 각인이 풀린다.
     carried = _mutmut_project_settings(ctx.repo_root)
+    # 지난 회차가 기준 단계에서 죽었고 입력이 그대로면 다시 돌아도 같은 오류에 수십 초만
+    # 쓴다. 증분 가드보다 먼저 본다 (가드가 상태를 새로 쓰면 각인이 지워진다).
+    imprinted = _mutmut_imprinted_outcome(ctx, work, targets, changed_tests, extra, carried)
+    if imprinted is None:
+        _mutmut_incremental_guard(ctx, work, targets, changed_tests, extra, carried)
+    # 설정을 어떻게 다뤘는지는 각인으로 억제된 회차에서도 여전히 참이다. 각인이 생략하는
+    # 것은 기준 테스트 재실행이지, 이번 회차에도 참인 사실의 보고가 아니다 (R4).
     _mutmut_config_notes(ctx, extra, carried)
+    if imprinted is not None:
+        return None, (), imprinted
     _write_mutmut_config(work, roots, targets, extra, carried)
     return work, roots, None
 
@@ -1250,14 +1289,15 @@ PYTHON_ADAPTER = score_mod.AdapterSpec(
     skip_report=("데코레이터 붙은 함수는 통째로 빠진다 — python_decorated_skips 가 "
                  "mutmut 의 규칙을 재현해 빠진 이름을 결과 문장에 신고한다"),
     # 앞의 것은 도구가 스스로 보는 것, 뒤 둘은 게이트 보강(_mutmut_stale_reason)이다.
-    # 실패 각인의 무효화도 이 선언을 재사용한다 — 별도 조건을 만들면 두 무효화가
-    # 어긋나는 자리가 생긴다.
+    # 이 셋은 "지난 사본을 재사용해도 되는가" 만 본다. 실패 각인의 무효화는 이보다 넓어
+    # 사본 구성(함께 걸 설정·테스트 경로와 이어 쓴 설정)까지 본다 — 두 질문이 다르다.
+    # 자세한 것은 _MUTMUT_FAILURE_KEY 주석.
+    incremental=True,
     incremental_triggers=("함수 해시", "테스트 파일 변경분 포함", "대상 목록 변화"),
     target_syntax=("설정 파일 fnmatch 글롭. only_mutate 에만 glob.escape 를 건다 — "
                    "source_paths 와 also_copy 는 글롭이 아니라 경로라 이스케이프하면 매치가 깨진다"),
     field_confidence={"line": "reconstructed", "column": "absent",
-                      "mutator": "absent", "tests": "tool"},
-    tests_granularity="per-function",
+                      "mutator": "absent", "tests": "per-function"},
     requires=("C1:python",),               # ctx.python_tests_status 를 본다
     workspace=("캐시 안에 회차를 넘어 사는 디렉토리 + 소스·테스트 심링크"
                "(mutmut_work_dir). 만료·정리 정책: 없음 (실측 18MB)"),

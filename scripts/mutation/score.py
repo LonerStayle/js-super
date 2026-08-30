@@ -69,11 +69,17 @@ _SURVIVOR_ORDER = {"Survived": 0, "NoCoverage": 1}
 class AdapterSpec:
     """어댑터 선언부 — 두 사례(Stryker / mutmut)에서 실제로 갈린 항목만 담는다.
 
-    각 어댑터 모듈이 자기 인스턴스를 모듈 상수(JAVASCRIPT_ADAPTER / PYTHON_ADAPTER)로
-    둔다. 1c 에서의 소비자는 계약 테스트뿐이다 — 선언부는 런타임 분기를 새로 만들지
+    각 어댑터 모듈이 자기 인스턴스를 모듈 상수(`<언어>_ADAPTER`)로 둔다. 계약 테스트는
+    그 이름 규칙으로 어댑터를 스스로 찾는다 — 목록에 손으로 등록하는 방식은 등록을
+    잊은 어댑터가 검사 0건으로 통과했다 (실측). 선언부는 런타임 분기를 새로 만들지
     않는다 (동작 불변). 선언이 거짓이면 계약 테스트(test_mutation_contract.py)가 잡는다.
-    유일한 런타임 소비 예외는 실패 각인(python 어댑터)이 incremental_triggers 와 같은
-    무효화 선언을 재사용하는 것이다 — 판정을 바꾸지 않고 보고만 정확해지는 쪽이다.
+
+    선언부의 런타임 소비는 둘뿐이다 — 자바스크립트의 status_map(기록을 만들 때 지난다)과
+    파이썬의 실패 각인(자기 무효화 축을 여기 문서화한다). 둘 다 판정을 바꾸지 않는다.
+
+    동작 불변의 경계: 어댑터가 자기 한계(copy_limitations)를 신고해 사유 문장이 더
+    정확한 것으로 **대체**되는 것은 허용한다. 참고 문장이 하나 붙는 것도 마찬가지다.
+    바뀌면 안 되는 것은 판정(status)이다.
     """
 
     language: str                          # 네 칸 계약의 language 와 일치해야 한다
@@ -83,10 +89,13 @@ class AdapterSpec:
     status_map: dict                       # 자기 어휘 → 게이트 어휘. 값은 여덟 이름 안이어야 한다
     measure_unit: str                      # 도구가 실제로 훑는 단위 (expression / function)
     skip_report: str | None                # 훑지 않고 건너뛴 단위의 신고 방법. 없으면 None
-    incremental_triggers: tuple            # 무엇이 바뀌면 증분을 버리는가 ("지원 여부" 는 묻지 않는다)
+    incremental: bool                      # 회차를 넘겨 결과를 재사용하는가
+    incremental_triggers: tuple            # 무엇이 바뀌면 그 재사용을 버리는가. incremental 이면 비면 안 된다
     target_syntax: str                     # 대상 목록 표기 규칙과 이스케이프 책임 (어댑터 소유)
-    field_confidence: dict                 # 기록 칸별 신뢰도 — tool / reconstructed / absent
-    tests_granularity: str                 # tests 칸의 단위 — per-mutant / per-function
+    # 기록 칸별 신뢰도. 값은 tool / reconstructed / absent, 단 tests 칸만 단위로 답한다
+    # (per-mutant / per-function / absent) — 옛 별도 필드(tests_granularity)와 이 칸이
+    # 같은 열을 두 번 설명해 서로 모순될 수 있었다.
+    field_confidence: dict
     requires: tuple                        # 요구하는 선행 항목 (예: "C1:python"). 없으면 빈 튜플
     workspace: str                         # 작업 공간의 경로·수명. 만료·정리 정책 선언 자리 포함
     copy_limitations: tuple                # 사본 방식이 원본과 다르게 만드는 실행 조건. 사본이 없으면 빈 튜플
