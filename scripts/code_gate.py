@@ -848,8 +848,21 @@ def _probe_adapter_tools(tools: dict) -> None:
     """
     names = {adapter.spec.tool for adapter in _registered_adapters()}
     for name in sorted(names - set(tools)):
-        path = shutil.which(name)
+        path = shutil.which(name) or _cargo_bin_path(name)
         tools[name] = {"available": path is not None, "path": path, "install_hint": None}
+
+
+def _cargo_bin_path(name: str) -> str | None:
+    """PATH 에 없을 때 볼 마지막 자리 — `cargo install` 이 쓰는 `~/.cargo/bin`.
+
+    그 자리는 rustup 으로 깐 기계에서만 PATH 에 들어간다. Homebrew 로 러스트를 깐
+    기계에서는 어댑터의 안내대로 `cargo install <도구>` 를 해도 게이트가 계속
+    "설치돼 있지 않습니다" 를 낸다 [실측: 이 기계에 cargo-mutants 27.1.0 이 있는데
+    `shutil.which` 는 None 이었다]. 조용한 통과는 아니지만, 잴 수 있는 회차를 못 재고
+    넘어간다는 점에서 실효는 같다. 비용은 존재 검사 한 번이다 (R1).
+    """
+    candidate = Path.home() / ".cargo" / "bin" / name
+    return str(candidate) if candidate.is_file() else None
 
 
 def _tool(ctx: GateContext, name: str) -> dict:

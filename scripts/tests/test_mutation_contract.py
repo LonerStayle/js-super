@@ -37,6 +37,7 @@ from scripts.mutation import go as mutation_go
 from scripts.mutation import java as mutation_java
 from scripts.mutation import javascript as mutation_javascript
 from scripts.mutation import python as mutation_python
+from scripts.mutation import rust as mutation_rust
 from scripts.mutation import score as mutation_score_mod
 
 
@@ -236,6 +237,12 @@ def _sample_records() -> dict:
             {"location": {"start": {"line": 1, "column": 2}}, "mutatorName": "m",
              "status": "Survived"},
             "orig", ["t"]),
+        # 러스트는 리포트에 원본 텍스트가 없어, 줄 목록을 함께 넘겨야 원본 자리가 찬다.
+        "rust": mutation_rust._rust_record(
+            "a.rs",
+            {"span": {"start": {"line": 1, "column": 1}, "end": {"line": 1, "column": 4}},
+             "genre": "BinaryOperator", "replacement": "-"},
+            "MissedMutant", ["a+b"]),
     }
 
 
@@ -570,6 +577,10 @@ def _tools_with_nothing_installed(monkeypatch, tmp_path) -> dict:
     monkeypatch.setattr(code_gate.shutil, "which", lambda name: None)
     monkeypatch.setattr(code_gate, "_probe_python_modules",
                         lambda root, exe, modules, timeout: {name: False for name in modules})
+    # PATH 밖 자리(`~/.cargo/bin`)도 함께 막는다. 이것을 빼면 이 기계에 실제로 깔린
+    # 도구가 "아무것도 안 깔린 기계" 를 흉내 내는 도중에 튀어나와, 위 docstring 의
+    # 약속이 깨진다.
+    monkeypatch.setattr(code_gate, "_cargo_bin_path", lambda name: None)
     return code_gate.probe_tools(tmp_path, "python3")
 
 
@@ -667,7 +678,11 @@ def test_budget_order_counts_only_the_adapters_that_run(monkeypatch):
     monkeypatch.setattr(mutation, "_mutation_preconditions", lambda ctx, changed: None)
     ctx = types.SimpleNamespace(
         config=types.SimpleNamespace(mutation_enabled=True, mutation_timeout_seconds=600,
-                                     mutation_score_threshold=80.0),
+                                     mutation_score_threshold=80.0,
+                                     # 마지막 어댑터가 기본 꺼짐일 수도 있다 (자바·러스트).
+                                     # 켜 두지 않으면 이 검사가 "돌 어댑터가 없다" 로 바뀌어,
+                                     # 예산 순서를 확인하지 못한 채 통과한다.
+                                     mutation_languages_on=frozenset({last.language})),
         notes=[], mutation_deadline=None)
     monkeypatch.setattr(mutation.Adapter, "changed_files",
                         lambda self, ctx: ["파일"] if self is last else [])

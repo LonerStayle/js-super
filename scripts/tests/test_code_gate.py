@@ -43,10 +43,14 @@ from scripts.code_gate import (
     _forbidden_arg,
     _js_outcome,
     _match_glob,
+    _parse_pytest_counts,
     _mutation_detail_line,
     _run,
     build_parser,
     check_complexity,
+    check_coverage,
+    check_crap,
+    check_duplication,
     check_layers,
     check_mutation,
     check_tests,
@@ -54,6 +58,7 @@ from scripts.code_gate import (
     compute_crap,
     crap_score,
     detect_languages,
+    detect_pytest_paths,
     load_config,
     parse_diff,
     parse_lizard_csv,
@@ -1511,11 +1516,47 @@ def test_repo_config_file_declares_the_mutation_block():
     """기준값을 낮추는 회귀를 잡는다 (R6). 0단계에서는 켜 두고 숫자만 낸다 (D7).
 
     언어 키는 나란히 두고 기준값 두 개는 공유한다 — 언어를 더해도 기준이 갈라지지 않는다.
+    언어 키가 늘어나는 것은 R6 위반이 아니다 (기준값을 낮추는 것이 아니다). 그래도
+    전체를 통째로 못 박아 둔다 — 기준값 셋만 따로 보면, 누군가 언어 키에 엉뚱한 도구
+    이름을 적어 그 언어가 통째로 건너뛰어지는 회귀를 여기서 못 잡는다.
+    기본 꺼짐(`default_enabled=False`)인 어댑터는 여기 적지 않는다 — 설정에 적는 것이
+    곧 켜는 것이라, 적는 순간 "바닥 비용이 커서 기본은 꺼 둔다" 는 선언이 이 저장소에
+    대해서만 조용히 뒤집힌다. 자바가 그 선례다 (기본 꺼짐이고 여기에 없다).
+    켜는 결정은 사람이 한다 — 이 파일의 첫 줄이 그렇게 적혀 있다.
     """
     data = json.loads((REPO_ROOT / ".code-gate.json").read_text(encoding="utf-8"))
     assert data["mutation"] == {"enabled": True, "score_threshold": 80,
                                 "timeout_seconds": 600, "javascript": "stryker",
                                 "python": "mutmut"}
+
+
+def test_adapter_tools_are_found_in_cargo_bin_when_the_path_misses_them(tmp_path, monkeypatch):
+    """`cargo install` 이 쓰는 `~/.cargo/bin` 도 마지막으로 본다.
+
+    그 자리는 rustup 으로 깐 기계에서만 PATH 에 들어간다. 실측: 이 기계에
+    cargo-mutants 27.1.0 이 `~/.cargo/bin` 에 있는데 `shutil.which` 는 None 이었고,
+    게이트는 안내대로 설치를 마친 사용자에게 계속 "설치돼 있지 않습니다" 를 냈다.
+    조용한 통과는 아니지만 잴 수 있는 회차를 못 재고 넘어간다는 점에서 실효는 같다.
+    """
+    home = tmp_path / "집"
+    (home / ".cargo" / "bin").mkdir(parents=True)
+    (home / ".cargo" / "bin" / "cargo-mutants").write_text("", encoding="utf-8")
+    monkeypatch.setattr(code_gate.Path, "home", classmethod(lambda cls: home))
+
+    assert code_gate._cargo_bin_path("cargo-mutants") == str(
+        home / ".cargo" / "bin" / "cargo-mutants")
+    assert code_gate._cargo_bin_path("없는도구") is None
+
+    monkeypatch.setattr(code_gate.shutil, "which", lambda name: None)
+    tools = {}
+    code_gate._probe_adapter_tools(tools)
+    assert tools["cargo-mutants"]["available"] is True
+    assert tools["cargo-mutants"]["path"] == str(home / ".cargo" / "bin" / "cargo-mutants")
+    # PATH 조회가 이기는 것은 그대로다 — 홈 자리는 마지막 수단이다.
+    monkeypatch.setattr(code_gate.shutil, "which", lambda name: f"/usr/bin/{name}")
+    other = {}
+    code_gate._probe_adapter_tools(other)
+    assert other["cargo-mutants"]["path"] == "/usr/bin/cargo-mutants"
 
 
 # --- 중재 보고서에서 확정된 지적의 회귀 방지 ------------------------------
@@ -3128,3 +3169,898 @@ def test_emit_falls_back_to_json_when_rendering_breaks(capsys, monkeypatch):
     out = capsys.readouterr().out
     assert "렌더링에 실패해" in out
     assert '"code": "C3"' in out
+
+
+# ---------------------------------------------------------------------------
+# 17 — 게이트 자신의 커버리지 구멍 (CRAP 높은 순)
+#
+# 이 절의 대상은 전부 "테스트 파일에 이름조차 없던" 함수들이다. 서브프로세스로만
+# 돌아 커버리지가 못 보던 것(main / run_gate)과 구분해서, 실제로 아무 확인문도
+# 없던 것만 여기서 메운다.
+# ---------------------------------------------------------------------------
+
+def _crap_ctx(tmp_path, rows, coverage_map=None):
+    ctx = _ctx(tmp_path, files=tuple({r["file"] for r in rows}) or ("a.py",))
+    ctx.complexity_rows = list(rows)
+    ctx.coverage_map = coverage_map or {}
+    return ctx
+
+
+# --- C4 판정 (check_crap) -------------------------------------------------
+
+def test_crap_without_complexity_data_is_skipped_not_ok(tmp_path):
+    """복잡도 행이 없으면 '통과' 가 아니라 '건너뜀' 이어야 한다 (R4).
+
+    lizard 가 없거나 전부 폐기된 회차가 정확히 이 상태다. 여기서 ok 를 내면
+    "복잡한 함수가 하나도 없다" 로 읽혀, 아무것도 재지 않은 회차가 가장 깨끗한
+    리포트를 낸다.
+    """
+    outcome = check_crap(_crap_ctx(tmp_path, []))
+    assert outcome["status"] == "skipped"
+    assert outcome["reason"] == "no complexity rows"
+
+
+def test_crap_with_no_overlapping_function_is_skipped_not_ok(tmp_path):
+    """변경분과 겹치는 함수가 없을 때도 통과가 아니다 (R3+R4).
+
+    복잡도는 잰 게 있는데 그 중 변경분에 걸린 것이 없다는 사실 자체를 남겨야
+    한다. ok 로 내면 '변경된 함수 0개 모두 기준 이하' 라는 참이지만 무의미한
+    문장이 통과로 보인다.
+    """
+    ctx = _crap_ctx(tmp_path, [_row(file="a.py", start=10, end=20)])
+    ctx.change = _changeset(("a.py",), {"a.py": frozenset({500})})
+    outcome = check_crap(ctx)
+    assert outcome["status"] == "skipped"
+    assert outcome["reason"] == "no changed functions"
+
+
+def test_crap_over_threshold_is_sorted_worst_first(tmp_path):
+    """초과 목록은 CRAP 내림차순이어야 한다 — --limit 으로 자를 때 가장 나쁜 것이 남는다.
+
+    정렬이 뒤집히면 잘린 목록에 제일 안전한 함수만 남아, 자른 리포트가 실제와
+    정반대의 인상을 준다.
+    """
+    rows = [_row(file="a.py", function="low", complexity=7, start=1, end=5),
+            _row(file="a.py", function="high", complexity=20, start=10, end=15)]
+    outcome = check_crap(_crap_ctx(tmp_path, rows))
+    assert outcome["status"] == "findings"
+    assert [f["function"] for f in outcome["findings"]] == ["high", "low"]
+    assert outcome["findings"][0]["crap"] > outcome["findings"][1]["crap"]
+
+
+def test_crap_counts_functions_without_coverage_data_in_the_summary(tmp_path):
+    """커버리지 데이터가 아예 없던 함수 수를 요약 줄에 적어야 한다 (R4).
+
+    이 숫자가 빠지면 '커버리지 0%' 와 '커버리지를 못 구함' 이 한 덩어리가 된다.
+    앞은 테스트가 없다는 뜻이고 뒤는 아무것도 모른다는 뜻이라 대응이 다르다.
+    """
+    outcome = check_crap(_crap_ctx(tmp_path, [_row(complexity=20)]))
+    assert "커버리지 데이터 없는 함수 1개 포함" in outcome["human_reason"]
+
+
+def test_crap_unresolved_functions_are_findings_even_without_any_over(tmp_path):
+    """CRAP 을 계산 못 한 함수만 있어도 통과가 아니다.
+
+    `range-empty` (잴 줄이 하나도 없음) 가 그 경우다. 이것을 ok 로 흘리면
+    커버리지 짝짓기에 실패한 함수가 전부 조용히 사라진다.
+    """
+    rows = [_row(file="a.py", complexity=3, start=10, end=11)]
+    cov = {"a.py": _cov(executed=(), missing=())}
+    outcome = check_crap(_crap_ctx(tmp_path, rows, cov))
+    assert outcome["status"] == "findings"
+    assert outcome["findings"][0]["crap"] is None
+    assert "계산 못 한 함수 1개" in outcome["human_reason"]
+
+
+def test_crap_all_within_threshold_is_ok_with_the_count(tmp_path):
+    """전부 기준 이하면 ok 이고, 몇 개를 봤는지 숫자가 남아야 한다.
+
+    숫자가 없으면 '0개를 검사해서 0개 초과' 인 회차와 구별되지 않는다.
+    """
+    rows = [_row(file="a.py", complexity=2, start=10, end=20)]
+    cov = {"a.py": _cov(functions=((10, 1.0),))}
+    outcome = check_crap(_crap_ctx(tmp_path, rows, cov))
+    assert outcome["status"] == "ok"
+    assert "변경된 함수 1개 모두 기준" in outcome["human_reason"]
+
+
+# --- C1 pytest 판정 (_pytest_outcome / _parse_pytest_counts) --------------
+
+def test_pytest_counts_read_the_last_summary_line():
+    """요약 줄은 마지막 것이 진짜다 — 앞쪽 출력에도 '3 passed' 같은 문자열이 섞인다."""
+    text = "some log mentioning 99 passed\n=== 4 passed, 2 failed ==="
+    assert _parse_pytest_counts(text) == {"passed": 4, "failed": 2}
+
+
+def test_pytest_counts_normalise_errors_to_a_singular_key():
+    """`errors` 와 `error` 가 같은 칸에 들어가야 한다.
+
+    `_pytest_outcome` 은 `counts.get("error")` 로만 읽는다. 철자를 정규화하지
+    않으면 에러만 난 회차가 실패 0 건으로 집계돼 ok 로 보고된다.
+    """
+    assert _parse_pytest_counts("=== 2 errors in 1s ===") == {"error": 2}
+    assert _parse_pytest_counts("=== 1 error in 1s ===") == {"error": 1}
+
+
+def test_pytest_counts_are_empty_when_no_summary_line_exists():
+    assert _parse_pytest_counts("collecting ...\nboom\n") == {}
+
+
+def test_pytest_outcome_treats_errors_as_failures():
+    """수집 에러는 실패로 세어야 한다. 통과로 보고되면 깨진 스위트가 초록으로 보인다."""
+    proc = _FakeProc(stdout="ERROR tests/test_a.py\n=== 3 passed, 2 errors ===", returncode=1)
+    outcome = code_gate._pytest_outcome(proc)
+    assert outcome["status"] == "findings"
+    assert "3개 통과, 2개 실패" == outcome["human"]
+    assert outcome["findings"][0]["detail"].startswith("ERROR")
+
+
+def test_pytest_outcome_caps_the_failure_detail_at_twenty_lines():
+    """실패 상세는 20줄까지만 싣는다. 전량을 실으면 리포트가 로그로 뒤덮인다."""
+    body = "\n".join(f"FAILED tests/test_a.py::t{i}" for i in range(50))
+    proc = _FakeProc(stdout=f"{body}\n=== 0 passed, 50 failed ===", returncode=1)
+    assert len(code_gate._pytest_outcome(proc)["findings"]) == 20
+
+
+def test_pytest_outcome_collected_nothing_is_skipped_not_ok():
+    """종료 코드 5(수집 0건)는 건너뜀이다 (R4).
+
+    ok 로 내면 테스트 경로 오타 하나가 '통과' 로 보고된다 — 게이트가 있으나
+    마나 한 상태를 가장 깨끗한 결과로 표시하게 된다.
+    """
+    outcome = code_gate._pytest_outcome(_FakeProc(stdout="no tests ran", returncode=5))
+    assert outcome["status"] == "skipped"
+    assert outcome["reason"] == "pytest collected nothing"
+
+
+def test_pytest_outcome_abnormal_exit_without_counts_is_a_finding():
+    """요약 줄이 없는데 비-0 종료면 발견이다.
+
+    import 시점 크래시가 정확히 이 모양이다 (요약 줄 자체가 안 나온다).
+    통과로 흘리면 스위트가 한 줄도 안 돌았는데 초록이 된다.
+    """
+    proc = _FakeProc(stderr="ImportError: no module named x", returncode=2)
+    outcome = code_gate._pytest_outcome(proc)
+    assert outcome["status"] == "findings"
+    assert "비정상 종료" in outcome["human"]
+    assert "ImportError" in outcome["findings"][0]["detail"]
+
+
+def test_pytest_outcome_all_passing_is_ok():
+    outcome = code_gate._pytest_outcome(_FakeProc(stdout="=== 7 passed in 1s ===", returncode=0))
+    assert outcome["status"] == "ok"
+    assert outcome["human"] == "7개 통과, 0개 실패"
+
+
+# --- 기준 결정 (resolve_base) ---------------------------------------------
+
+def _git_probe(known):
+    """`git rev-parse` / `symbolic-ref` 성공 여부만 흉내내는 _run 대역."""
+    def run(cmd, *, cwd, timeout):
+        target = cmd[-1]
+        if target in known:
+            return _FakeProc(stdout=known[target] + "\n", returncode=0)
+        return _FakeProc(returncode=1)
+    return run
+
+
+def test_resolve_base_prefers_the_user_value_without_touching_git(monkeypatch):
+    """--base 를 준 회차는 git 을 아예 보지 않는다.
+
+    사용자가 지정한 기준을 자동 판정이 덮으면 R3(변경분만 검사)의 범위가
+    사용자 의도와 달라진 채로 조용히 돈다.
+    """
+    monkeypatch.setattr(code_gate, "_run",
+                        lambda *a, **k: pytest.fail("--base 가 있으면 git 을 부르면 안 된다"))
+    ref, why = code_gate.resolve_base(Path("."), "release/1.0")
+    assert ref == "release/1.0"
+    assert "지정한" in why
+
+
+@pytest.mark.parametrize("known, expected", [
+    ({"main": "abc", "refs/remotes/origin/HEAD": "origin/dev", "HEAD~1": "old"}, "main"),
+    ({"refs/remotes/origin/HEAD": "origin/dev", "HEAD~1": "old"}, "origin/dev"),
+    ({"HEAD~1": "old"}, "HEAD~1"),
+    ({}, code_gate.EMPTY_TREE),
+])
+def test_resolve_base_falls_back_in_a_fixed_order(monkeypatch, known, expected):
+    """main → 원격 기본 브랜치 → HEAD~1 → 빈 트리 순서가 고정이어야 한다.
+
+    순서가 바뀌면 main 이 있는 저장소가 HEAD~1 기준으로 돌아 검사 범위가 직전
+    커밋 한 개로 쪼그라든다. 아무 경고 없이 '변경 파일 2개' 라는 정상적인
+    리포트가 나오기 때문에 눈으로는 못 잡는다.
+    """
+    monkeypatch.setattr(code_gate, "_run", _git_probe(known))
+    ref, why = code_gate.resolve_base(Path("."), None)
+    assert ref == expected
+    assert why  # 사유는 항상 한국어로 남는다
+
+
+def test_resolve_base_ignores_an_empty_but_successful_git_answer(monkeypatch):
+    """종료 코드 0 인데 출력이 빈 경우는 '없음' 으로 봐야 한다.
+
+    `rev-parse --verify --quiet` 는 없는 ref 에도 0 을 돌려주는 조합이 있다.
+    코드만 보고 채택하면 존재하지 않는 ref 를 기준으로 잡아 diff 가 통째로 빈다.
+    """
+    monkeypatch.setattr(code_gate, "_run", lambda *a, **k: _FakeProc(stdout="  \n", returncode=0))
+    ref, _ = code_gate.resolve_base(Path("."), None)
+    assert ref == code_gate.EMPTY_TREE
+
+
+# --- 도구 탐지 (_probe_python_modules) ------------------------------------
+
+def test_probe_python_modules_reads_the_subprocess_answer(monkeypatch):
+    monkeypatch.setattr(code_gate, "_run",
+                        lambda *a, **k: _FakeProc(stdout='{"pytest": true, "lizard": false}'))
+    found = code_gate._probe_python_modules(Path("."), sys.executable, ("pytest", "lizard"), 5)
+    assert found == {"pytest": True, "lizard": False}
+
+
+def test_probe_python_modules_ignores_names_it_did_not_ask_for(monkeypatch):
+    """묻지 않은 이름이 답에 섞여도 표에 넣지 않는다.
+
+    반환 사전의 키 집합이 곧 도구 표의 칸이라, 낯선 키가 들어오면 뒤에서
+    `found[name]` 이 아니라 표 자체가 부풀어 KeyError 없이 조용히 어긋난다.
+    """
+    monkeypatch.setattr(code_gate, "_run",
+                        lambda *a, **k: _FakeProc(stdout='{"pytest": true, "낯선것": true}'))
+    found = code_gate._probe_python_modules(Path("."), sys.executable, ("pytest",), 5)
+    assert found == {"pytest": True}
+
+
+@pytest.mark.parametrize("proc, boom", [
+    (_FakeProc(stdout='{"pytest": true}', returncode=1), None),
+    (_FakeProc(stdout="not json"), None),
+    (None, OSError("no python")),
+    (None, subprocess.TimeoutExpired(cmd="python", timeout=1)),
+])
+def test_probe_python_modules_reports_absence_when_the_probe_fails(monkeypatch, proc, boom):
+    """탐지가 실패하면 전부 '없음' 이어야 한다 — 있음으로 추정하면 안 된다.
+
+    '있음' 쪽으로 틀리면 없는 도구를 실행하려다 항목이 오류로 죽고, 그 오류가
+    도구 부재라는 진짜 사유를 가린다. 없음으로 틀리면 건너뜀 + 설치 안내가
+    나가므로 사용자가 바로 고칠 수 있다.
+    """
+    def run(*a, **k):
+        if boom is not None:
+            raise boom
+        return proc
+    monkeypatch.setattr(code_gate, "_run", run)
+    found = code_gate._probe_python_modules(Path("."), sys.executable, ("pytest", "coverage"), 5)
+    assert found == {"pytest": False, "coverage": False}
+
+
+# --- 커버리지 적재 (_load_python_coverage / _function_regions / lcov / istanbul) ---
+
+def test_python_coverage_is_empty_when_the_data_file_was_never_written(tmp_path):
+    """C1 이 커버리지 아래에서 돌지 않았으면 빈 사전이다 — 오류가 아니다.
+
+    데이터 파일이 없는 것은 정상적인 회차(coverage 미설치)라서, 여기서 예외를
+    던지면 C2 가 오류로 표시돼 진짜 사유(도구 부재)를 덮는다.
+    """
+    ctx = _ctx(tmp_path, files=("a.py",))
+    assert code_gate._load_python_coverage(ctx) == {}
+    ctx.coverage_data_file = tmp_path / "없는파일.data"
+    assert code_gate._load_python_coverage(ctx) == {}
+
+
+def test_python_coverage_export_failure_raises_with_the_tool_message(tmp_path, monkeypatch):
+    """`coverage json` 이 파일을 못 만들면 조용히 빈 결과를 내면 안 된다 (R4).
+
+    빈 결과는 '커버리지 0%' 로 흘러 CRAP 이 전부 최악값이 된다. 무엇이 잘못됐는지
+    도구가 낸 문장을 그대로 물고 올라와야 원인을 찾을 수 있다.
+    """
+    ctx = _ctx(tmp_path, files=("a.py",))
+    ctx.coverage_data_file = _write(tmp_path / "cov.data", "x")
+    monkeypatch.setattr(code_gate, "_run",
+                        lambda *a, **k: _FakeProc(stderr="No data to report.", returncode=1))
+    with pytest.raises(ValueError) as excinfo:
+        code_gate._load_python_coverage(ctx)
+    assert "No data to report." in str(excinfo.value)
+
+
+def test_python_coverage_maps_absolute_paths_back_to_repo_relative(tmp_path, monkeypatch):
+    """coverage 가 내는 절대 경로를 저장소 상대로 되돌려야 한다.
+
+    변경 파일 목록은 상대 경로라, 되돌리지 않으면 키가 하나도 안 맞아 모든
+    변경 파일이 '커버리지 데이터 없음' 이 된다.
+    """
+    ctx = _ctx(tmp_path, files=("pkg/a.py",))
+    ctx.coverage_data_file = _write(tmp_path / "cov.data", "x")
+    payload = {"files": {str(tmp_path / "pkg" / "a.py"): {
+        "summary": {"percent_covered": 80.0},
+        "executed_lines": [2, 3], "missing_lines": [4],
+        "functions": {"f": {"start_line": 2, "summary": {"percent_covered": 50.0}}},
+    }, "총계": "dict 가 아닌 값은 버린다"}}
+
+    def run(cmd, *, cwd, timeout):
+        _write(ctx.tmpdir / "coverage.json", json.dumps(payload))
+        return _FakeProc()
+    monkeypatch.setattr(code_gate, "_run", run)
+
+    loaded = code_gate._load_python_coverage(ctx)
+    assert set(loaded) == {"pkg/a.py"}
+    assert loaded["pkg/a.py"].percent == 80.0
+    assert loaded["pkg/a.py"].functions == ((2, 0.5),)
+
+
+def test_function_regions_convert_percent_to_a_ratio():
+    """coverage 는 백분율(0~100)을, CRAP 은 비율(0~1)을 쓴다.
+
+    100 배 어긋난 값이 그대로 들어가면 `crap_score` 가 커버리지 100 을 받아
+    모든 함수의 CRAP 이 복잡도 그대로가 된다 — 즉 C4 가 사실상 꺼진다.
+    """
+    entry = {"functions": {"f": {"start_line": 10, "summary": {"percent_covered": 42.0}}}}
+    assert code_gate._function_regions(entry) == ((10, 0.42),)
+
+
+@pytest.mark.parametrize("fn", [
+    {"summary": {"percent_covered": 50.0}},              # 시작줄 없음
+    {"start_line": 10, "summary": {}},                   # 비율 없음
+    {"start_line": "10", "summary": {"percent_covered": 50.0}},   # 시작줄이 문자열
+    None,                                                # 항목 자체가 없음
+])
+def test_function_regions_drop_entries_it_cannot_trust(fn):
+    """모양이 다른 항목은 버린다 — 지어낸 값으로 채우면 안 된다.
+
+    시작줄이 없는 항목에 0 을 넣으면 파일 첫 줄의 함수와 짝지어져 엉뚱한
+    함수의 커버리지가 다른 함수에 붙는다.
+    """
+    assert code_gate._function_regions({"functions": {"f": fn}}) == ()
+
+
+def test_file_coverage_from_entry_keeps_missing_percent_as_none():
+    """요약이 없으면 비율은 None 이다 — 0 으로 채우면 '완전 미커버' 로 읽힌다."""
+    entry = code_gate._file_coverage_from_entry({})
+    assert entry.kind == "coverage-json"
+    assert entry.percent is None
+    assert entry.executed == frozenset() and entry.missing == frozenset()
+
+
+def test_lcov_splits_hit_lines_from_missed_lines(tmp_path):
+    """DA 의 히트 수 0 은 미실행, 1 이상은 실행이다.
+
+    이 경계가 뒤집히면 커버리지가 통째로 반전돼, 테스트 없는 코드가 가장
+    안전한 것으로 보고된다.
+    """
+    lcov = _write(tmp_path / "lcov.info",
+                  "SF:src/a.js\nDA:1,3\nDA:2,0\nDA:3,1\nend_of_record\n")
+    loaded = code_gate._load_lcov(tmp_path, lcov)
+    entry = loaded["src/a.js"]
+    assert entry.kind == "lcov"
+    assert entry.executed == frozenset({1, 3})
+    assert entry.missing == frozenset({2})
+    assert entry.percent == pytest.approx(200.0 / 3)
+
+
+def test_lcov_ignores_a_record_that_never_ends(tmp_path):
+    """`end_of_record` 가 없는 구획은 채택하지 않는다.
+
+    도구가 도중에 죽으면 마지막 구획이 잘린 채 남는다. 그 반쪽을 그대로 쓰면
+    실제보다 적은 실행 줄로 커버리지가 낮게 잡혀 없는 문제를 만들어낸다.
+    """
+    lcov = _write(tmp_path / "lcov.info",
+                  "SF:src/a.js\nDA:1,1\nend_of_record\nSF:src/b.js\nDA:1,1\n")
+    loaded = code_gate._load_lcov(tmp_path, lcov)
+    assert set(loaded) == {"src/a.js"}
+
+
+def test_lcov_skips_a_malformed_da_line_without_losing_the_record(tmp_path):
+    """숫자가 아닌 DA 줄 하나 때문에 파일 전체를 잃으면 안 된다."""
+    lcov = _write(tmp_path / "lcov.info",
+                  "SF:src/a.js\nDA:x,y\nDA:2,1\nend_of_record\n")
+    assert code_gate._load_lcov(tmp_path, lcov)["src/a.js"].executed == frozenset({2})
+
+
+def test_istanbul_percent_counts_statements_that_ran(tmp_path):
+    """istanbul 의 `s` 는 구문별 실행 횟수다 — 0 이 아닌 것만 실행으로 센다."""
+    report = _write(tmp_path / "cov.json", json.dumps({
+        "src/a.js": {"s": {"0": 1, "1": 0, "2": 5, "3": 0}},
+    }))
+    entry = code_gate._load_istanbul(tmp_path, report)["src/a.js"]
+    assert entry.kind == "istanbul"
+    assert entry.percent == 50.0
+    assert entry.istanbul is not None      # 경로 C(범위 겹침)가 원본 항목을 다시 본다
+
+
+def test_istanbul_empty_statement_map_has_no_percent(tmp_path):
+    """구문이 하나도 없으면 비율은 None 이다.
+
+    0 을 주면 인터페이스 정의처럼 잴 것이 없는 파일이 '완전 미커버' 로 보고돼,
+    고칠 수 없는 발견이 매 회차 쌓인다.
+    """
+    report = _write(tmp_path / "cov.json", json.dumps({"src/a.d.ts": {"s": {}}}))
+    assert code_gate._load_istanbul(tmp_path, report)["src/a.d.ts"].percent is None
+
+
+def test_istanbul_non_dict_entries_are_dropped(tmp_path):
+    """항목이 사전이 아니면 버린다 — 리포트 형식이 바뀌어도 회차가 죽지 않는다."""
+    report = _write(tmp_path / "cov.json", json.dumps({"a.js": "깨진 값", "b.js": {"s": {"0": 1}}}))
+    assert set(code_gate._load_istanbul(tmp_path, report)) == {"b.js"}
+
+
+def test_js_coverage_merges_both_formats_and_skips_absent_files(tmp_path):
+    """lcov 와 istanbul 을 모두 모으고, 없는 파일은 조용히 건너뛴다.
+
+    러너가 두 형식을 동시에 낼 수 있어 한쪽만 읽으면 절반이 사라진다. 반대로
+    경로만 등록되고 파일이 안 생긴 경우(러너 실패)에 예외를 던지면 C2 가 통째로
+    오류가 된다.
+    """
+    ctx = _ctx(tmp_path, files=("src/a.js",))
+    ctx.js_lcov_files = [_write(tmp_path / "lcov.info", "SF:src/a.js\nDA:1,1\nend_of_record\n"),
+                         tmp_path / "없는파일.info"]
+    ctx.js_istanbul_files = [_write(tmp_path / "cov.json", json.dumps({"src/b.js": {"s": {"0": 1}}})),
+                             tmp_path / "없는파일.json"]
+    collected, problems = {}, []
+    code_gate._collect_js_coverage(ctx, collected, problems)
+    assert set(collected) == {"src/a.js", "src/b.js"}
+    assert problems == []
+
+
+def test_js_coverage_without_any_runner_output_records_the_reason(tmp_path):
+    """낼 파일이 하나도 없으면 그 사실을 사유로 남긴다 (R4)."""
+    collected, problems = {}, []
+    code_gate._collect_js_coverage(_ctx(tmp_path, files=("src/a.js",)), collected, problems)
+    assert problems and "러너가 없습니다" in problems[0][0]
+
+
+# --- C2 요약 (check_coverage) ---------------------------------------------
+
+def test_coverage_check_says_how_many_changed_files_had_no_data(tmp_path):
+    """데이터 없는 변경 파일 수를 요약에 적어야 한다 (R4).
+
+    적지 않으면 잰 파일만 나열된 줄이 '전부 쟀다' 로 읽힌다 — 새로 만든 파일이
+    커버리지 리포트에 안 들어간 상황이 정확히 이 모양이다.
+    """
+    ctx = _ctx(tmp_path, files=("a.py", "b.py"))
+    ctx.coverage_data_file = _write(tmp_path / "cov.data", "x")
+    ctx.tools["coverage"] = {"available": True, "path": "", "install_hint": ""}
+    ctx.coverage_map = {}
+
+    def fake_load(_ctx):
+        return {"a.py": _cov(percent=75.0)}
+    monkey = pytest.MonkeyPatch()
+    monkey.setattr(code_gate, "_load_python_coverage", fake_load)
+    try:
+        outcome = check_coverage(ctx)
+    finally:
+        monkey.undo()
+    assert outcome["status"] == "ok"
+    assert "a.py 75%" in outcome["human_reason"]
+    assert "데이터 없는 변경 파일 1개" in outcome["human_reason"]
+
+
+def test_coverage_check_without_any_data_is_skipped_with_the_first_reason(tmp_path):
+    """한 건도 못 모으면 건너뜀이고, 사유는 먼저 걸린 문제를 쓴다.
+
+    ok 로 내면 커버리지를 한 줄도 못 잰 회차가 통과로 보이고, 그 위에서 도는
+    C4 의 CRAP 이 전부 '데이터 없음' 이 된 이유가 리포트에서 사라진다.
+    """
+    outcome = check_coverage(_ctx(tmp_path, files=("a.py",)))
+    assert outcome["status"] == "skipped"
+    assert "coverage 가 설치돼 있지 않습니다." in outcome["human_reason"]
+    assert outcome["install_hint"]
+
+
+# --- C5 중복 (check_duplication / _duplicate_finding) ---------------------
+
+def test_duplication_without_the_tool_is_skipped_with_the_install_hint(tmp_path):
+    outcome = check_duplication(_ctx(tmp_path, files=("a.py",)))
+    assert outcome["status"] == "skipped"
+    assert outcome["install_hint"] == "npm i -D jscpd"
+
+
+def test_duplication_without_changed_files_is_skipped_not_ok(tmp_path):
+    """검사할 변경 파일이 0개면 건너뜀이다 — ok 로 흘리면 '중복 없음' 이라는 결론이 된다 (R4).
+
+    형제 항목들은 이 분기를 `..._is_skipped_not_ok` 로 정확히 못 박아 두는데 여기만
+    비어 있었다. 실측으로 확인했다: 이 분기를 ok 로 바꿔도 스위트 전체가 초록이었다.
+    """
+    outcome = check_duplication(_ctx(tmp_path, files=()))
+    assert outcome["status"] == "skipped"
+    assert outcome["reason"] == "no changed files"
+
+
+def test_duplication_missing_report_is_an_error_not_a_pass(tmp_path, monkeypatch):
+    """jscpd 를 불렀는데 리포트가 없으면 오류다 (R4).
+
+    ok 로 흘리면 도구가 죽은 회차가 '중복 없음' 이라는 가장 깨끗한 결과를 낸다.
+    """
+    ctx = _ctx(tmp_path, files=("a.py",))
+    ctx.tools["jscpd"] = {"available": True, "path": "jscpd", "install_hint": ""}
+    monkeypatch.setattr(code_gate, "_run", lambda *a, **k: _FakeProc())
+    outcome = check_duplication(ctx)
+    assert outcome["status"] == "error"
+    assert outcome["reason"] == "jscpd report missing"
+
+
+def test_duplication_records_that_only_changed_files_were_compared(tmp_path, monkeypatch):
+    """변경 파일 안에서만 비교했다는 한계를 참고란에 남겨야 한다 (R3+R4).
+
+    이 문장이 없으면 '중복 없음' 이 저장소 전체에 대한 결론으로 읽힌다.
+    """
+    ctx = _ctx(tmp_path, files=("a.py", "b.py"))
+    ctx.tools["jscpd"] = {"available": True, "path": "jscpd", "install_hint": ""}
+    dup = {"lines": 12, "tokens": 80,
+           "firstFile": {"name": "a.py", "start": 1, "end": 12},
+           "secondFile": {"name": "b.py", "start": 30, "end": 41}}
+
+    def run(cmd, *, cwd, timeout):
+        _write(ctx.tmpdir / "jscpd" / "jscpd-report.json",
+               json.dumps({"duplicates": [dup, "사전이 아닌 값"]}))
+        return _FakeProc()
+    monkeypatch.setattr(code_gate, "_run", run)
+
+    outcome = check_duplication(ctx)
+    assert outcome["status"] == "findings"
+    assert len(outcome["findings"]) == 1
+    assert outcome["findings"][0]["first_file"] == "a.py"
+    assert outcome["findings"][0]["second_start"] == 30
+    assert any("변경된 파일 2개 안에서만" in note for note in ctx.notes)
+
+
+def test_duplicate_finding_keeps_both_sides_of_the_pair():
+    """중복은 두 자리를 다 적어야 뜻이 있다 — 한쪽만 있으면 어디와 겹치는지 모른다."""
+    finding = code_gate._duplicate_finding(
+        {"lines": 9, "tokens": 60,
+         "firstFile": {"name": "a.py", "start": 1, "end": 9},
+         "secondFile": {"name": "b.py", "start": 4, "end": 12}})
+    assert finding["first_file"] == "a.py" and finding["first_end"] == 9
+    assert finding["second_file"] == "b.py" and finding["second_start"] == 4
+    # 두 칸을 맞바꿔도 아무 테스트가 안 깨지던 자리다 (실측). 값이 서로 달라야 잡힌다.
+    assert finding["lines"] == 9 and finding["tokens"] == 60
+
+
+def test_duplicate_finding_survives_a_half_empty_entry():
+    """한쪽 파일 정보가 비어도 터지지 않고 None 으로 남는다."""
+    finding = code_gate._duplicate_finding({"lines": 9})
+    assert finding["first_file"] is None and finding["second_file"] is None
+
+
+# --- 자바스크립트 러너 탐지 (_detect_js_runner) ---------------------------
+
+def test_js_runner_prefers_vitest_over_jest(tmp_path):
+    """둘 다 선언돼 있으면 vitest 가 이긴다 — 판정이 흔들리면 회차마다 러너가 바뀐다."""
+    _write(tmp_path / "package.json",
+           json.dumps({"devDependencies": {"vitest": "1", "jest": "29"}}))
+    assert code_gate._detect_js_runner(tmp_path) == "vitest"
+
+
+@pytest.mark.parametrize("name", ["vitest.config.js", "vitest.config.ts", "vitest.config.mjs"])
+def test_js_runner_finds_vitest_by_config_file_alone(tmp_path, name):
+    """설정 파일만 있고 package.json 에 없는 배치가 흔하다 (모노레포 워크스페이스)."""
+    _write(tmp_path / name, "export default {}\n")
+    assert code_gate._detect_js_runner(tmp_path) == "vitest"
+
+
+def test_js_runner_reads_the_jest_key_inside_package_json(tmp_path):
+    """jest 는 설정을 package.json 안에 두는 관례가 있다."""
+    _write(tmp_path / "package.json", json.dumps({"jest": {"testEnvironment": "node"}}))
+    assert code_gate._detect_js_runner(tmp_path) == "jest"
+
+
+def test_js_runner_falls_back_to_node_only_when_node_exists(tmp_path, monkeypatch):
+    """아무 선언도 없으면 node 내장 러너로 내려가되, node 가 없으면 None 이다.
+
+    None 을 못 내면 C1 이 존재하지 않는 러너를 실행하려다 오류가 되고, 그
+    오류가 '러너 없음' 이라는 진짜 사유를 가린다.
+    """
+    monkeypatch.setattr(code_gate.shutil, "which", lambda name: "/usr/bin/node")
+    assert code_gate._detect_js_runner(tmp_path) == "node"
+    monkeypatch.setattr(code_gate.shutil, "which", lambda name: None)
+    assert code_gate._detect_js_runner(tmp_path) is None
+
+
+def test_js_runner_ignores_a_broken_package_json(tmp_path, monkeypatch):
+    """package.json 이 깨져도 탐지가 죽지 않는다."""
+    _write(tmp_path / "package.json", "{ 이건 JSON 이 아니다")
+    monkeypatch.setattr(code_gate.shutil, "which", lambda name: None)
+    assert code_gate._detect_js_runner(tmp_path) is None
+
+
+# --- 검사 전 참고란 (_prelude_notes) --------------------------------------
+
+def test_prelude_notes_report_what_was_taken_out_before_any_check_ran(tmp_path):
+    """기준 문제·exclude·의존성 프루닝은 검사 전에 이미 정해진 사실이라 먼저 남긴다 (R4).
+
+    세 가지 모두 '변경 파일 수' 를 줄인다. 줄어든 이유가 리포트에 없으면 파일이
+    적게 잡힌 회차가 그냥 작은 변경으로 보인다.
+    """
+    ctx = _ctx(tmp_path, files=("a.py",))
+    change = ChangeSet(base="x", base_reason="", files=("a.py",), excluded=("vendor/v.py",),
+                       lines={"a.py": None}, pruned=("node_modules/m.js", "node_modules/n.js"),
+                       base_problem="기준 x 를 해석하지 못했습니다.")
+    code_gate._prelude_notes(ctx, change)
+    assert ctx.notes[0] == "기준 x 를 해석하지 못했습니다."
+    assert any("파일 1개를 검사에서 뺐습니다" in n for n in ctx.notes)
+    assert any("파일 2개를 검사에서 뺐습니다" in n for n in ctx.notes)
+
+
+def test_prelude_notes_stay_silent_when_nothing_was_taken_out(tmp_path):
+    """뺀 것이 없으면 아무 문장도 넣지 않는다 — 늘 뜨는 문구는 읽히지 않는다."""
+    ctx = _ctx(tmp_path, files=("a.py",))
+    code_gate._prelude_notes(ctx, _changeset(("a.py",)))
+    assert ctx.notes == []
+
+
+# ---------------------------------------------------------------------------
+# 18 — 간접 실행만 되던 함수들 (이름이 테스트에 한 번도 안 나오던 것)
+#
+# 앞 절과 달리 이쪽은 커버리지가 0 이 아니었다. `run_checks` / `render_human` 을
+# 부르는 다른 테스트가 지나가며 밟았을 뿐, 이 함수가 무엇을 보장하는지 확인한
+# 문장은 없었다. 밟히기만 한 줄은 뮤테이션이 그대로 살아남는다.
+# ---------------------------------------------------------------------------
+
+def _rules(tmp_path, payload):
+    return _write(tmp_path / ".code-gate-layers.json",
+                  payload if isinstance(payload, str) else json.dumps(payload))
+
+
+def test_layer_rules_unreadable_json_is_an_error_not_a_skip(tmp_path):
+    """규칙 파일이 깨져 있으면 오류다 — 건너뜀으로 흘리면 안 된다 (R4).
+
+    건너뜀은 '규칙이 없다' 는 뜻이고 오류는 '규칙이 있는데 못 읽었다' 는 뜻이다.
+    앞으로 읽으면 규칙 파일을 잘못 편집한 회차가 정상적인 무규칙 저장소와
+    구별되지 않아, 의존 방향 검사가 꺼진 줄 모르고 계속 돈다.
+    """
+    _, _, failure = code_gate._load_layer_rules(_rules(tmp_path, "{ 이건 JSON 이 아니다"))
+    assert failure["status"] == "error"
+    assert "읽지 못했습니다" in failure["human_reason"]
+
+
+def test_layer_rules_that_are_not_an_object_are_an_error(tmp_path):
+    """최상위가 배열이면 오류다. layers/forbidden 을 꺼낼 자리가 없다."""
+    _, _, failure = code_gate._load_layer_rules(_rules(tmp_path, ["core", "ui"]))
+    assert failure["status"] == "error"
+    assert failure["reason"] == "layers rules not an object"
+
+
+@pytest.mark.parametrize("payload", [
+    {"layers": {"core": ["core/**"]}},                       # forbidden 없음
+    {"forbidden": [{"from": "core", "to": "ui"}]},           # layers 없음
+    {"layers": {"core": "core/**"}, "forbidden": [{}]},      # layers 값이 목록이 아님
+    {"layers": {"core": ["core/**"]}, "forbidden": ["문자열"]},  # 규칙이 사전이 아님
+])
+def test_layer_rules_half_written_are_skipped_not_passed(tmp_path, payload):
+    """한쪽만 적힌 규칙 파일은 건너뜀이다 — 통과로 보이면 안 된다 (R4).
+
+    layers 만 있고 forbidden 이 없으면 금지할 방향이 하나도 없어 어떤 코드를
+    넣어도 '위반 없음' 이 나온다. 그것을 ok 로 내면 검사가 꺼진 상태가 가장
+    깨끗한 결과로 표시된다.
+    """
+    layers, forbidden, failure = code_gate._load_layer_rules(_rules(tmp_path, payload))
+    assert (layers, forbidden) == (None, None)
+    assert failure["status"] == "skipped"
+    assert failure["reason"] == "layers rules empty"
+
+
+def test_layer_rules_read_a_file_with_a_byte_order_mark(tmp_path):
+    """윈도우 편집기가 붙이는 BOM 때문에 규칙이 통째로 무시되면 안 된다."""
+    path = tmp_path / ".code-gate-layers.json"
+    path.write_bytes(b"\xef\xbb\xbf" + json.dumps({
+        "layers": {"core": ["core/**"], "ui": ["ui/**"]},
+        "forbidden": [{"from": "core", "to": "ui"}],
+    }).encode("utf-8"))
+    layers, forbidden, failure = code_gate._load_layer_rules(path)
+    assert failure is None
+    assert set(layers) == {"core", "ui"} and len(forbidden) == 1
+
+
+def test_violations_ignore_imports_that_stay_inside_one_layer(tmp_path):
+    """같은 레이어 안의 import 는 위반이 아니다.
+
+    레이어 비교를 빼면 core 안의 정상 import 가 전부 위반으로 잡혀 리포트가
+    거짓 발견으로 뒤덮이고, 진짜 위반이 그 안에 묻힌다.
+    """
+    _layered_repo(tmp_path)
+    _write(tmp_path / "core" / "a.py", "VALUE = 1\n")
+    _write(tmp_path / "core" / "b.py", "from core.a import VALUE\n")
+    layers = {"core": ["core/**"], "ui": ["ui/**"]}
+    forbidden = [{"from": "core", "to": "ui", "reason": "r"}]
+    found, parse_failed = code_gate._violations_for_file(tmp_path, "core/b.py", layers, forbidden)
+    assert found == [] and parse_failed is False
+
+
+def test_violations_are_empty_for_a_file_outside_every_layer(tmp_path):
+    """레이어에 안 속한 파일은 아예 보지 않는다 — 규칙이 없으니 판정할 것도 없다."""
+    _layered_repo(tmp_path)
+    _write(tmp_path / "tools" / "x.py", "from ui.view import VALUE\n")
+    found, parse_failed = code_gate._violations_for_file(
+        tmp_path, "tools/x.py", {"core": ["core/**"], "ui": ["ui/**"]},
+        [{"from": "core", "to": "ui"}])
+    assert found == [] and parse_failed is False
+
+
+def test_violations_name_both_layers_and_the_line_of_the_offending_import(tmp_path):
+    """위반이 **실제로 잡히는** 자리를 직접 확인한다.
+
+    이 함수의 확인문이 전부 `found == []` 이면 세 가드(레이어 밖 조기 반환 / 같은 레이어
+    건너뛰기 / 규칙의 방향 비교)가 서로를 가린다 — 어느 하나를 지워도 세 시나리오 모두
+    여전히 빈 목록을 낸다. 실측으로 확인했다: 세 가드를 하나씩 지워도 스위트 전체가
+    초록이었다. 양성 하나가 그 가림을 걷어낸다.
+    """
+    _layered_repo(tmp_path)
+    _write(tmp_path / "core" / "svc.py", "from ui.view import VALUE\n")
+    layers = {"core": ["core/**"], "ui": ["ui/**"]}
+    forbidden = [{"from": "core", "to": "ui", "reason": "core 는 ui 를 몰라야 합니다"}]
+    found, parse_failed = code_gate._violations_for_file(
+        tmp_path, "core/svc.py", layers, forbidden)
+    assert parse_failed is False
+    assert len(found) == 1
+    assert found[0]["from_file"] == "core/svc.py" and found[0]["to_file"] == "ui/view.py"
+    assert found[0]["from_layer"] == "core" and found[0]["to_layer"] == "ui"
+    assert found[0]["line"] == 1
+    assert found[0]["reason"] == "core 는 ui 를 몰라야 합니다"
+
+
+def test_violations_need_both_ends_of_the_rule_to_match(tmp_path):
+    """금지 규칙은 출발과 도착을 **둘 다** 봐야 한다.
+
+    한쪽만 보면 `core→ui` 하나만 적어 둔 저장소에서 core 가 어디로 import 하든, 또는
+    누가 ui 로 import 하든 전부 위반이 된다. 실측: `to` 비교를 통째로 지워도 `from`
+    비교를 통째로 지워도 스위트 전체가 초록이었다 — 규칙이 하나뿐이면 남은 한쪽이 늘
+    맞아 결과가 같아지기 때문이다. 반쪽만 맞는 규칙을 둬야 그 가림이 걷힌다.
+    """
+    _layered_repo(tmp_path)
+    _write(tmp_path / "core" / "svc.py", "from ui.view import VALUE\n")
+    layers = {"core": ["core/**"], "ui": ["ui/**"], "db": ["db/**"]}
+    # 출발만 맞는 규칙 — 도착이 다르므로 위반이 아니다.
+    assert code_gate._violations_for_file(
+        tmp_path, "core/svc.py", layers, [{"from": "core", "to": "db"}])[0] == []
+    # 도착만 맞는 규칙 — 출발이 다르므로 위반이 아니다.
+    assert code_gate._violations_for_file(
+        tmp_path, "core/svc.py", layers, [{"from": "db", "to": "ui"}])[0] == []
+
+
+def test_a_file_outside_every_layer_is_not_even_parsed(tmp_path):
+    """레이어에 안 속한 파일은 열지도 않는다 — 규칙이 없으니 볼 이유가 없다.
+
+    조기 반환을 지우면 그 파일이 파싱 대상이 되고, 문법이 깨진 파일이 "파싱하지 못해
+    건너뜀" 참고에 실린다 — 검사 범위 밖의 파일이 사용자 시야에 잡음으로 올라온다.
+    실측: 결과 목록만 보는 확인문으로는 이 차이가 안 잡혔다 (조기 반환을 지워도 어느
+    쪽이든 빈 목록이 나온다). 파싱 여부 칸이 그 차이를 드러낸다.
+    """
+    _layered_repo(tmp_path)
+    _write(tmp_path / "tools" / "x.py", "def broken(:\n")
+    found, parse_failed = code_gate._violations_for_file(
+        tmp_path, "tools/x.py", {"core": ["core/**"], "ui": ["ui/**"]},
+        [{"from": "core", "to": "ui"}])
+    assert found == [] and parse_failed is False
+
+
+def test_violations_skip_same_layer_imports_even_when_a_rule_names_that_layer_twice(tmp_path):
+    """레이어 안쪽 import 는 `core→core` 규칙이 적혀 있어도 위반이 아니다.
+
+    앞의 "같은 레이어" 확인문은 금지 규칙이 `core→ui` 라, 같은 레이어 건너뛰기를 지워도
+    짝지을 규칙이 없어 여전히 빈 목록이 나온다 (실측: 그 가드를 지워도 통과했다).
+    규칙 쪽을 `core→core` 로 두어야 그 가드 하나만 사라져도 결과가 달라진다.
+    """
+    _layered_repo(tmp_path)
+    _write(tmp_path / "core" / "a.py", "VALUE = 1\n")
+    _write(tmp_path / "core" / "b.py", "from core.a import VALUE\n")
+    layers = {"core": ["core/**"], "ui": ["ui/**"]}
+    forbidden = [{"from": "core", "to": "core", "reason": "있을 수 없는 규칙"}]
+    found, parse_failed = code_gate._violations_for_file(
+        tmp_path, "core/b.py", layers, forbidden)
+    assert found == [] and parse_failed is False
+
+
+def test_violations_only_fire_for_the_declared_direction(tmp_path):
+    """금지는 방향을 가진다 — core→ui 를 금지해도 ui→core 는 정상이다.
+
+    방향 비교가 무너지면 의도한 의존(상위가 하위를 쓰는 것)까지 위반이 돼
+    규칙 자체를 못 쓰게 된다.
+    """
+    _layered_repo(tmp_path)
+    _write(tmp_path / "core" / "svc.py", "VALUE = 1\n")
+    _write(tmp_path / "ui" / "page.py", "from core.svc import VALUE\n")
+    layers = {"core": ["core/**"], "ui": ["ui/**"]}
+    forbidden = [{"from": "core", "to": "ui", "reason": "r"}]
+    assert code_gate._violations_for_file(tmp_path, "ui/page.py", layers, forbidden)[0] == []
+
+
+# --- 테스트 경로 탐지 (_configured_testpaths / detect_pytest_paths) --------
+
+@pytest.mark.parametrize("name, body", [
+    ("pyproject.toml", 'testpaths = ["tests"]\n'),
+    ("pytest.ini", "testpaths = tests\n"),
+    ("tox.ini", "testpaths = tests\n"),
+    ("setup.cfg", "testpaths = tests\n"),
+])
+def test_configured_testpaths_win_over_directory_scanning(tmp_path, name, body):
+    """설정 파일의 testpaths 가 있으면 그것이 우선이다.
+
+    프로젝트가 일부러 좁혀 둔 범위를 게이트가 무시하고 전체를 훑으면 C1 시간이
+    통째로 늘어난다 (R1). 반대로 설정에 없는 디렉토리를 돌려 남의 테스트까지
+    실패로 집계하는 문제도 생긴다.
+    """
+    _write(tmp_path / name, body)
+    _write(tmp_path / "tests" / "test_a.py", "def test_x():\n    assert True\n")
+    _write(tmp_path / "extra" / "test_b.py", "def test_y():\n    assert True\n")
+    assert code_gate._configured_testpaths(tmp_path) == ["tests"]
+    assert detect_pytest_paths(tmp_path) == ["tests"]
+
+
+def test_configured_testpaths_drop_entries_that_do_not_exist(tmp_path):
+    """설정에 적힌 경로가 실제로 없으면 채택하지 않는다.
+
+    없는 경로를 그대로 pytest 에 넘기면 종료 코드 4 로 죽고, 그 실패가 '테스트
+    실패' 로 보고돼 원인(설정이 낡음)이 리포트에서 사라진다.
+    """
+    _write(tmp_path / "pytest.ini", "testpaths = 없는폴더\n")
+    assert code_gate._configured_testpaths(tmp_path) == []
+
+
+def test_detect_pytest_paths_skips_a_test_directory_without_test_files(tmp_path):
+    """이름만 tests 인 빈 디렉토리는 넘기지 않는다 — pytest 가 수집 0건으로 죽는다."""
+    (tmp_path / "tests").mkdir()
+    _write(tmp_path / "tests" / "helper.py", "X = 1\n")
+    _write(tmp_path / "pkg" / "test" / "thing_test.py", "def test_z():\n    assert True\n")
+    assert detect_pytest_paths(tmp_path) == ["pkg/test"]
+
+
+def test_detect_pytest_paths_returns_sorted_paths(tmp_path):
+    """순서가 흔들리면 같은 저장소에서 회차마다 다른 명령이 나가, 시간 비교가 무의미해진다."""
+    for name in ("z_pkg", "a_pkg"):
+        _write(tmp_path / name / "tests" / "test_x.py", "def test_x():\n    assert True\n")
+    assert detect_pytest_paths(tmp_path) == ["a_pkg/tests", "z_pkg/tests"]
+
+
+# --- 머리글 렌더링 (_render_header) ---------------------------------------
+
+def _header_payload(**over):
+    payload = {"total_seconds": 2.0, "base": "main", "changed_files": ["a.py"],
+               "excluded_files": [], "pruned_files": [],
+               "checks": [{"seconds": 1.5}], "error": None, "base_problem": None}
+    payload.update(over)
+    return payload
+
+
+def test_header_splits_preparation_time_out_of_the_item_total():
+    """항목 합과 준비 구간을 따로 보여야 한다 (R1).
+
+    전체 시간만 적으면 어디서 느려졌는지 알 수 없다. 실제로 도구 탐지와 diff
+    수집이 항목 밖에서 시간을 쓴다.
+    """
+    lines = code_gate._render_header(_header_payload())
+    assert "전체 2.00초 (준비 0.50초 + 항목 1.50초)" in lines[-2]
+
+
+def test_header_never_shows_a_negative_preparation_time():
+    """항목 합이 전체보다 크게 잰 회차에서도 음수를 적지 않는다.
+
+    항목은 각자 재고 전체는 따로 재기 때문에 반올림으로 뒤집힐 수 있다.
+    '준비 -0.01초' 는 잰 값이 틀렸다는 인상만 주고 읽는 사람을 멈춰 세운다.
+    """
+    lines = code_gate._render_header(_header_payload(total_seconds=1.0, checks=[{"seconds": 9.0}]))
+    assert "준비 0.00초" in lines[-2]
+    assert "-" not in lines[-2].split("전체")[1]
+
+
+def test_header_counts_excluded_and_pruned_files_together():
+    """제외 수는 exclude 설정과 의존성 프루닝을 합한 값이다.
+
+    한쪽만 세면 '변경 파일 1개' 옆의 제외 수가 실제로 뺀 양보다 적게 보여,
+    무엇이 빠졌는지 추적할 단서가 사라진다 (R4).
+    """
+    lines = code_gate._render_header(
+        _header_payload(excluded_files=["v/a.py"], pruned_files=["n/b.js", "n/c.js"]))
+    assert "(제외 3개)" in lines[-2]
+
+
+def test_header_surfaces_the_internal_error_and_the_base_problem():
+    """게이트 자체 오류와 기준 문제는 머리글 맨 위에 있어야 한다 (R4).
+
+    두 경우 모두 아래 표가 통째로 비거나 건너뜀으로 채워진다. 사유가 표 밑에
+    묻히면 그 회차가 그냥 '검사할 게 없는 회차' 로 읽힌다.
+    """
+    lines = code_gate._render_header(
+        _header_payload(error="ValueError: 깨짐", base_problem="기준 x 를 못 찾았습니다."))
+    assert "게이트 내부 오류: ValueError: 깨짐" in lines[1]
+    assert "주의: 기준 x 를 못 찾았습니다." in lines[2]
+
+
+def test_header_says_base_is_absent_instead_of_printing_none():
+    """기준을 못 정한 회차에 'None' 을 적지 않는다 — 사용자가 읽는 줄이다."""
+    lines = code_gate._render_header(_header_payload(base=None))
+    assert "기준: (없음)" in lines[-2]
