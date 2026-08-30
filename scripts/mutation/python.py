@@ -58,6 +58,9 @@ from scripts.mutation import score as score_mod
 # 쓰기 때문이다 — JS_SUFFIXES 를 안 넓힌 것과 같은 이유다.
 MUTATION_PY_SUFFIXES = frozenset({".py"})
 
+# "대상이 없다" 안내에 실을 대상 설명 (레지스트리가 읽는다).
+MUTATION_TARGET_KO = "파이썬"
+
 # mutmut 상태 어휘 → 게이트 어휘 (D1). 변환은 반드시 이 어댑터 안에서 끝낸다.
 MUTMUT_STATUS_TO_GATE = {
     "killed": "Killed",
@@ -977,12 +980,16 @@ _MUTMUT_TESTS_FAILED = ("파이썬 테스트가 통과하지 않아 뮤테이션
 
 
 def _mutmut_preconditions(ctx: gate.GateContext) -> dict | None:
-    """파이썬 경로만의 사유. 있으면 그 결과를, 없으면 None (R4)."""
-    config = ctx.config
-    if config.mutation_python != "mutmut":
+    """파이썬 경로만의 사유. 있으면 그 결과를, 없으면 None (R4).
+
+    설정 자리와 다룰 줄 아는 도구 이름은 선언부(config_key / tool)에서 읽는다 — 같은
+    사실을 여기 또 적으면 선언과 동작이 조용히 갈린다.
+    """
+    configured = ctx.config.mutation_tool(PYTHON_ADAPTER.language)
+    if configured != PYTHON_ADAPTER.tool:
         return gate._skip(
-            f"설정의 mutation.python 값 '{config.mutation_python}' 을 다룰 줄 몰라 재지 않았습니다.",
-            f"unsupported python mutation tool: {config.mutation_python}",
+            f"설정의 {PYTHON_ADAPTER.config_key} 값 '{configured}' 을 다룰 줄 몰라 재지 않았습니다.",
+            f"unsupported python mutation tool: {configured}",
         )
     tool = gate._tool(ctx, "mutmut")
     if not tool["available"]:
@@ -1266,7 +1273,7 @@ def _run_mutation_python(ctx: gate.GateContext, py_files) -> tuple:
 # C7 — 두 언어 합치기
 # ---------------------------------------------------------------------------
 
-def _mutation_changed_python_files(ctx: gate.GateContext) -> list:
+def _mutation_changed_python(ctx: gate.GateContext) -> list:
     """C7 이 볼 파이썬 변경 파일. 변경분의 단일 출처는 그대로 ctx.change.files 다."""
     return [rel for rel in ctx.change.files if Path(rel).suffix.lower() in MUTATION_PY_SUFFIXES]
 

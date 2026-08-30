@@ -15,11 +15,14 @@
 6. 사본을 만드는 어댑터만 copy_limitations 가 차 있다 (소스에서 사본 여부를 본다).
 7. 실패 각인 — 입력이 같으면 즉시 같은 오류, 무효화는 사본 구성 변화까지 본다.
 8. tool / incremental / field_confidence 가 실제 동작과 맞는다.
+9. 레지스트리(런타임 목록)가 자동 수집과 같고, config_key / tool 선언을 실제로 쓴다.
 """
 
+import dataclasses
 import importlib
 import io
 import inspect
+import json
 import pkgutil
 import re
 import tokenize
@@ -29,6 +32,9 @@ import pytest
 
 from scripts import code_gate
 from scripts import mutation
+from scripts.mutation import csharp as mutation_csharp
+from scripts.mutation import go as mutation_go
+from scripts.mutation import java as mutation_java
 from scripts.mutation import javascript as mutation_javascript
 from scripts.mutation import python as mutation_python
 from scripts.mutation import score as mutation_score_mod
@@ -55,6 +61,11 @@ ALLOWED_GATE_SURFACE = frozenset({
     "_run", "_skip", "_tool",
     "JS_SUFFIXES", "GateContext",
     "_read_json_object", "_rel_to_repo", "detect_pytest_paths",
+    # EMPTY_TREE — 고·C# 어댑터가 "비교 기준이 있는가" 를 판단할 때 쓴다. 두 도구는
+    # 변경분 한정을 git ref 로 받는데(--diff / --since), 커밋이 하나도 없는 저장소에서
+    # ctx.change.base 에 들어오는 빈 트리 해시를 ref 로 넘기면 도구가 거절한다.
+    # 그 값을 어댑터가 문자열로 다시 적으면 뼈대와 갈린다.
+    "EMPTY_TREE",
 })
 
 # 선행 항목 코드 → 그 결과가 담기는 뼈대 상태 칸. requires 선언을 소스와 맞대는 근거다.
@@ -207,6 +218,24 @@ def _sample_records() -> dict:
             "orig", ["t"]),
         "python": mutation_python._mutmut_record(
             "a.py", "k", "Survived", (None, "x", "y"), 3, ["t"]),
+        # 자바는 리포트 XML 한 조각을 그대로 지나게 한다 — 기록을 만드는 길이 그것뿐이다.
+        "java": mutation_java._pit_records(
+            "<mutations><mutation status='SURVIVED'>"
+            "<mutatedClass>p.A</mutatedClass><mutatedMethod>f</mutatedMethod>"
+            "<lineNumber>2</lineNumber>"
+            "<mutator>org.pitest.mutationtest.engine.gregor.mutators.MathMutator</mutator>"
+            "<killingTest>[class:p.ATest]/[method:f()]</killingTest>"
+            "<description>changed math</description>"
+            "</mutation></mutations>",
+            {"p.A": "a.java"}, {"a.java": ["x", "y"]})[0],
+        "go": mutation_go._go_record(
+            "a.go", {"line": 3, "column": 5, "type": "CONDITIONALS_NEGATION",
+                     "status": "LIVED"}, ["x", "y", "z"]),
+        "csharp": mutation_csharp._cs_record(
+            "a.cs",
+            {"location": {"start": {"line": 1, "column": 2}}, "mutatorName": "m",
+             "status": "Survived"},
+            "orig", ["t"]),
     }
 
 
@@ -415,3 +444,232 @@ def test_javascript_test_list_keeps_tool_order():
     record = _mutant_record("src/a.js", {"location": {"start": {"line": 1, "column": 2}}},
                             "orig", given)
     assert record["tests"] == given
+
+
+# ---------------------------------------------------------------------------
+# 레지스트리 — 런타임 어댑터 목록과 선언부의 소비 (1d)
+# ---------------------------------------------------------------------------
+
+def test_registry_matches_discovered_adapters():
+    """런타임 레지스트리와 자동 수집이 같은 어댑터를 같은 순서로 본다.
+
+    둘이 갈리면 계약 테스트가 보는 어댑터와 게이트가 실제로 돌리는 어댑터가 달라진다 —
+    검사를 통과한 선언이 아무 데도 쓰이지 않는 상태다.
+    """
+    registry = mutation.adapters()
+    assert [adapter.language for adapter in registry] == sorted(ADAPTERS)
+    for adapter in registry:
+        assert adapter.spec is ADAPTERS[adapter.language]
+        assert adapter.module is MODULES[adapter.language]
+
+
+def test_registry_entry_points_are_reachable():
+    """레지스트리가 이름으로 찾는 진입점이 실제로 있어야 한다 (변경분 산출 + 실행)."""
+    for language, module in MODULES.items():
+        assert hasattr(module, f"_mutation_changed_{language}"), language
+        assert hasattr(module, f"_check_mutation_{language}"), language
+
+
+def test_registry_entry_points_are_looked_up_at_call_time(monkeypatch):
+    """진입점을 값으로 붙잡아 두면 실행 중 교체가 조용히 무시된다."""
+    language = sorted(ADAPTERS)[0]
+    adapter = next(a for a in mutation.adapters() if a.language == language)
+    monkeypatch.setattr(MODULES[language], f"_mutation_changed_{language}", lambda ctx: ["바꿔치기"])
+    assert adapter.changed_files(None) == ["바꿔치기"]
+
+
+def test_config_key_is_the_seat_the_loader_reads(tmp_path):
+    """선언한 설정 자리에 넣은 값이 그 어댑터의 도구 이름으로 읽혀야 한다.
+
+    이 검사가 없을 때는 config_key 를 거짓으로 적어도 22건이 전부 통과했다 (실측).
+    자리 이름은 `mutation.<언어>` 로 고정한다 — 자리와 언어가 갈리면 설정 파일을 읽는
+    쪽과 결과를 내는 쪽이 서로 다른 이름을 부른다.
+    """
+    for language, spec in ADAPTERS.items():
+        block, _, leaf = spec.config_key.partition(".")
+        assert (block, leaf) == ("mutation", language), (language, spec.config_key)
+        path = tmp_path / f"{language}.json"
+        path.write_text(json.dumps({"mutation": {leaf: "다른도구"}}), encoding="utf-8")
+        config = code_gate.load_config(path)
+        assert config.mutation_tool(language) == "다른도구", language
+        assert not [note for note in config.notes if "알 수 없는 키" in note], config.notes
+
+
+def test_declared_tool_is_the_config_default_and_the_supported_value(tmp_path):
+    """선언한 도구 이름이 설정 기본값이고, 다른 값이 오면 그 어댑터가 건너뛴다."""
+    config = code_gate.load_config(tmp_path / "없는파일.json")
+    for language, spec in ADAPTERS.items():
+        assert config.mutation_tool(language) == spec.tool, language
+        assert getattr(config, f"mutation_{language}") == spec.tool, language
+
+    path = tmp_path / "다른도구.json"
+    for adapter in mutation.adapters():
+        path.write_text(json.dumps({"mutation": {adapter.language: "다른도구"}}), encoding="utf-8")
+        # tools 를 빈 사전으로 준다 — 설정 값이 어긋나면 도구 조회 앞에서 돌아서므로,
+        # 여기까지 내려오면 그 자체가 선언과 동작이 갈렸다는 신호다.
+        ctx = types.SimpleNamespace(config=code_gate.load_config(path), tools={})
+        outcome = adapter.check(ctx, [])["outcome"]
+        assert outcome["status"] == "skipped", adapter.language
+        assert adapter.spec.config_key in outcome["human_reason"], (
+            f"{adapter.language}: 설정 값이 어긋났는데 그 사실을 말하지 않는다 — "
+            f"어댑터는 도구를 찾기 전에 config_key 자리의 값부터 본다")
+
+
+def test_a_new_adapter_opens_its_config_seat(monkeypatch, tmp_path):
+    """세 번째 언어를 등록하면 그 설정 자리가 곧바로 열린다.
+
+    뼈대가 두 언어를 박아 두었을 때는 `.code-gate.json` 의 mutation 에 새 언어를 넣으면
+    "알 수 없는 키" 로 버려졌다 (실측). 어댑터 파일 없이 레지스트리만 넓혀 확인한다.
+    """
+    spec = dataclasses.replace(ADAPTERS["python"], language="가짜언어", label="가짜",
+                               tool="가짜도구", config_key="mutation.가짜언어")
+    extra = mutation.Adapter(spec=spec, module=None)
+    monkeypatch.setattr(mutation, "_registry", mutation.adapters() + (extra,))
+
+    path = tmp_path / ".code-gate.json"
+    path.write_text(json.dumps({"mutation": {"가짜언어": "다른도구"}}), encoding="utf-8")
+    config = code_gate.load_config(path)
+    assert config.mutation_tool("가짜언어") == "다른도구"
+    assert not [note for note in config.notes if "알 수 없는 키" in note], config.notes
+
+    # 값을 안 주면 선언한 도구 이름이 기본값이다
+    empty = tmp_path / "빈설정.json"
+    empty.write_text(json.dumps({"mutation": {}}), encoding="utf-8")
+    assert code_gate.load_config(empty).mutation_tool("가짜언어") == "가짜도구"
+
+
+def test_unknown_mutation_key_is_still_reported(tmp_path):
+    """등록되지 않은 이름은 그대로 알린다 — 오타를 조용히 버리면 원인을 못 찾는다."""
+    path = tmp_path / ".code-gate.json"
+    path.write_text(json.dumps({"mutation": {"등록안된언어": "무엇"}}), encoding="utf-8")
+    config = code_gate.load_config(path)
+    assert [note for note in config.notes if "알 수 없는 키" in note]
+
+def test_report_survives_a_broken_registry(monkeypatch):
+    """어댑터 모듈 하나가 import 되지 않아도 리포트 골격은 나가야 한다 (R2).
+
+    크래시 경로의 리포트가 레지스트리를 다시 부르다 또 터지면 "무슨 일이 있어도 종료
+    코드 0" 이 깨진다. 실측으로 확인한 자리다 — 깨진 어댑터 파일을 넣고 게이트를 돌리면
+    JSON 과 사람용 표 모두 종료 코드 0 으로 오류를 싣는다.
+    """
+    def broken():
+        raise ImportError("어댑터 모듈이 깨졌다")
+
+    monkeypatch.setattr(mutation, "adapters", broken)
+    payload = code_gate._config_payload(None)
+    assert payload["mutation"]["enabled"] is code_gate.DEFAULT_MUTATION_ENABLED
+    assert not [key for key in payload["mutation"] if key in ADAPTERS]
+
+
+# ---------------------------------------------------------------------------
+# 도구 탐지와 설치 안내 — R4 (도구가 없으면 건너뛰되 반드시 보고)
+# ---------------------------------------------------------------------------
+
+def _tools_with_nothing_installed(monkeypatch, tmp_path) -> dict:
+    """아무 도구도 깔려 있지 않은 기계의 탐지 결과. 이 기계에 무엇이 깔렸는지와 무관해진다."""
+    monkeypatch.setattr(code_gate.shutil, "which", lambda name: None)
+    monkeypatch.setattr(code_gate, "_probe_python_modules",
+                        lambda root, exe, modules, timeout: {name: False for name in modules})
+    return code_gate.probe_tools(tmp_path, "python3")
+
+
+def test_every_adapter_tool_is_probed(monkeypatch, tmp_path):
+    """어댑터가 묻는 도구 이름이 탐지 표에 있어야 한다.
+
+    표에 이름이 없으면 `_tool` 이 늘 "없음" 을 돌려줘, 도구가 깔려 있는데도 그 언어가
+    영영 건너뛰어진다. 두 언어를 손으로 적어 두던 때 세 번째 언어가 정확히 그렇게 막혔다.
+    """
+    tools = _tools_with_nothing_installed(monkeypatch, tmp_path)
+    missing = sorted(spec.tool for spec in ADAPTERS.values() if spec.tool not in tools)
+    assert not missing, f"탐지 표에 없는 어댑터 도구: {missing}"
+
+
+def test_missing_tool_skip_reports_how_to_install(monkeypatch, tmp_path):
+    """도구가 없으면 건너뛰되 **설치 방법을 반드시 낸다** (R4). 조용한 통과도, 빈 안내도 안 된다."""
+    tools = _tools_with_nothing_installed(monkeypatch, tmp_path)
+    config = code_gate.load_config(tmp_path / "없는설정.json")
+    for adapter in mutation.adapters():
+        ctx = types.SimpleNamespace(config=config, tools=tools, repo_root=tmp_path, notes=[])
+        outcome = adapter.check(ctx, ["바뀐파일"])["outcome"]
+        assert outcome["status"] == "skipped", (adapter.language, outcome)
+        assert outcome.get("install_hint"), (
+            f"{adapter.language}: 도구가 없다고만 하고 설치 방법을 내지 않는다 (R4)")
+
+
+def test_no_target_sentence_names_every_adapter(monkeypatch):
+    """"대상이 없다" 안내는 등록된 어댑터를 전부 말해야 한다.
+
+    문장에 언어를 손으로 적어 두면 어댑터를 더할 때마다 뒤처져, 사용자가 자기 언어를
+    게이트가 아예 모른다고 읽는다.
+    """
+    config = types.SimpleNamespace(mutation_enabled=True)
+    ctx = types.SimpleNamespace(config=config, notes=[])
+    blocked = mutation._mutation_preconditions(ctx, [(a, []) for a in mutation.adapters()])
+    assert blocked["status"] == "skipped"
+    for adapter in mutation.adapters():
+        assert adapter.target_note in blocked["human_reason"], adapter.language
+
+
+def test_merged_head_does_not_hardcode_the_number_of_languages():
+    """언어가 셋을 넘어도 머리말이 거짓이 되지 않아야 한다.
+
+    "두 언어를 합쳐도 …" 라고 박아 두었을 때는 어댑터가 늘어난 순간 문장이 거짓이 됐다.
+    """
+    parts = [{"label": "고", "summary": None, "language": "go",
+              "outcome": {"status": "skipped"}},
+             {"label": "C#", "summary": None, "language": "csharp",
+              "outcome": {"status": "skipped"}}]
+    ctx = types.SimpleNamespace(config=types.SimpleNamespace(mutation_score_threshold=80.0))
+    head = mutation._mutation_merged_head(ctx, parts, {}, [])
+    assert "두 언어" not in head
+    assert head == "어느 언어도 재지 못했습니다 (고, C#)."
+
+
+def test_merged_install_hints_keep_every_language(monkeypatch, tmp_path):
+    """도구가 여럿 없으면 설치 방법도 여럿 나가야 한다 (R4).
+
+    하나만 남기던 때는 뒤 언어의 안내가 말없이 사라졌다.
+    """
+    parts = [{"label": "가", "outcome": {"install_hint": "첫째 설치"}},
+             {"label": "나", "outcome": {"install_hint": "둘째 설치"}},
+             {"label": "다", "outcome": {"install_hint": "첫째 설치"}},
+             {"label": "라", "outcome": {}}]
+    _findings, hint = mutation._mutation_merged_findings(parts)
+    # 여럿이면 어느 언어의 안내인지 앞에 붙인다. 그냥 이어 붙이면 안내 자체에 든 빗금
+    # (`@stryker-mutator/core`)과 구분이 안 되고, 복사해 붙여도 실행되지 않는다 (확정 13).
+    assert hint == "가: 첫째 설치 · 나: 둘째 설치"
+
+
+def test_a_single_install_hint_stays_exactly_as_the_adapter_wrote_it():
+    """하나뿐이면 언어 이름을 붙이지 않는다 — 지금까지의 출력이 그대로여야 한다."""
+    parts = [{"label": "자바스크립트",
+              "outcome": {"install_hint": "npm i -D @stryker-mutator/core"}},
+             {"label": "파이썬", "outcome": {}}]
+    _findings, hint = mutation._mutation_merged_findings(parts)
+    assert hint == "npm i -D @stryker-mutator/core"
+
+
+def test_budget_order_counts_only_the_adapters_that_run(monkeypatch):
+    """예산 순서는 **이번에 도는** 어댑터 사이에서 매긴다.
+
+    등록 순서로 매기면, 변경분이 없어 돌지도 않는 앞 어댑터 때문에 첫 주자가 예산 검사에
+    걸린다 — 어댑터를 더할 때마다 기존 언어가 조용히 뒤로 밀리는 회귀 자리다.
+    """
+    seen: list = []
+
+    def spy(ctx, adapter, files, order, budget):
+        seen.append((adapter.language, order))
+        return {"language": adapter.language, "label": adapter.label,
+                "summary": None, "outcome": {"status": "ok"}}
+
+    monkeypatch.setattr(mutation, "_mutation_part", spy)
+    last = mutation.adapters()[-1]
+    monkeypatch.setattr(mutation, "_mutation_preconditions", lambda ctx, changed: None)
+    ctx = types.SimpleNamespace(
+        config=types.SimpleNamespace(mutation_enabled=True, mutation_timeout_seconds=600,
+                                     mutation_score_threshold=80.0),
+        notes=[], mutation_deadline=None)
+    monkeypatch.setattr(mutation.Adapter, "changed_files",
+                        lambda self, ctx: ["파일"] if self is last else [])
+    mutation.check_mutation(ctx)
+    assert seen == [(last.language, 0)]

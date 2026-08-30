@@ -76,11 +76,13 @@ DEFAULT_TIMEOUT_SECONDS_TESTS = 300 # 테스트 항목만 따로 — 스위트�
 DEFAULT_MUTATION_ENABLED = True
 DEFAULT_MUTATION_SCORE_THRESHOLD = 80.0     # 살아남은 변이 비율의 기준 (리포트용)
 DEFAULT_MUTATION_TIMEOUT_SECONDS = 600      # 뮤테이션은 다른 항목보다 자릿수로 오래 걸린다
-DEFAULT_MUTATION_JAVASCRIPT = "stryker"     # 자바스크립트 뮤테이션 도구
-DEFAULT_MUTATION_PYTHON = "mutmut"          # 파이썬 뮤테이션 도구
-# 이 블록에서 우리가 읽는 키. 여기 없는 키는 무시하되 반드시 알린다 —
-# 명령줄 오타는 알려 주면서 설정 파일 오타만 조용히 버리면 사용자가 원인을 못 찾는다.
-MUTATION_CONFIG_KEYS = frozenset({"enabled", "score_threshold", "timeout_seconds", "javascript", "python"})
+# 언어별 도구 이름의 기본값은 여기 없다 — 어댑터 선언(AdapterSpec.tool)이 갖고 있고,
+# 아래 _mutation_tools 가 그것을 그대로 기본값으로 쓴다. 뼈대에 언어 이름을 박아 두면
+# 세 번째 언어를 붙일 자리가 없다.
+# 이 블록에서 우리가 읽는 공통 키. 언어별 자리(mutation.<언어>)는 레지스트리가 준다.
+# 여기 없는 키는 무시하되 반드시 알린다 — 명령줄 오타는 알려 주면서 설정 파일 오타만
+# 조용히 버리면 사용자가 원인을 못 찾는다.
+MUTATION_SHARED_CONFIG_KEYS = frozenset({"enabled", "score_threshold", "timeout_seconds"})
 
 # git 빈 트리 해시 — 커밋이 하나도 없는 저장소에서 base 로 쓴다.
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
@@ -110,9 +112,12 @@ JS_SUFFIXES = frozenset({".js", ".mjs", ".cjs", ".jsx", ".ts", ".tsx", ".mts", "
 # 디렉토리 탐색과 **변경분 집합** 양쪽에 적용된다. 변경분 쪽에 안 걸면, 아직
 # gitignore 되지 않은 의존성 디렉토리(npm install / venv 직후가 정확히 그 상태)가
 # 통째로 "이번 변경분"이 되어 검사 시간이 자릿수로 늘어난다 — R1 이 걸린 지점이다.
+# `.gradle` 이 빠져 있던 동안, 자바 회차가 남긴 Gradle 작업 캐시가 다음 회차의
+# **변경분**으로 잡혔다 (실측: 소스 하나만 고쳤는데 두 번째 회차의 변경 파일이 13개).
+# 게이트가 자기 산출물을 자기 검사 대상으로 되먹는 자리라 R3 를 스스로 깬다.
 PRUNE_DIRS = frozenset({
     "node_modules", "__pycache__", ".git", ".venv", "venv", "site-packages",
-    ".tox", ".mypy_cache", ".pytest_cache", "dist", "build", ".worktrees",
+    ".tox", ".mypy_cache", ".pytest_cache", "dist", "build", ".gradle", ".worktrees",
 })
 
 _HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@")
@@ -200,9 +205,30 @@ class GateConfig:
     mutation_enabled: bool
     mutation_score_threshold: float
     mutation_timeout_seconds: int
-    mutation_javascript: str
-    mutation_python: str
+    # (언어, 도구 이름) 짝. 언어마다 칸을 따로 두면 언어를 더할 때마다 이 클래스와
+    # 리포트·설정 읽기가 함께 늘어난다. 자리와 기본값의 출처는 어댑터 선언이다.
+    mutation_tools: tuple[tuple[str, str], ...]
     notes: tuple[str, ...]
+
+    def mutation_tool(self, language: str) -> str:
+        """그 언어에 설정된 도구 이름. 등록되지 않은 언어면 빈 문자열."""
+        for name, tool in self.mutation_tools:
+            if name == language:
+                return tool
+        return ""
+
+    def __getattr__(self, name: str) -> str:
+        """옛 이름(`mutation_<언어>`)으로 읽던 코드를 위한 다리 — 언어를 박지 않는다.
+
+        칸 하나를 이름으로 갖던 때의 호출부가 남아 있다. 이름을 언어로 풀어 레지스트리에
+        묻는다. 없는 이름은 그대로 AttributeError 다 — 오타가 빈 값으로 통과하면 안 된다.
+        """
+        prefix = "mutation_"
+        if name.startswith(prefix) and not name.startswith("__") and name != "mutation_tools":
+            tool = self.mutation_tool(name[len(prefix):])
+            if tool:
+                return tool
+        raise AttributeError(name)
 
 
 @dataclass(frozen=True)
@@ -343,9 +369,44 @@ def _positive_number(raw, default, key: str, notes: list, cast=int):
     return value
 
 
-def _note_unknown_mutation_keys(mutation: dict, notes: list) -> None:
+ADAPTERS_UNAVAILABLE_KO = (
+    "뮤테이션 어댑터를 불러오지 못해 언어별 설정을 읽지 못했습니다 ({detail}). "
+    "scripts/mutation/ 안의 파일 하나가 import 중에 터지면 이렇게 됩니다. "
+    "이 회차의 뮤테이션 항목은 언어를 하나도 찾지 못합니다."
+)
+
+
+def _registered_adapters(notes: list | None = None) -> tuple:
+    """등록된 어댑터. import 가 터지면 빈 목록 + 사유 한 줄 (R2·R4).
+
+    `scripts/mutation/` 안의 파일 하나가 import 중에 터지면 이 호출이 예외를 던진다.
+    설정 읽기가 그 예외를 그대로 흘리던 때는 게이트가 준비 단계에서 죽어 **뮤테이션과
+    무관한 항목 여섯까지 함께 오류**가 됐다 (실측: 7항목 전부 오류). 종료 코드는 0 이라
+    R2 는 지켜지지만 리포트가 통째로 쓸모없어진다.
+    조용히 삼키지는 않는다 — 언어가 하나도 없는 회차와 어댑터가 깨진 회차는 사용자가
+    할 일이 다르다.
+    """
+    try:
+        return mutation_pkg.adapters()
+    except Exception as exc:  # noqa: BLE001 — 리포트 전용 경로. 어떤 import 실패든 여기서 멈춘다
+        if notes is not None:
+            notes.append(ADAPTERS_UNAVAILABLE_KO.format(detail=f"{type(exc).__name__}: {exc}"))
+        return ()
+
+
+def _mutation_config_keys(registered) -> frozenset:
+    """읽는 키 전부 — 공통 키 + 등록된 어댑터가 신고한 자리(config_key).
+
+    두 언어를 여기 박아 두었을 때는 `.code-gate.json` 의 mutation 에 "go" 를 넣으면
+    "알 수 없는 키" 로 버려졌다 (실측). 언어 목록의 출처는 레지스트리 하나다.
+    """
+    return MUTATION_SHARED_CONFIG_KEYS | {a.config_leaf for a in registered}
+
+
+def _note_unknown_mutation_keys(mutation: dict, registered, notes: list) -> None:
     """읽지 않은 키를 알린다. 명령줄 오타는 알려 주면서 설정 파일 오타만 버리면 안 된다."""
-    unknown = sorted(str(k) for k in mutation if str(k) not in MUTATION_CONFIG_KEYS)
+    known = _mutation_config_keys(registered)
+    unknown = sorted(str(k) for k in mutation if str(k) not in known)
     if unknown:
         notes.append("설정 파일의 mutation 항목에서 알 수 없는 키를 무시했습니다: " + ", ".join(unknown))
 
@@ -359,10 +420,21 @@ def _mutation_tool_name(mutation: dict, key: str, default: str, notes: list) -> 
     return value.strip()
 
 
+def _mutation_tools(mutation: dict, registered, notes: list) -> tuple:
+    """어댑터마다 설정된 도구 이름. (언어, 도구 이름) 짝을 등록 순서대로 돌려준다.
+
+    자리 이름(config_leaf)과 기본값(spec.tool)은 어댑터 선언에서 온다 — 뼈대는 언어를
+    모른다. 선언이 거짓이면 그 자리의 설정이 읽히지 않으므로 계약 테스트가 맞대 본다.
+    """
+    return tuple((adapter.language,
+                  _mutation_tool_name(mutation, adapter.config_leaf, adapter.spec.tool, notes))
+                 for adapter in registered)
+
+
 def _mutation_config(data: dict, notes: list) -> tuple:
     """mutation 블록에서 참/거짓과 문자열 값을 꺼낸다. 숫자 두 개는 `_positive_number` 가 본다.
 
-    반환은 (enabled, javascript, python, 원본 블록). 어떤 실패든 기본값으로 되돌리고 사유를
+    반환은 (enabled, 언어별 도구 짝, 원본 블록). 어떤 실패든 기본값으로 되돌리고 사유를
     남긴다 — 설정이 안 읽혔는데 리포트가 정상처럼 보이면 무엇을 기준으로 쟀는지 알 수 없다.
     언어 키는 나란히 둔다. 값은 어댑터를 고르는 이름일 뿐이고, 기준값 두 개
     (score_threshold / timeout_seconds)는 언어와 무관하게 공유한다 (D7).
@@ -378,11 +450,11 @@ def _mutation_config(data: dict, notes: list) -> tuple:
         notes.append(f"설정 파일의 mutation.enabled 값이 참/거짓이 아니라 기본값 {DEFAULT_MUTATION_ENABLED} 을 사용했습니다.")
         enabled = DEFAULT_MUTATION_ENABLED
 
-    js_tool = _mutation_tool_name(mutation, "javascript", DEFAULT_MUTATION_JAVASCRIPT, notes)
-    py_tool = _mutation_tool_name(mutation, "python", DEFAULT_MUTATION_PYTHON, notes)
+    registered = _registered_adapters(notes)
+    tools = _mutation_tools(mutation, registered, notes)
 
-    _note_unknown_mutation_keys(mutation, notes)
-    return enabled, js_tool, py_tool, mutation
+    _note_unknown_mutation_keys(mutation, registered, notes)
+    return enabled, tools, mutation
 
 
 def load_config(path: Path) -> GateConfig:
@@ -422,7 +494,7 @@ def load_config(path: Path) -> GateConfig:
         exclude = ()
         notes.append("설정 파일의 exclude 항목이 목록이 아니라 무시했습니다.")
 
-    enabled, js_tool, py_tool, mutation = _mutation_config(data, notes)
+    enabled, mutation_tools, mutation = _mutation_config(data, notes)
 
     layers_file = data.get("layers_file", DEFAULT_LAYERS_FILE)
     if not isinstance(layers_file, str) or not layers_file.strip():
@@ -446,8 +518,7 @@ def load_config(path: Path) -> GateConfig:
         mutation_timeout_seconds=_positive_number(
             mutation.get("timeout_seconds"), DEFAULT_MUTATION_TIMEOUT_SECONDS,
             "mutation.timeout_seconds", notes),
-        mutation_javascript=js_tool,
-        mutation_python=py_tool,
+        mutation_tools=mutation_tools,
         notes=tuple(notes),
     )
 
@@ -744,7 +815,24 @@ def probe_tools(repo_root: Path, python_exe: str, timeout: int = 30) -> dict:
     for name in ("node", "git"):
         path = shutil.which(name)
         tools[name] = {"available": path is not None, "path": path, "install_hint": f"{name} 를 설치하십시오."}
+    _probe_adapter_tools(tools)
     return tools
+
+
+def _probe_adapter_tools(tools: dict) -> None:
+    """위 표에 없는 어댑터 도구를 PATH 에서 찾는다 — 이름의 출처는 레지스트리다.
+
+    표에 이름이 없으면 `_tool` 이 "없음" 을 돌려줘, 도구가 깔려 있는데도 그 언어가 영영
+    건너뛰어진다. 표에 언어를 손으로 더하는 방식은 세 번째 언어에서 이미 막혔다.
+    탐지 방법은 PATH 조회 하나뿐이다 — 파이썬 모듈이나 node_modules/.bin 처럼 다른
+    방법이 필요한 도구는 위 표에 그대로 둔다 (그래서 이 함수는 이미 있는 이름을 덮지 않는다).
+    설치 안내는 여기서 만들지 않는다. 문구는 도구마다 다르고 어댑터가 자기 것을 안다 —
+    그 어댑터의 건너뜀 문장이 자기 안내를 싣는다 (R4).
+    """
+    names = {adapter.spec.tool for adapter in _registered_adapters()}
+    for name in sorted(names - set(tools)):
+        path = shutil.which(name)
+        tools[name] = {"available": path is not None, "path": path, "install_hint": None}
 
 
 def _tool(ctx: GateContext, name: str) -> dict:
@@ -1759,6 +1847,8 @@ if __package__ in (None, ""):  # python3 scripts/code_gate.py 직접 실행
     sys.modules.setdefault("scripts.code_gate", sys.modules[__name__])
 from scripts.mutation.score import MUTANT_STATUS_KO
 from scripts.mutation import check_mutation
+# 레지스트리는 모듈 객체로 받는다 — 설정 읽기가 호출 시점에 어댑터 목록을 묻는다.
+from scripts import mutation as mutation_pkg
 
 # ---------------------------------------------------------------------------
 # 실행 루프
@@ -1869,6 +1959,25 @@ def _prelude_notes(ctx: GateContext, change: ChangeSet) -> None:
         )
 
 
+def _adapter_tool_defaults() -> dict:
+    """어댑터가 신고한 언어별 기본 도구 이름. 레지스트리가 깨져도 빈 사전을 낸다.
+
+    이 값은 크래시 경로의 리포트에도 실린다. 어댑터 모듈 하나가 import 되지 않는 상황이
+    바로 그 크래시일 수 있어, 여기서 또 터지면 "무슨 일이 있어도 종료 코드 0" 이 깨진다 (R2).
+    """
+    return {adapter.language: adapter.spec.tool for adapter in _registered_adapters()}
+
+
+def _languages_unavailable(mutation_tools) -> dict:
+    """언어 칸이 하나도 없을 때만 그 사실을 칸으로 남긴다. 아니면 빈 사전.
+
+    어댑터 import 가 터지면 설정 블록에서 언어 칸이 통째로 사라진다. 정상 회차와 구분이
+    안 되면 JSON 을 받아 쓰는 쪽이 "이 저장소는 원래 언어가 없나 보다" 로 읽는다.
+    정상 회차에는 이 칸을 넣지 않는다 — 스키마를 흔들지 않기 위해서다.
+    """
+    return {} if mutation_tools else {"languages_unavailable": True}
+
+
 def _config_payload(config: GateConfig | None) -> dict:
     """정상 경로와 오류 경로가 **같은** config 스키마를 내도록 한 곳에서 만든다.
 
@@ -1877,6 +1986,7 @@ def _config_payload(config: GateConfig | None) -> dict:
     R2 의 취지가 소비자 쪽에서 무너진다.
     """
     if config is None:
+        defaults = _adapter_tool_defaults()
         return {
             "source": None,
             "crap_threshold": float(DEFAULT_CRAP_THRESHOLD),
@@ -1890,8 +2000,9 @@ def _config_payload(config: GateConfig | None) -> dict:
                 "enabled": DEFAULT_MUTATION_ENABLED,
                 "score_threshold": DEFAULT_MUTATION_SCORE_THRESHOLD,
                 "timeout_seconds": DEFAULT_MUTATION_TIMEOUT_SECONDS,
-                "javascript": DEFAULT_MUTATION_JAVASCRIPT,
-                "python": DEFAULT_MUTATION_PYTHON,
+                # 언어 칸은 레지스트리 순서 그대로. 언어를 더해도 이 자리는 그대로다.
+                **defaults,
+                **_languages_unavailable(defaults),
             },
         }
     return {
@@ -1907,8 +2018,8 @@ def _config_payload(config: GateConfig | None) -> dict:
             "enabled": config.mutation_enabled,
             "score_threshold": config.mutation_score_threshold,
             "timeout_seconds": config.mutation_timeout_seconds,
-            "javascript": config.mutation_javascript,
-            "python": config.mutation_python,
+            **{language: tool for language, tool in config.mutation_tools},
+            **_languages_unavailable(config.mutation_tools),
         },
     }
 
@@ -1995,7 +2106,15 @@ def _mutation_detail_where(finding: dict) -> str:
 
 
 def _mutation_detail_tests(tests) -> str:
-    """관련 테스트 꼬리말. 두 개까지만 적고 나머지는 개수로 줄인다."""
+    """관련 테스트 꼬리말. 두 개까지만 적고 나머지는 개수로 줄인다.
+
+    "목록이 비었다" 와 "도구가 목록을 주지 않는다" 는 다른 말이다. 둘을 같은 문장으로
+    적으면, 덮는 테스트가 분명히 있는데 도구가 알려 주지 않을 뿐인 변이를 사용자가
+    "테스트가 없구나" 로 읽는다 (자바의 PIT 는 죽인 테스트 하나만 주고, 고의 gremlins 는
+    아예 주지 않는다). 목록을 못 받은 자리는 None 으로 들어온다.
+    """
+    if tests is None:
+        return "  (도구가 덮은 테스트를 알려 주지 않습니다)"
     if not tests:
         return "  (덮은 테스트 없음)"
     shown = ", ".join(tests[:2])
@@ -2015,7 +2134,7 @@ def _mutation_detail_line(finding: dict) -> str:
     original = _shown_or(finding.get("original"), "(원본 자리를 알 수 없음)")
     replacement = _shown_or(finding.get("replacement"), "(바뀐 것이 비어 있음)")
     return (f"  {_mutation_detail_where(finding)}  [{kind}] {status}  "
-            f"{original} → {replacement}{_mutation_detail_tests(finding.get('tests') or [])}")
+            f"{original} → {replacement}{_mutation_detail_tests(finding.get('tests'))}")
 
 
 def _detail_lines(check: dict, limit: int = 15) -> list:

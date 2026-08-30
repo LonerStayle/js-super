@@ -61,14 +61,16 @@ from scripts.code_gate import (
     resolve_python,
     run_checks,
 )
+from scripts.mutation import go as mutation_go
 from scripts.mutation import javascript as mutation_javascript
 from scripts.mutation import python as mutation_python
 from scripts.mutation import score as mutation_score_mod
 from scripts.mutation import (
     _merge_mutation_languages,
+    _mutation_share,
 )
 from scripts.mutation.javascript import (
-    _mutation_changed_files,
+    _mutation_changed_javascript as _mutation_changed_files,
     _mutation_no_report,
     _mutation_partial,
     _mutation_targets,
@@ -80,7 +82,7 @@ from scripts.mutation.javascript import (
     parse_mutation_report,
 )
 from scripts.mutation.python import (
-    _mutation_changed_python_files,
+    _mutation_changed_python as _mutation_changed_python_files,
     _mutmut_incremental_guard,
     _mutmut_link,
     _mutmut_link_name,
@@ -490,6 +492,60 @@ def test_dependency_directories_never_enter_the_change_set(tmp_path):
     assert list(kept) == ["src.py"]
     assert excluded == []                    # 사용자 exclude 와 따로 센다 (R4)
     assert len(pruned) == 3
+
+
+def test_a_broken_adapter_module_does_not_take_the_whole_report_down(tmp_path, monkeypatch):
+    """어댑터 하나가 import 에서 터지면 항목 일곱이 전부 오류가 됐다 (확정 3).
+
+    실측: `scripts/mutation/` 에 `raise` 한 줄짜리 파일을 두었더니 종료 코드는 0 인데
+    (R2 는 지켜진다) 리포트가 "게이트 내부 오류" 한 줄이 되고 복잡도·CRAP·중복처럼
+    뮤테이션과 무관한 항목까지 함께 죽었다. 설정 블록의 언어 칸도 통째로 사라져,
+    정상 회차와 구분이 안 됐다.
+    """
+    def boom():
+        raise RuntimeError("어댑터가 import 중에 터진다")
+
+    monkeypatch.setattr(code_gate.mutation_pkg, "adapters", boom)
+
+    config = load_config(tmp_path / "no-such-config.json")
+    assert config.mutation_tools == ()
+    assert any("뮤테이션 어댑터를 불러오지 못해" in note for note in config.notes)
+
+    # 도구 탐지와 기본값 조회도 같은 문을 지난다 — 여기서 터지면 R2 가 깨진다.
+    tools = {"node": {"available": True, "path": "node", "install_hint": None}}
+    code_gate._probe_adapter_tools(tools)
+    assert set(tools) == {"node"}
+    assert code_gate._adapter_tool_defaults() == {}
+
+    # 언어 칸이 사라진 이유를 스키마가 말한다. 정상 회차에는 이 칸이 없다.
+    assert _config_payload(config)["mutation"]["languages_unavailable"] is True
+    assert _config_payload(None)["mutation"]["languages_unavailable"] is True
+
+
+def test_a_healthy_registry_does_not_add_the_unavailable_flag(tmp_path):
+    """정상 회차의 설정 스키마는 그대로다 — 칸을 늘리면 소비자가 흔들린다."""
+    payload = _config_payload(load_config(tmp_path / "no-such-config.json"))
+    assert "languages_unavailable" not in payload["mutation"]
+    assert payload["mutation"]["javascript"] == "stryker"
+    assert "languages_unavailable" not in _config_payload(None)["mutation"]
+
+
+def test_gradle_work_cache_is_pruned(tmp_path):
+    """자바 회차가 남긴 `.gradle` 이 다음 회차의 변경분으로 잡혔다 (확정 4).
+
+    실측: `.gitignore` 가 없는 Gradle 저장소에서 소스 하나만 고쳤는데 두 번째 회차의
+    변경 파일이 13개가 됐다. 게이트가 자기 산출물을 자기 검사 대상으로 되먹는 자리라
+    R3("변경분만 검사")를 스스로 깬다. `build` 는 이미 빠져 있었고 `.gradle` 만 빠졌다.
+    """
+    _write(tmp_path / "src/main/java/demo/A.java", "package demo;\nclass A {}\n")
+    _write(tmp_path / ".gradle" / "9.7.1" / "executionHistory" / "executionHistory.bin", "x")
+    _write(tmp_path / "build" / "classes" / "A.class", "x")
+    lines = {"src/main/java/demo/A.java": None,
+             ".gradle/9.7.1/executionHistory/executionHistory.bin": None,
+             "build/classes/A.class": None}
+    kept, _excluded, pruned = _apply_exclude(tmp_path, lines, ())
+    assert list(kept) == ["src/main/java/demo/A.java"]
+    assert len(pruned) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -2892,8 +2948,13 @@ def test_the_budget_belongs_to_the_check_not_to_each_language(tmp_path, monkeypa
     _write(project / "src" / "a.js", "export const x = 1;\n")
 
     def burn(inner_ctx, js_files):
-        """자바스크립트가 예산을 다 쓴 회차."""
-        inner_ctx.mutation_deadline = time.perf_counter() - 1
+        """자바스크립트가 예산을 다 쓴 회차 — 실제로 시간을 태운다.
+
+        마감 시각을 뒤로 미는 방식으로는 이제 흉내 낼 수 없다. 어댑터마다 자기 몫을 다시
+        정하므로(_mutation_share) 앞 어댑터가 그 값을 만져도 뒤에 넘어가지 않는다.
+        진짜로 바닥나는 길은 벽시계 시간뿐이라 그것을 그대로 쓴다.
+        """
+        time.sleep(1.2)
         return {"language": "javascript", "label": "자바스크립트", "summary": None,
                 "outcome": _skip_outcome()}
 
@@ -2905,11 +2966,56 @@ def test_the_budget_belongs_to_the_check_not_to_each_language(tmp_path, monkeypa
     outcome, summary = mutation_python._mutmut_run(exhausted, tmp_path, ["true"], (), [])
     assert summary is None and "앞 언어가 뮤테이션 예산" in outcome["human_reason"]
 
-    ctx = _ctx(project, files=[REL, "src/a.js"], tools=_with_mutmut())
+    _write(project / ".code-gate.json", '{"mutation": {"timeout_seconds": 1}}')
+    ctx = _ctx(project, files=[REL, "src/a.js"], tools=_with_mutmut(),
+               config=load_config(project / ".code-gate.json"))
     ctx.repo_root = project
     outcome = check_mutation(ctx)
     assert "앞 언어가 뮤테이션 예산" in outcome["human_reason"]
     assert "파이썬은 재지 못했습니다" in outcome["human_reason"]
+
+
+def test_the_budget_is_split_so_the_order_does_not_decide_who_runs(tmp_path, monkeypatch):
+    """앞 어댑터가 예산을 통째로 쓰면 뒤 언어의 점수·목록·설치 안내가 함께 사라졌다 (확정 2).
+
+    실측: 자바 + 자바스크립트에 예산 6초를 주었더니, 자바스크립트 입력이 한 글자도
+    바뀌지 않았는데 `84.6% + 살아남음 2개` 가 `재지 못했습니다 + 목록 0개` 가 됐다.
+    등록 순서는 언어 이름의 알파벳순이라 뜻이 없는데, 그 뜻 없는 값이 누가 재는지를
+    정하고 있었다.
+    """
+    deadline = time.perf_counter() + 6
+    # 셋이 남았으면 3분의 1, 하나만 남았으면 남은 전부.
+    assert 1.9 < _mutation_share(deadline, 3) < 2.1
+    assert 5.9 < _mutation_share(deadline, 1) < 6.1
+    # 이미 지난 마감에서는 0 이다 — 음수 몫이 timeout 인자로 흘러가면 안 된다.
+    assert _mutation_share(time.perf_counter() - 5, 2) == 0.0
+
+
+def test_a_skipping_adapter_does_not_starve_the_next_language(tmp_path, monkeypatch):
+    """도구가 없어 0초에 건너뛴 앞 언어가 뒤 언어를 굶겼다 (확정 2).
+
+    실측: 고는 0초에 건너뛰었는데 자바스크립트에게 "앞 언어가 예산을 다 썼다" 고 말하고,
+    자바스크립트 설치 안내가 통째로 사라졌다 (R4).
+    """
+    project = tmp_path / "repo"
+    _write(project / "src" / "a.js", "export const x = 1;\n")
+    _write(project / ".code-gate.json", '{"mutation": {"timeout_seconds": 1}}')
+
+    def instant_skip(inner_ctx, files):
+        return {"language": "go", "label": "고", "summary": None,
+                "outcome": code_gate._skip("gremlins 가 설치돼 있지 않습니다.", "gremlins missing",
+                                           "gremlins 를 설치하십시오.")}
+
+    monkeypatch.setattr(mutation_go, "_check_mutation_go", instant_skip)
+    monkeypatch.setattr(mutation_go, "_mutation_changed_go", lambda ctx: ["a.go"])
+    ctx = _ctx(project, files=["a.go", "src/a.js"],
+               config=load_config(project / ".code-gate.json"))
+    ctx.repo_root = project
+    outcome = check_mutation(ctx)
+    assert "앞 언어가 뮤테이션 예산" not in outcome["human_reason"]
+    assert "Stryker 가 설치돼 있지 않습니다" in outcome["human_reason"]
+    assert "@stryker-mutator/core" in (outcome["install_hint"] or "")
+    assert "gremlins 를 설치하십시오." in (outcome["install_hint"] or "")
 
 
 def test_python_sources_named_spec_are_not_mistaken_for_tests(tmp_path):

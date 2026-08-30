@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass
 
@@ -276,7 +277,11 @@ def _mutation_budget(ctx: gate.GateContext) -> int:
     total = ctx.config.mutation_timeout_seconds
     if ctx.mutation_deadline is None:
         return total
-    return max(0, int(ctx.mutation_deadline - time.perf_counter()))
+    # 남은 시간은 **올림**한다. 버림하던 때는 0.99초가 0 이 되어, 아직 쓸 시간이 있는데도
+    # 그 언어가 통째로 "앞 언어가 예산을 다 썼다" 로 빠졌다. 남은 것이 진짜 없을 때만
+    # 0 이어야 그 문장이 사실이 된다. 대신 항목 전체가 설정값을 1초 미만씩 넘길 수 있다 —
+    # 언어 하나를 통째로 잃는 것보다 낫다.
+    return max(0, math.ceil(ctx.mutation_deadline - time.perf_counter()))
 
 
 def _mutation_missing_targets(summary: dict, targets) -> list:

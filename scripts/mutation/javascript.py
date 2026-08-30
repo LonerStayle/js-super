@@ -51,6 +51,10 @@ _MUTATION_TEST_STEMS = (".test", ".spec", "_test", "_spec")
 # 때문이다. 거기까지 판정이 바뀌므로 여기서만 넓힌다.
 MUTATION_SUFFIXES = frozenset(gate.JS_SUFFIXES | {".vue", ".svelte", ".html", ".htm"})
 
+# "대상이 없다" 안내에 실을 대상 설명 (레지스트리가 읽는다). 확장자 목록을 사람 말로
+# 옮기는 규칙은 선언부에 없어 모듈이 자기 몫을 신고한다.
+MUTATION_TARGET_KO = "자바스크립트 계열 — .vue / .svelte / .html 포함"
+
 
 # Stryker 어휘 → 게이트 어휘 변환표. 지금은 항등이다 — 철자가 같은 것은 게이트 어휘가
 # 이 스키마에서 온 역사적 우연이고, 두 어휘가 같다는 보장은 없다. 표를 선언만 해 두고
@@ -395,7 +399,7 @@ def _mutation_partial(ctx: gate.GateContext, paths: dict, targets, elapsed: floa
     }
 
 
-def _mutation_changed_files(ctx: gate.GateContext) -> list:
+def _mutation_changed_javascript(ctx: gate.GateContext) -> list:
     """C7 이 볼 변경 파일. 언어 판정을 다시 하는 이유는 확장자 목록이 다르기 때문이다.
 
     Stryker 10 은 .vue / .svelte / .html / .htm 도 스스로 파싱하는데, 공용 언어 판정이 쓰는
@@ -407,12 +411,16 @@ def _mutation_changed_files(ctx: gate.GateContext) -> list:
 
 
 def _stryker_preconditions(ctx: gate.GateContext) -> dict | None:
-    """자바스크립트 경로만의 사유. 있으면 그 결과를, 없으면 None."""
-    config = ctx.config
-    if config.mutation_javascript != "stryker":
+    """자바스크립트 경로만의 사유. 있으면 그 결과를, 없으면 None.
+
+    설정 자리와 다룰 줄 아는 도구 이름은 선언부(config_key / tool)에서 읽는다 — 같은
+    사실을 여기 또 적으면 선언과 동작이 조용히 갈린다.
+    """
+    configured = ctx.config.mutation_tool(JAVASCRIPT_ADAPTER.language)
+    if configured != JAVASCRIPT_ADAPTER.tool:
         return gate._skip(
-            f"설정의 mutation.javascript 값 '{config.mutation_javascript}' 을 다룰 줄 몰라 재지 않았습니다.",
-            f"unsupported js mutation tool: {config.mutation_javascript}",
+            f"설정의 {JAVASCRIPT_ADAPTER.config_key} 값 '{configured}' 을 다룰 줄 몰라 재지 않았습니다.",
+            f"unsupported js mutation tool: {configured}",
         )
     tool = gate._tool(ctx, "stryker")
     if not tool["available"]:
