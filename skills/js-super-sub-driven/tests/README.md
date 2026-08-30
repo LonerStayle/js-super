@@ -64,7 +64,7 @@
 
 - `H13-og-flow-subagent-routing/` — og-flow Subagent path 매칭 검증 (upstream 원본 매칭 / js-super-sub-driven 미매칭)
 
-## v2.9.0 이후 fixtures (H14~H22)
+## v2.9.0 이후 fixtures (H14~H25)
 
 | Fixture | 시나리오 |
 |---|---|
@@ -77,6 +77,7 @@
 | H20-worktree-naming | `/worktree` 이름 해석 — AI 네이밍 제안 + 재분기 `부모__자식` 누적 / 명시 이름 존중 / detached HEAD fallback 5 시나리오 |
 | H21-doc-readability | 산출물 문서 스타일 — 위에서 아래로 / 비유 금지 / 표·도면 우선 / 항목 코드 금지 / 도면 형식 / 요구 항목 번호 하위 호환 |
 | H22-plan-split | 분할 계획서 실행 — 인덱스만 읽고 DAG 구성 / wave 직전 상세 문서 읽기 / 변경이력은 인덱스 footer / 코드 없는 task 저장 차단 |
+| H25-epic-flow | 큰 작업 맥락 — 없을 때 무출력 / 있을 때 큰 그림·미해소 이월만 노출 (예상도 제외) / 바뀐 게 없으면 파일 무변경 / 항목 번호 0~9 무밀림 |
 
 > 번호 규약: 신규 fixture 번호는 **부모 브랜치의 인덱스**를 확인해서 정합니다.
 >
