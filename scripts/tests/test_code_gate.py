@@ -1022,9 +1022,15 @@ def test_cli_has_no_flow_discriminating_arguments():
 
 
 def test_cli_exposes_only_the_agreed_arguments():
+    """인자를 늘릴 때 근거를 대게 하는 자물쇠다. 늘리려면 이 목록을 먼저 고쳐야 한다.
+
+    `--limit` 은 **보여 주는 줄 수**만 정한다. 무엇을 재는지도, 무엇을 위반으로
+    보는지도, 종료 코드도 바꾸지 않는다. 그래서 `--only`(재는 항목을 고름)나
+    `--fail-under`(종료 코드 계약을 깸)와 다르고, 그 둘은 여전히 없다.
+    """
     parser = build_parser()
     options = {opt for action in parser._actions for opt in action.option_strings}
-    assert options == {"-h", "--help", "--base", "--config", "--repo-root", "--json"}
+    assert options == {"-h", "--help", "--base", "--config", "--repo-root", "--json", "--limit"}
 
 
 # ---------------------------------------------------------------------------
@@ -3043,3 +3049,82 @@ def test_unknown_status_names_are_marked_as_unknown_in_korean():
     assert "잡힘 9" in text
     assert "모르는 상태 'suspicious' 3" in text
     assert "모르는 상태 'caught by type check' 2" in text
+
+
+# ---------------------------------------------------------------------------
+# 16 — 상세 줄 수 (--limit) 와 렌더링 사슬
+# ---------------------------------------------------------------------------
+
+def _payload_with(code, findings, status="findings"):
+    return {
+        "total_seconds": 0.1, "base": "HEAD", "base_reason": "기준",
+        "changed": 1, "excluded": 0, "notes": [],
+        "checks": [{"code": code, "name": "x", "label": "이름", "status": status,
+                    "seconds": 0.1, "reason": "", "human_reason": "요약",
+                    "install_hint": None, "findings": findings}],
+    }
+
+
+def _c3_findings(n):
+    return [{"file": f"src/m{i}.py", "line": i, "function": f"f{i}", "complexity": 11}
+            for i in range(n)]
+
+
+def test_detail_lines_cuts_and_says_how_many_are_hidden():
+    """자를 때 가린 건수를 반드시 적는다. 안 적으면 그 목록이 전부인 줄로 읽힌다."""
+    check = _payload_with("C3", _c3_findings(20))["checks"][0]
+    lines = code_gate._detail_lines(check, 15)
+    assert len(lines) == 16
+    assert lines[-1].strip() == "... 외 5건"
+
+
+def test_detail_lines_zero_means_all_and_no_hidden_note():
+    """0 은 전부다. 가린 것이 없으므로 '외 N건' 도 붙지 않는다."""
+    check = _payload_with("C3", _c3_findings(20))["checks"][0]
+    lines = code_gate._detail_lines(check, 0)
+    assert len(lines) == 20
+    assert not any("외" in line for line in lines)
+
+
+def test_detail_lines_ignores_unknown_check_code():
+    """모르는 항목 코드는 빈 목록이다. 형식을 지어내면 사용자가 잘못 읽는다."""
+    check = _payload_with("C9", _c3_findings(3))["checks"][0]
+    assert code_gate._detail_lines(check, 15) == []
+
+
+def test_crap_line_separates_no_data_from_zero_coverage():
+    """커버리지를 못 구한 것과 0 인 것은 다른 사실이다. 못 구한 것을 0 으로 적으면
+    '테스트가 없다' 로 읽힌다."""
+    base = {"file": "a.py", "line": 3, "function": "f", "complexity": 8,
+            "coverage_source": "range-empty"}
+    unknown = code_gate._crap_detail_line({**base, "crap": None})
+    known = code_gate._crap_detail_line({**base, "crap": 72.0, "coverage": 0.0})
+    assert "CRAP 계산 실패" in unknown
+    assert "v=0.00" in known and "CRAP=72.00" in known
+
+
+def test_render_details_passes_limit_through_the_chain():
+    """--limit 이 렌더 사슬 끝까지 전달되는지. 한 군데만 빠져도 15줄에서 잘린다."""
+    payload = _payload_with("C3", _c3_findings(20))
+    assert payload["checks"][0]["findings"]
+    all_lines = code_gate.render_human(payload, 0)
+    cut_lines = code_gate.render_human(payload, 15)
+    assert all_lines.count("src/m") == 20
+    assert cut_lines.count("src/m") == 15
+    assert "외 5건" in cut_lines
+
+
+def test_render_details_skips_coverage_item():
+    """C2 는 상세를 내지 않는다 — 항목 요약 줄에 이미 파일별 비율이 들어 있다."""
+    payload = _payload_with("C2", [{"file": "a.py"}], status="measured")
+    assert code_gate._render_details(payload["checks"], 15) == []
+
+
+def test_emit_falls_back_to_json_when_rendering_breaks(capsys, monkeypatch):
+    """렌더링이 실패해도 결과는 내놓는다. 삼키면 잰 것이 통째로 사라진다."""
+    monkeypatch.setattr(code_gate, "render_human",
+                        lambda *a, **k: (_ for _ in ()).throw(ValueError("깨짐")))
+    code_gate._emit(_payload_with("C3", _c3_findings(1)), as_json=False)
+    out = capsys.readouterr().out
+    assert "렌더링에 실패해" in out
+    assert '"code": "C3"' in out

@@ -70,7 +70,8 @@ DEFAULT_COMPLEXITY_THRESHOLD = 10   # 함수 하나의 순환 복잡도 상한
 DEFAULT_DUP_MIN_LINES = 5           # 중복으로 셀 최소 줄 수
 DEFAULT_DUP_MIN_TOKENS = 50         # 중복으로 셀 최소 토큰 수
 DEFAULT_TIMEOUT_SECONDS = 60        # 항목별 서브프로세스 상한
-DEFAULT_TIMEOUT_SECONDS_TESTS = 300 # 테스트 항목만 따로 — 스위트가 긴 저장소 대비
+DEFAULT_TIMEOUT_SECONDS_TESTS = 300
+DEFAULT_DETAIL_LIMIT = 15            # 항목별 상세 줄 수. 0 이면 전부 낸다 # 테스트 항목만 따로 — 스위트가 긴 저장소 대비
 
 # 뮤테이션 — 0단계에서는 켜 두고 숫자만 낸다. 기준 80 은 아직 아무것도 막지 않는다.
 DEFAULT_MUTATION_ENABLED = True
@@ -2153,30 +2154,43 @@ def _mutation_detail_line(finding: dict) -> str:
             f"{original} → {replacement}{_mutation_detail_tests(finding.get('tests'))}")
 
 
-def _detail_lines(check: dict, limit: int = 15) -> list:
-    code = check["code"]
-    out = []
-    for f in check["findings"][:limit]:
-        if code == "C3":
-            out.append(f"  {f['file']}:{f['line']}  {f['function']}  c={f['complexity']}")
-        elif code == "C4":
-            source = COVERAGE_SOURCE_KO.get(f.get("coverage_source"), f.get("coverage_source"))
-            if f.get("crap") is None:
-                out.append(f"  {f['file']}:{f['line']}  {f['function']}  c={f['complexity']}  CRAP 계산 실패 (커버리지: {source})")
-            else:
-                out.append(f"  {f['file']}:{f['line']}  {f['function']}  c={f['complexity']}  "
-                           f"v={f['coverage']:.2f}  CRAP={f['crap']:.2f}  (커버리지: {source})")
-        elif code == "C5":
-            out.append(f"  {f['first_file']}:{f['first_start']}-{f['first_end']}  ↔  "
-                       f"{f['second_file']}:{f['second_start']}-{f['second_end']}  ({f['lines']}줄)")
-        elif code == "C6":
-            out.append(f"  {f['from_file']}:{f['line']}  →  {f['to_file']}  "
-                       f"[{f['from_layer']} → {f['to_layer']}] {f['reason']}")
-        elif code == "C7":
-            out.append(_mutation_detail_line(f))
-        elif code == "C1":
-            out.append(f"  {f.get('detail', '')}")
-    remaining = len(check["findings"]) - limit
+def _crap_detail_line(f: dict) -> str:
+    """CRAP 한 줄. 커버리지를 못 구한 경우와 구한 경우를 갈라 쓴다.
+
+    못 구한 것을 0 으로 적으면 "테스트가 없다" 로 읽힌다. 둘은 다른 사실이다.
+    """
+    source = COVERAGE_SOURCE_KO.get(f.get("coverage_source"), f.get("coverage_source"))
+    head = f"  {f['file']}:{f['line']}  {f['function']}  c={f['complexity']}"
+    if f.get("crap") is None:
+        return f"{head}  CRAP 계산 실패 (커버리지: {source})"
+    return f"{head}  v={f['coverage']:.2f}  CRAP={f['crap']:.2f}  (커버리지: {source})"
+
+
+# 항목별 상세 한 줄을 만드는 법. 항목이 늘 때 분기를 늘리는 대신 여기 한 줄을 더한다.
+_DETAIL_FORMATTERS = {
+    "C1": lambda f: f"  {f.get('detail', '')}",
+    "C3": lambda f: f"  {f['file']}:{f['line']}  {f['function']}  c={f['complexity']}",
+    "C4": _crap_detail_line,
+    "C5": lambda f: (f"  {f['first_file']}:{f['first_start']}-{f['first_end']}  ↔  "
+                     f"{f['second_file']}:{f['second_start']}-{f['second_end']}  ({f['lines']}줄)"),
+    "C6": lambda f: (f"  {f['from_file']}:{f['line']}  →  {f['to_file']}  "
+                     f"[{f['from_layer']} → {f['to_layer']}] {f['reason']}"),
+    "C7": lambda f: _mutation_detail_line(f),
+}
+
+
+def _detail_lines(check: dict, limit: int = DEFAULT_DETAIL_LIMIT) -> list:
+    """항목 하나의 상세. `limit` 이 0 이면 전부 낸다.
+
+    자를 때는 몇 건을 가렸는지 반드시 적는다 — 가린 것을 말하지 않으면 그 목록이
+    전부인 줄로 읽힌다.
+    """
+    formatter = _DETAIL_FORMATTERS.get(check["code"])
+    if formatter is None:
+        return []
+    shown = check["findings"] if limit == 0 else check["findings"][:limit]
+    out = [formatter(f) for f in shown]
+    remaining = 0 if limit == 0 else len(check["findings"]) - limit
     if remaining > 0:
         out.append(f"  ... 외 {remaining}건")
     return out
@@ -2227,21 +2241,21 @@ def _render_table(checks: list) -> list:
     return lines
 
 
-def _render_details(checks: list) -> list:
+def _render_details(checks: list, limit: int = DEFAULT_DETAIL_LIMIT) -> list:
     lines: list = []
     for check in checks:
         if not check.get("findings") or check["code"] == "C2":
             continue
         title = DETAIL_TITLES.get(check["code"])
-        detail = _detail_lines(check)
+        detail = _detail_lines(check, limit)
         if title and detail:
             lines += ["", title, *detail]
     return lines
 
 
-def render_human(payload: dict) -> str:
+def render_human(payload: dict, limit: int = DEFAULT_DETAIL_LIMIT) -> str:
     checks = payload.get("checks") or []
-    lines = _render_header(payload) + _render_table(checks) + _render_details(checks)
+    lines = _render_header(payload) + _render_table(checks) + _render_details(checks, limit)
     notes = payload.get("notes") or []
     if notes:
         lines += ["", "참고"] + [f"  {note}" for note in notes]
@@ -2267,15 +2281,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--config", type=Path, default=None, help=f"기준값 설정 파일 (기본: <저장소 루트>/{CONFIG_NAME})")
     parser.add_argument("--repo-root", type=Path, default=None, help="저장소 루트 (기본: git rev-parse --show-toplevel)")
     parser.add_argument("--json", action="store_true", help="기계용 JSON 출력 (기본은 사람용 한국어 표)")
+    parser.add_argument("--limit", type=int, default=DEFAULT_DETAIL_LIMIT,
+                        help=f"항목별로 보여줄 상세 줄 수 (기본 {DEFAULT_DETAIL_LIMIT}, 0 이면 전부)")
     return parser
 
 
-def _emit(payload: dict, *, as_json: bool) -> None:
+def _emit(payload: dict, *, as_json: bool, limit: int = DEFAULT_DETAIL_LIMIT) -> None:
     if as_json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         return
     try:
-        print(render_human(payload))
+        print(render_human(payload, limit))
     except Exception as exc:  # noqa: BLE001 — 렌더링이 실패해도 결과는 내놓는다
         print(f"리포트 렌더링에 실패해 JSON 으로 대신 출력합니다 ({type(exc).__name__}).")
         print(json.dumps(payload, ensure_ascii=False, indent=2))
@@ -2310,7 +2326,7 @@ def main(argv=None) -> int:
     if unknown:
         payload["notes"].append("알 수 없는 인자라 무시했습니다: " + " ".join(unknown))
 
-    _emit(payload, as_json=args.json)
+    _emit(payload, as_json=args.json, limit=args.limit)
     return 0
 
 
