@@ -2311,3 +2311,167 @@ grep -c '변경분 검사 리포트\\n(커밋 직전, 막지 않음)' skills/exe
 시간 상한도 절벽이다. `timeout: 600000` 을 줘도 도구 상한이 600초라 게이트의 뮤테이션 상한 (600초) 하나를 겨우 맞추는 수준이고, 테스트가 그보다 오래 걸리는 저장소에서는 출력이 통째로 없다 (게이트가 끝에 한 번에 찍는다). 흐름은 안 멈추지만 그 시간은 그냥 버려진다.
 
 이 비용이 실측으로 문제가 되면 **재설계하지 말고** 다음 한 가지만 바꾼다. 인라인의 호출 자리를 Phase 3 (End-of-Run Consolidator) 첫 단계로 옮기고 `--base <실행 시작 SHA>` 를 준다. 웨이브 흐름 (W-4) 은 그대로 둔다 — 그쪽은 wave 당 1회라 이미 저렴하다.
+
+## 슬라이스 흐름 (`/slice`) — 두 번째 실행 흐름 결합
+
+기존 흐름 (요구사항 → 기술설계 → 구현계획 → 실행) 과 **나란히** 두는 두 번째 실행 흐름. 엉클밥(Robert C. Martin) 인터뷰의 에이전트 방식을 우리 자산 위에 옮긴 것이다. 원전은 저장소 루트의 `uncle_bob_ai_fundamentals_transcript.md`, 설계 근거의 행 번호는 그 파일 기준이다. 기존 흐름의 스킬 본문 · `scripts/` · 6 manifest 는 한 줄도 고치지 않았다.
+
+### 왜 커맨드 하나인가
+
+스킬은 description 이 매 세션 컨텍스트에 상주한다. 트랙 B 는 명시 호출로만 도는 실험 흐름이라 상주 비용이 순손실이다 (og-* 를 커맨드로 옮길 때와 같은 판단). 역할 프롬프트도 별도 파일로 빼지 않고 커맨드 본문에 인라인했다 — 슬래시 커맨드의 Bash 환경에서 `${CLAUDE_PLUGIN_ROOT}` 가 채워지지 않아 별도 파일을 찾으려면 플러그인 캐시를 `find` 로 뒤져야 하고 실패 갈래가 하나 더 생긴다. `commands/audit-risk.md` 가 같은 이유로 이미 인라인이다. `skills/slice*` 를 만들지 않으므로 커맨드 이름과 스킬 디렉토리 이름이 겹치는 사고도 원천적으로 없다.
+
+### 핵심 룰
+
+- **S-1 역할 셋** — Specifier → Coder → Hardener. 원전의 다섯 중 Cleaner 와 Hardener 를 합치고 QA Agent 를 두지 않았다. 합친 이유는 우리 게이트가 일곱 항목을 **한 번에** 재는 단일 명령이고 항목을 골라 재는 인자가 없기 때문이다 — 나누면 Cleaner 가 쓰지도 않을 뮤테이션 비용(상한 600초)을 매번 낸다. 순서 감각은 Hardener 한 컨텍스트 안의 두 패스(구조 → 테스트)로 살렸다. 이 순서를 뒤집으면 지저분한 구조 위에 테스트가 먼저 채워져 그 구조가 고정된다. 같은 이유로 게이트를 부르는 역할도 Hardener 하나다 — Coder 가 게이트를 돌리면 쓰지도 않을 뮤테이션 비용을 슬라이스마다 한 번 더 내게 되어 합친 근거와 어긋난다
+- **S-2 완료 판정 3층** — 막는 것은 셋뿐이다: 인수 테스트 전부 통과 / 테스트 실패 없음 / C6 의존 방향 발견 없음. 이 셋은 사람도 면제할 수 없다. C3 · C4 · C5 · C7 은 루프하고 남으면 사람이 면제한다. C2 커버리지는 보고만 한다. 게이트 종료 코드가 항상 0 이라 판정 기준은 커맨드 본문이 들고 있다
+- **S-2' 못 잰 것과 어긴 것을 가른다** — `skipped` 항목이 있거나 게이트를 아예 못 돌린 경우(`GATE_ABSENT` · 종료 코드 · 시간 초과 · 내부 오류)는 `REMAINING` 이다. `CLEAN` 은 일곱 항목이 모두 `ok` 일 때만 쓰고, `BLOCKED` 은 막는 셋을 실제로 어겼을 때만 쓴다. 못 잰 것을 `BLOCKED` 으로 올리면 커밋 갈래가 사라지고, `CLEAN` 으로 내리면 아무것도 재지 않은 슬라이스가 통과로 읽힌다. 게이트가 아직 릴리즈에 안 실린 동안 `GATE_ABSENT` 가 기본 경로라 이 구분이 상시 발동한다
+- **S-3 `skipped` 를 `ok` 로 옮겨 적지 않는다** — C1 테스트는 파이썬 · 자바스크립트 계열만 돌고 C7 뮤테이션은 다섯 언어인데 자바 어댑터만 기본 꺼짐이다. 그래서 자바 프로젝트는 C1 도 C7 도 안 재지고, 고 · C# 프로젝트는 테스트를 안 재면서 뮤테이션만 잰다. Coder 는 프로젝트 자체 테스트 명령 한 줄을 찾아 보고에 적고, Hardener 는 C1 이 `skipped` 거나 게이트를 못 돌렸을 때 그 명령을 매 바퀴 직접 돌린다. 명령이 없으면 막는 셋의 두 번째 항목을 못 넘은 것으로 본다 — 패스 1 에서 구조를 실제로 고치는 역할이라 회귀를 잴 수단이 없으면 통과시킬 수 없다
+- **S-4 슬라이스 크기는 Specifier 가 정한다** — 인수 테스트 1~3 개로 덮이는 크기. 안 덮이면 `TOO_BIG` + 2~4 조각 분할안. task 개수 · 파일 개수 · 줄 수 척도는 쓰지 않는다 (그건 계획서의 문법이고 이 흐름에는 계획서가 없다)
+- **S-5 전달은 저장소 파일 + 프롬프트 텍스트뿐** — 인수 테스트 자체가 인계 문서다. 매니페스트 buffer 파일을 쓰지 않는다 (그건 wave 병렬용 장치인데 이 흐름은 직렬이라 붙잡을 중간 상태가 없다). 앞 역할의 보고는 마지막 메시지에서 그대로 복사해 다음 프롬프트에 붙인다
+- **S-6 실패는 루프, 롤백 없음** — Hardener 가 게이트를 최대 세 바퀴 돈다. 넘으면 남은 발견을 그대로 들고 사람에게 간다. C4 CRAP 발견은 고치기 전에 서브프로세스 거짓 발견을 먼저 의심하고, 맞으면 코드를 고치지 않고 보고만 한다
+- **S-7 회피 금지** — `.code-gate.json` · `.code-gate-layers.json` 수정, `exclude` 추가, 테스트 약화, 인수 테스트 수정 전부 금지. 보조 에이전트는 커밋하지 않는다 (커밋은 메인이 슬라이스당 하나)
+- **S-8 산출물은 슬라이스 노트 하나** — `docs/slices/YYYY-MM.md` 에 슬라이스당 12줄 이하 한 블록. 존재 이유는 **면제한 것과 그 이유**를 남기는 것이다. 변경이력 꼬리말 · RISK 주석 · 용어집은 붙이지 않는다 (기존 흐름의 거버넌스를 끌어오면 두 흐름이 섞인다)
+- **S-9 아키텍처 정리는 권유만** — 세 슬라이스마다 캐묻기 질문 셋을 던져 답을 보여주는 데까지. 정리 자체는 하지 않는다. 원전이 자동화에 실패했다고 두 번 말한 자리다
+- **S-10 상호 호출 금지** — `/slice` 안에서 기존 흐름의 스킬을 부르지 않고, 기존 흐름에서 `/slice` 를 부르지 않는다. 나란히 두는 것이지 섞는 것이 아니다
+- **S-11 프롬프트 줄 수 상한** — 공통 35 / Specifier 60 / Coder 55 / Hardener 75. 한 역할에게 실제로 가는 프롬프트는 공통 + 역할이라 최대 110줄이고, 커맨드 본문 전체는 320줄이다. 원전이 "최초 프롬프트를 절대 최소로" 라고 못박은 자리라 이 상한이 이 흐름의 설계 원리다. 룰을 산문으로 늘리지 말고 도구가 판정하게 한다
+
+### 원전과 갈라선 지점 (정직성)
+
+| 원전 | 우리 | 사유 |
+|---|---|---|
+| Cleaner 와 Hardener 를 나눔 | 하나로 합침 (두 패스) | 게이트가 일곱 항목을 한 번에 재고 항목 선택 인자가 없다. 대신 원전 Cleaner 의 일반 코드 리뷰(117행)는 게이트가 재는 범위로 좁혀졌고, 그 밖의 것은 고치지 않고 3건까지 지적만 한다 |
+| QA Agent 가 QA 문서를 스크립트로 | 역할 없음. 절차서는 사람 체크리스트로 노트에 | UI 전제 + 구동 도구 부재 + 인수 테스트가 이미 그 일을 한다 |
+| Specifier 가 Gherkin 을 낸다 | 프로젝트 러너로 도는 인수 테스트 | 실행기 부재. `.feature` 는 게이트 C1 밖, 네이티브 테스트는 게이트 안 |
+| 루프 상한 없음 | 게이트 세 바퀴 | 원전이 침묵. 게이트 최악 시간(뮤테이션 600초 + 테스트 300초)에 맞춤 |
+| 매 스토리 커밋 승인 게이트는 없음 (사람은 스토리 한둘마다 구조를 보고 개입 — 191행, CRAP 점수와 표본 점검 — 59행) | 슬라이스 경계에 명시 확인 | 역할 사이에는 우리도 확인이 없다. 게이트가 아무것도 막지 않으므로 면제 판단자가 필요하다 |
+| 커버리지 100% 목표 | 저장소 설정값 유지 | 임계는 사람만 고치는 값이다 |
+| 아키텍처 정리 자동화 시도 | 시도하지 않음 | 원전이 두 번 실패했다고 말한 자리다 |
+
+### 회귀 패턴
+
+| 누락 / 변경 | 증상 |
+|---|---|
+| 기존 흐름 스킬 본문을 함께 수정 | 나란히 두기로 한 결정 자체가 무너진다. 두 흐름이 서로를 오염시킨다 |
+| `disable-model-invocation` 제거 | 대화 중 자동 발동 → 기존 흐름 한복판에서 슬라이스가 시작된다 |
+| 역할 프롬프트를 별도 파일로 분리 | 슬래시 커맨드에서 플러그인 루트가 안 채워져 파일 탐색 실패 갈래가 는다 |
+| 프롬프트 줄 수 상한 초과 | 원전의 "lost in the middle" 회귀 — 앞머리 룰이 중간으로 밀려 무시된다 |
+| 막는 것 셋을 루프선으로 내림 | 인수 테스트가 깨진 채로 커밋된다 |
+| 못 잰 것(`skipped` · 게이트 부재)을 `BLOCKED` 으로 올림 | 커밋 갈래가 사라진다. 인수 테스트가 통과하고 구현이 끝난 슬라이스가 어디로도 못 간다 |
+| 되돌리기 계열 git 명령을 금지 목록에서 뺌 | Hardener 의 C7 확인이 `git checkout --` 으로 되돌려 커밋 안 된 슬라이스 전체가 사라진다 |
+| Step 5 를 `git add -A` 로 되돌림 | 슬라이스와 무관한 변경이 마지막 커밋에 섞인다. 이 흐름은 커밋 없이 끝나는 갈래가 있어 오염이 쌓인다 |
+| C4 거짓 발견 의심 규칙 삭제 | 멀쩡한 코드를 잘못 잰 숫자에 맞춰 쪼갠다 |
+| 매니페스트 buffer 도입 | 기존 흐름의 `detect_stale_buffer` 가 이 흐름의 파일을 자기 것으로 집는다 |
+| 변경이력 · RISK · 용어집 유입 | 두 흐름이 섞여 비교 실험이 무의미해진다 |
+| `skipped` 를 `ok` 로 표기 | 검사하지 않은 것을 통과로 읽는다 |
+
+### 회귀 catch grep
+
+```bash
+test -f commands/slice.md && test ! -d skills/slice && echo OK
+# expected: OK
+```
+
+```bash
+grep -c "disable-model-invocation: true" commands/slice.md
+# expected: 1
+```
+
+```bash
+grep -c "code_gate.py" commands/slice.md
+# expected: 1
+```
+
+```bash
+grep -c "GATE_ABSENT" commands/slice.md
+# expected: 3
+```
+
+커맨드 본문 전체 상한 320줄.
+
+```bash
+awk 'END{print (NR<=320)?0:1}' commands/slice.md
+# expected: 0
+```
+
+역할 프롬프트 블록별 상한 (공통 35 / Specifier 60 / Coder 55 / Hardener 75). 상한을 넘긴 블록 수를 센다.
+
+```bash
+awk '/^## /{if(!f) h=($0~/^## 프롬프트 —/)?$0:""} /^[`][`][`]/{if(h)f=!f; next} h&&f{c[h]++} END{n=0;for(k in c){m=(k~/공통/)?35:(k~/Specifier/)?60:(k~/Coder/)?55:75; if(c[k]>m)n++} print n}' commands/slice.md
+# expected: 0
+```
+
+상태값 세 줄이 그대로 있는가 (메인의 분기표가 이 문자열을 읽는다).
+
+```bash
+grep -cF "Status: SPEC_READY | TOO_BIG | UNCLEAR" commands/slice.md
+# expected: 1
+```
+
+```bash
+grep -cF "Status: GREEN | BLOCKED" commands/slice.md
+# expected: 1
+```
+
+```bash
+grep -cF "Status: CLEAN | REMAINING | BLOCKED" commands/slice.md
+# expected: 1
+```
+
+두 흐름이 섞이지 않았는가. 커맨드 본문이 기존 흐름의 스킬 이름을 부르면 안 되고, 기존 흐름의 스킬이 이 커맨드를 부르면 안 된다.
+
+```bash
+grep -cE "brainstorming|tech-design|writing-plans|executing-plans|js-super-sub-driven" commands/slice.md
+# expected: 0
+```
+
+```bash
+grep -l "/slice" skills/brainstorming/SKILL.md skills/tech-design/SKILL.md skills/writing-plans/SKILL.md skills/executing-plans/SKILL.md skills/js-super-sub-driven/SKILL.md | wc -l
+# expected: 0
+```
+
+기존 흐름의 거버넌스가 유입되지 않았는가.
+
+```bash
+grep -cE "변경이력|RISK\(|용어집" commands/slice.md
+# expected: 0
+```
+
+되돌리기 계열 git 명령이 금지 목록에 있는가. 커밋 안 된 슬라이스를 지우는 유일한 경로다.
+
+```bash
+grep -c "git checkout -- / git restore / git stash / git reset 금지" commands/slice.md
+# expected: 1
+```
+
+마지막 커밋이 범위를 골라 담는가.
+
+```bash
+grep -cF '`git add -A` 를 쓰지 않고' commands/slice.md
+# expected: 1
+```
+
+```bash
+test -f commands/slice-tests/H26-e2e/README.md && echo OK
+# expected: OK
+```
+
+fixture 번호가 겹치지 않는가. 이 커맨드가 쓰는 네 곳만 본다 — 저장소 전체가 아니다 (`skills/worktree-merge-back/tests/` 는 이 명령 밖이고, 그쪽과 겹치는 기존 번호가 이미 있다).
+
+```bash
+ls skills/js-super-sub-driven/tests commands/understand-tests commands/slice-tests tests/eval-fixtures 2>/dev/null | grep -oE '^H[0-9]+' | sort | uniq -d | wc -l
+# expected: 0
+```
+
+```bash
+grep -c "## 슬라이스 흐름 (\`/slice\`) — 두 번째 실행 흐름 결합" CLAUDE.md
+# expected: 1
+```
+
+### 영향 범위
+
+- 신규 2 파일 (`commands/slice.md` / `commands/slice-tests/H26-e2e/README.md`) + `README.md` 워크플로 표 1행과 안내 문단 + 본 섹션. 그 밖에는 아무것도 바뀌지 않았다
+- `skills/` 전체 변경 0 — 기존 흐름 (`brainstorming` / `tech-design` / `writing-plans` / `executing-plans` / `js-super-sub-driven`) 도, `auto-*` 도, 보조 스킬도 손대지 않았다
+- `scripts/` 변경 0 — 게이트 (`scripts/code_gate.py` + `scripts/mutation/`) 는 완성돼 있어 부르기만 한다. 게이트 위치 해석 한 줄은 기존 두 스킬 본문의 것을 그대로 답습했다
+- `hooks/` / `agents/` / `evals/` / 6 manifest 변경 0. 버전 bump 는 main 전용 룰에 따라 main 에서
+- 자동 발동 경로 없음 — `disable-model-invocation: true`, 명시 슬래시 호출만
+- 이 흐름이 만드는 유일한 산출물은 `docs/slices/YYYY-MM.md` 다. 기존 흐름의 `docs/features/` 구조와 겹치지 않는다
