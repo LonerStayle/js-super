@@ -100,6 +100,14 @@ class AdapterSpec:
     requires: tuple                        # 요구하는 선행 항목 (예: "C1:python"). 없으면 빈 튜플
     workspace: str                         # 작업 공간의 경로·수명. 만료·정리 정책 선언 자리 포함
     copy_limitations: tuple                # 사본 방식이 원본과 다르게 만드는 실행 조건. 사본이 없으면 빈 튜플
+    # 변경분에 이 언어가 있어도 설정에서 켜기 전에는 재지 않는다. 도구가 회차마다
+    # 프로젝트 테스트 전체를 다시 도는 등 바닥 비용이 큰 어댑터가 쓴다 — 기본으로
+    # 켜 두면 그 언어를 쓰는 사람이 매번 그 비용을 물고, 게이트를 끄는 쪽을 택하게 된다.
+    # 꺼져 있어도 조용히 넘어가지 않는다. 사유와 켜는 방법을 함께 낸다 (R4).
+    default_enabled: bool = True
+    # 기본이 꺼짐인 이유. 사용자 안내에 그대로 실린다 — 왜 안 쟀는지를 말하지 않으면
+    # 사용자는 게이트가 그 언어를 지원하지 않는 줄로 읽는다.
+    default_off_reason: str = ""
 
 
 def mutation_score(counts) -> float | None:

@@ -701,4 +701,9 @@ JAVA_ADAPTER = score_mod.AdapterSpec(
                "상태 파일(java_history_dir). 대상 프로젝트에는 Gradle 이 원래 만드는 "
                ".gradle / build 만 남는다. 만료·정리 정책: 없음"),
     copy_limitations=(),                   # 사본을 만들지 않는다 — 변이는 메모리 안 바이트코드다
+    # 자바만 기본이 꺼짐이다. PIT 는 덮은 테스트를 찾으려고 회차마다 프로젝트
+    # 테스트 전체를 다시 돈다 (증분으로도 안 줄고 좁히면 판정이 틀린다). 테스트가
+    # 2분인 프로젝트면 매 회차 2분이라, 켤지를 사람이 정해야 한다.
+    default_enabled=False,
+    default_off_reason="PIT 가 회차마다 프로젝트 테스트 전체를 다시 돌아 테스트 시간만큼 듭니다",
 )

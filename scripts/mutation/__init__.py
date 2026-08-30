@@ -250,6 +250,12 @@ def _merge_mutation_languages(ctx: gate.GateContext, parts: list) -> dict:
     가장 나쁜 상태가 이긴다 — 합산 점수는 두 언어 비율 사이의 값이라, 둘 다 기준을 넘으면
     합산도 넘는다. 따로 판정할 것이 없다.
     """
+    if not parts:
+        # 변경분에 언어가 있었는데 어느 어댑터도 돌지 않은 회차 — 지금은 기본이 꺼진
+        # 어댑터만 걸린 경우다. 사유는 이미 참고에 실려 있고, 여기서는 통과가 아니라
+        # 건너뜀으로 낸다. 빈 목록을 그대로 합치면 max() 가 터진다 (실측).
+        return gate._skip("변경된 언어의 뮤테이션이 모두 꺼져 있어 재지 않았습니다. 사유는 참고를 보십시오.",
+                          "all adapters disabled")
     if len(parts) == 1:
         return parts[0]["outcome"]
     order = {"ok": 0, "skipped": 1, "findings": 2, "error": 3, "timeout": 4}
@@ -307,6 +313,22 @@ def _mutation_parts(ctx: gate.GateContext, running, deadline: float, budget: int
     return parts
 
 
+def _adapter_is_on(ctx: gate.GateContext, adapter) -> bool:
+    """이 어댑터를 이번 회차에 돌릴지. 꺼져 있으면 사유와 켜는 방법을 참고에 남긴다 (R4).
+
+    기본이 꺼짐인 어댑터는 설정의 `mutation.<언어>` 자리에 도구 이름을 적어야 돈다.
+    변경분에 그 언어가 있는데도 안 재는 것이라, 조용히 넘어가면 사용자는 잰 줄로 읽는다.
+    """
+    if adapter.spec.default_enabled or adapter.language in ctx.config.mutation_languages_on:
+        return True
+    ctx.notes.append(
+        f"{adapter.label} 파일이 바뀌었지만 재지 않았습니다. {adapter.label} 뮤테이션은 기본이 꺼짐입니다 "
+        f"({getattr(adapter.spec, 'default_off_reason', '') or '바닥 비용이 커서'}). "
+        f"켜려면 .code-gate.json 의 mutation 에 \"{adapter.config_leaf}\": \"{adapter.spec.tool}\" 를 적으십시오."
+    )
+    return False
+
+
 def check_mutation(ctx: gate.GateContext) -> dict:
     """변경분에 든 언어만 잰다. 여럿이면 모두 재고 점수를 합쳐 한 번 낸다.
 
@@ -319,7 +341,8 @@ def check_mutation(ctx: gate.GateContext) -> dict:
         return blocked
     budget = ctx.config.mutation_timeout_seconds
     deadline = time.perf_counter() + budget
-    running = [(adapter, files) for adapter, files in changed if files]
+    running = [(adapter, files) for adapter, files in changed
+               if files and _adapter_is_on(ctx, adapter)]
     parts = _mutation_parts(ctx, running, deadline, budget)
     return _merge_mutation_languages(ctx, parts)
 

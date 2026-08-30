@@ -29,12 +29,12 @@ def _isolated_cache(tmp_path_factory, monkeypatch):
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path_factory.mktemp("cache")))
 
 
-def _ctx(tmp_path, tools=None, base="main", files=()):
+def _ctx(tmp_path, tools=None, base="main", files=(), config=None):
     """어댑터가 읽는 칸만 채운 최소 맥락."""
     return types.SimpleNamespace(
         repo_root=tmp_path,
         tmpdir=tmp_path / "tmp",
-        config=code_gate.load_config(tmp_path / "없는설정.json"),
+        config=config if config is not None else code_gate.load_config(tmp_path / "없는설정.json"),
         tools=tools if tools is not None else {},
         change=types.SimpleNamespace(base=base, files=tuple(files)),
         notes=[],
@@ -797,3 +797,73 @@ def test_java_timeout_before_any_report_is_still_a_timeout(tmp_path, monkeypatch
     assert summary is None
     assert outcome["status"] == "timeout"
     assert "리포트가 나오기 전에 끊겨" in outcome["human_reason"]
+
+
+# ---------------------------------------------------------------------------
+# 기본이 꺼진 어댑터 (자바)
+# ---------------------------------------------------------------------------
+
+def test_java_is_off_by_default():
+    """자바는 기본이 꺼짐이다. PIT 가 회차마다 프로젝트 테스트 전체를 다시 돌기 때문이다.
+
+    기본으로 켜 두면 테스트가 2분인 프로젝트가 매 회차 2분을 물고, 사용자는 게이트
+    자체를 끄는 쪽을 택하게 된다. 켤지는 사람이 정한다.
+    """
+    from scripts.mutation.java import JAVA_ADAPTER
+
+    assert JAVA_ADAPTER.default_enabled is False
+    assert JAVA_ADAPTER.default_off_reason, "왜 꺼졌는지를 말하지 않으면 미지원으로 읽힌다"
+
+
+def test_other_adapters_stay_on_by_default():
+    """나머지는 기본이 켜짐이다 — 자바만 예외라는 것을 못 박는다."""
+    from scripts.mutation import adapters
+
+    off = {a.language for a in adapters() if not a.spec.default_enabled}
+    assert off == {"java"}, off
+
+
+def test_disabled_adapter_reports_why_and_how_to_turn_on(tmp_path, monkeypatch):
+    """꺼진 어댑터는 조용히 넘어가지 않는다 (R4).
+
+    변경분에 그 언어가 있는데 안 재는 것이라, 사유가 없으면 사용자는 잰 줄로 읽는다.
+    켜는 방법까지 함께 낸다.
+    """
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    from scripts.mutation import _adapter_is_on, adapters
+
+    java = next(a for a in adapters() if a.language == "java")
+    ctx = _ctx(tmp_path, files=["src/main/java/d/A.java"])
+
+    assert _adapter_is_on(ctx, java) is False
+    joined = " ".join(ctx.notes)
+    assert "기본이 꺼짐" in joined
+    assert java.spec.default_off_reason in joined
+    assert '"java"' in joined and '"gradle"' in joined
+
+
+def test_disabled_adapter_turns_on_when_config_names_it(tmp_path, monkeypatch):
+    """설정의 `mutation.<언어>` 자리에 도구 이름을 적으면 켜진다."""
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    from scripts.mutation import _adapter_is_on, adapters
+    from scripts.code_gate import load_config
+
+    (tmp_path / ".code-gate.json").write_text(
+        json.dumps({"mutation": {"java": "gradle"}}), encoding="utf-8")
+    java = next(a for a in adapters() if a.language == "java")
+    ctx = _ctx(tmp_path, files=["src/main/java/d/A.java"],
+               config=load_config(tmp_path / ".code-gate.json"))
+
+    assert _adapter_is_on(ctx, java) is True
+    assert not ctx.notes
+
+
+def test_all_adapters_disabled_is_a_skip_not_a_crash(tmp_path, monkeypatch):
+    """꺼진 어댑터만 걸린 회차는 건너뜀이다. 빈 목록을 합치면 max() 가 터졌다 (실측)."""
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path / "cache"))
+    from scripts.mutation import _merge_mutation_languages
+
+    ctx = _ctx(tmp_path, files=["src/main/java/d/A.java"])
+    outcome = _merge_mutation_languages(ctx, [])
+    assert outcome["status"] == "skipped"
+    assert "꺼져 있어" in outcome["human_reason"]

@@ -208,6 +208,9 @@ class GateConfig:
     # (언어, 도구 이름) 짝. 언어마다 칸을 따로 두면 언어를 더할 때마다 이 클래스와
     # 리포트·설정 읽기가 함께 늘어난다. 자리와 기본값의 출처는 어댑터 선언이다.
     mutation_tools: tuple[tuple[str, str], ...]
+    # 설정에서 명시로 켠 언어. 기본이 꺼짐인 어댑터(`default_enabled=False`)는 여기
+    # 들어와야 돈다. `mutation.<언어>` 자리에 도구 이름을 적는 것이 곧 켜는 것이다.
+    mutation_languages_on: frozenset
     notes: tuple[str, ...]
 
     def mutation_tool(self, language: str) -> str:
@@ -420,6 +423,17 @@ def _mutation_tool_name(mutation: dict, key: str, default: str, notes: list) -> 
     return value.strip()
 
 
+def _mutation_languages_on(mutation: dict, registered) -> frozenset:
+    """설정에 자리를 적어 명시로 켠 언어.
+
+    기본이 꺼짐인 어댑터는 이 집합에 들어야 돈다. "적었다" 를 켠 것으로 읽는다 —
+    켜기 위한 별도 참/거짓 칸을 두면 도구 이름과 스위치 둘을 맞춰 적어야 하고,
+    한쪽만 적은 설정이 조용히 안 도는 원인이 된다.
+    """
+    return frozenset(adapter.language for adapter in registered
+                     if adapter.config_leaf in mutation)
+
+
 def _mutation_tools(mutation: dict, registered, notes: list) -> tuple:
     """어댑터마다 설정된 도구 이름. (언어, 도구 이름) 짝을 등록 순서대로 돌려준다.
 
@@ -452,9 +466,10 @@ def _mutation_config(data: dict, notes: list) -> tuple:
 
     registered = _registered_adapters(notes)
     tools = _mutation_tools(mutation, registered, notes)
+    languages_on = _mutation_languages_on(mutation, registered)
 
     _note_unknown_mutation_keys(mutation, registered, notes)
-    return enabled, tools, mutation
+    return enabled, tools, languages_on, mutation
 
 
 def load_config(path: Path) -> GateConfig:
@@ -494,7 +509,7 @@ def load_config(path: Path) -> GateConfig:
         exclude = ()
         notes.append("설정 파일의 exclude 항목이 목록이 아니라 무시했습니다.")
 
-    enabled, mutation_tools, mutation = _mutation_config(data, notes)
+    enabled, mutation_tools, mutation_languages_on, mutation = _mutation_config(data, notes)
 
     layers_file = data.get("layers_file", DEFAULT_LAYERS_FILE)
     if not isinstance(layers_file, str) or not layers_file.strip():
@@ -519,6 +534,7 @@ def load_config(path: Path) -> GateConfig:
             mutation.get("timeout_seconds"), DEFAULT_MUTATION_TIMEOUT_SECONDS,
             "mutation.timeout_seconds", notes),
         mutation_tools=mutation_tools,
+        mutation_languages_on=mutation_languages_on,
         notes=tuple(notes),
     )
 
