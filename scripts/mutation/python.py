@@ -342,7 +342,10 @@ def _mutmut_record(rel: str, key: str, status: str, change: tuple, line, tests) 
         "original": original,
         "replacement": replacement,
         "status": status,
-        "tests": [str(t) for t in tests],
+        # 정렬한다 — mutmut 은 이 목록을 집합으로 들고 있어 실행마다 순서가 달라진다.
+        # 순서에 뜻이 없는데 출력만 흔들려서, 같은 입력에 같은 출력이 나오지 않는다.
+        # 자바스크립트 쪽은 도구가 배열로 주므로 그 순서를 그대로 둔다.
+        "tests": sorted(str(t) for t in tests),
         "mutant": key,
     }
 

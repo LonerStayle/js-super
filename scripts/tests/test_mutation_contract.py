@@ -190,3 +190,32 @@ def test_running_round_clears_imprint(tmp_path):
     _imprint_failure(ctx, work, ["a.py"], [])
     mutation_python._mutmut_write_state(ctx, work, ["a.py"], [])
     assert mutation_python._mutmut_imprinted_outcome(ctx, work, ["a.py"], []) is None
+
+
+def test_python_test_list_is_sorted():
+    """mutmut 의 테스트 목록은 집합이라 실행마다 순서가 달라진다 — 정렬해 고정한다.
+
+    고정하지 않으면 같은 입력에 같은 출력이 나오지 않아, 재구성 뒤 동작이 같은지를
+    기계로 확인할 수 없다. 실측에서 같은 코드를 3회 돌려 네 개의 테스트 이름이
+    매번 다른 순서로 나왔다. 순서 자체에는 뜻이 없다.
+    """
+    from scripts.mutation.python import _mutmut_record
+
+    unsorted = ["tests/t.py::가", "tests/t.py::나", "tests/t.py::다"]
+    record = _mutmut_record("src/a.py", "k", "Survived", (None, "x", "y"), 3,
+                            reversed(unsorted))
+    assert record["tests"] == sorted(unsorted)
+
+
+def test_javascript_test_list_keeps_tool_order():
+    """자바스크립트는 도구가 배열로 준 순서를 그대로 둔다.
+
+    Stryker 의 coveredBy 는 배열이라 순서가 이미 일정하다. 여기까지 정렬하면
+    도구가 준 순서를 게이트가 임의로 바꾸는 것이라 출력이 실제로 달라진다.
+    """
+    from scripts.mutation.javascript import _mutant_record
+
+    given = ["나", "가", "다"]
+    record = _mutant_record("src/a.js", {"location": {"start": {"line": 1, "column": 2}}},
+                            "orig", given)
+    assert record["tests"] == given
