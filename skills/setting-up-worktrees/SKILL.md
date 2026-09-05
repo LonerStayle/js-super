@@ -40,7 +40,12 @@ NEVER ask the user which 로컬 빌드 환경 파일 to copy. 메인 에이전�
 ```dot
 digraph wt_flow {
     "Verify git repo" [shape=box];
-    "Parse branch list" [shape=box];
+    "Step 0: print MAIN_ROOT / BASE_BRANCH /\nMAIN_BRANCH / REBRANCH" [shape=box];
+    "Name given by user?" [shape=diamond];
+    "Use the given name as-is" [shape=box];
+    "REBRANCH=yes?" [shape=diamond];
+    "Suggest <BASE_BRANCH>__<child>" [shape=box];
+    "Suggest by repo convention\n(no prefix)" [shape=box];
     "LLM-judged 로컬 빌드 환경 파일\n후보 결정 (no user prompt)" [shape=box];
     "Ensure .worktrees/ exists\n+ in .gitignore" [shape=box];
     "For each branch" [shape=box];
@@ -51,8 +56,15 @@ digraph wt_flow {
     "Symlink Claude memory folder\n(automatic via PostToolUse hook)" [shape=box];
     "Report summary" [shape=doublecircle];
 
-    "Verify git repo" -> "Parse branch list";
-    "Parse branch list" -> "LLM-judged 로컬 빌드 환경 파일\n후보 결정 (no user prompt)";
+    "Verify git repo" -> "Step 0: print MAIN_ROOT / BASE_BRANCH /\nMAIN_BRANCH / REBRANCH";
+    "Step 0: print MAIN_ROOT / BASE_BRANCH /\nMAIN_BRANCH / REBRANCH" -> "Name given by user?";
+    "Name given by user?" -> "Use the given name as-is" [label="yes"];
+    "Name given by user?" -> "REBRANCH=yes?" [label="no (description only)"];
+    "REBRANCH=yes?" -> "Suggest <BASE_BRANCH>__<child>" [label="yes"];
+    "REBRANCH=yes?" -> "Suggest by repo convention\n(no prefix)" [label="no / detached"];
+    "Use the given name as-is" -> "LLM-judged 로컬 빌드 환경 파일\n후보 결정 (no user prompt)";
+    "Suggest <BASE_BRANCH>__<child>" -> "LLM-judged 로컬 빌드 환경 파일\n후보 결정 (no user prompt)";
+    "Suggest by repo convention\n(no prefix)" -> "LLM-judged 로컬 빌드 환경 파일\n후보 결정 (no user prompt)";
     "LLM-judged 로컬 빌드 환경 파일\n후보 결정 (no user prompt)" -> "Ensure .worktrees/ exists\n+ in .gitignore";
     "Ensure .worktrees/ exists\n+ in .gitignore" -> "For each branch";
     "For each branch" -> "Branch exists?";
@@ -81,7 +93,21 @@ MAIN_ROOT=$(git worktree list --porcelain | head -1 | sed 's/^worktree //')
 BASE_SHA=$(git rev-parse HEAD)
 BASE_BRANCH=$(git branch --show-current)
 MAIN_BRANCH=$(git -C "$MAIN_ROOT" branch --show-current)
+
+# 판별 근거를 화면에 남긴다. 셸 변수는 Bash 호출 사이에 유지되지 않으므로,
+# 여기서 찍힌 문자열이 Step 1 (재분기 판별) 과 Step 4 (부모 기록) 의 유일한 입력이다.
+echo "MAIN_ROOT=$MAIN_ROOT"
+echo "BASE_SHA=$BASE_SHA"
+echo "BASE_BRANCH=${BASE_BRANCH:-(detached)}"
+echo "MAIN_BRANCH=$MAIN_BRANCH"
+if [ -n "$BASE_BRANCH" ] && [ "$BASE_BRANCH" != "$MAIN_BRANCH" ]; then
+  echo "REBRANCH=yes (접두어: ${BASE_BRANCH}__)"
+else
+  echo "REBRANCH=no"
+fi
 ```
+
+**Step 0 의 출력 다섯 줄 (`MAIN_ROOT` / `BASE_SHA` / `BASE_BRANCH` / `MAIN_BRANCH` / `REBRANCH`) 이 도구 결과에 보이지 않으면 Step 1 로 넘어가지 않는다.** 위 블록을 그대로 다시 실행한다. 값이 안 보이는 상태에서 재분기 여부를 현재 경로 · 이전 대화 · 추측으로 정하지 않는다 — 과거 실행 기록에서 이 블록을 출력 없이 (변수 대입만) 돌린 뒤 접두어 판별을 추정으로 처리해 재분기 접두어가 빠진 사례가 있다.
 
 If not in a repo, abort with: "현재 디렉터리가 git repo 아닙니다. `git init` 후 다시 호출해주세요."
 
@@ -92,10 +118,10 @@ If not in a repo, abort with: "현재 디렉터리가 git repo 아닙니다. `gi
 사용자 메시지에서 브랜치 이름 또는 작업 설명을 추출해 `BRANCHES=(...)` 를 확정한다. Korean ticket-style names like `<TICKET>-<번호>-<설명>` are fine (UTF-8 OK). Do NOT ask about env files — those are auto-detected.
 
 1. **이름 명시** — 사용자가 브랜치 이름을 줬으면 그대로 쓴다. 네이밍 규칙을 덮어씌우거나 "더 좋은 이름" 을 제안하지 않는다.
-2. **설명만 있고 이름 없음** — 메인이 이름을 생성해 제안한다. **부모브랜치__자식이름 규칙**:
-   - `BASE_BRANCH` ≠ `MAIN_BRANCH` (재분기) → `<BASE_BRANCH>__<자식이름>`. 구분자는 밑줄 두 개 (`__`). 부모 이름에 이미 `__` 가 있으면 그대로 누적된다 (`a__b` 에서 분기 → `a__b__c`).
-   - `BASE_BRANCH` = `MAIN_BRANCH` → 접두어 없이, 저장소의 기존 브랜치 관례 (언어 · 스타일 · 접두어 유무) 를 참고해 짓는다.
-   - `BASE_BRANCH` 가 비어 있으면 (detached HEAD) → 접두어 생략 + 한 줄 안내: "부모 브랜치를 알 수 없어 접두어를 생략했습니다".
+2. **설명만 있고 이름 없음** — 메인이 이름을 생성해 제안한다. **부모브랜치__자식이름 규칙**. 갈래는 **Step 0 출력의 `REBRANCH=` 줄만** 보고 고른다 (경로 · 기억 · 추측 금지, 출력이 안 보이면 Step 0 재실행):
+   - `REBRANCH=yes` (`BASE_BRANCH` ≠ `MAIN_BRANCH`, 재분기) → `<BASE_BRANCH>__<자식이름>`. 접두어는 그 줄에 찍힌 문자열을 그대로 쓴다. 구분자는 밑줄 두 개 (`__`). 부모 이름에 이미 `__` 가 있으면 그대로 누적된다 (`a__b` 에서 분기 → `a__b__c`).
+   - `REBRANCH=no` 이고 `BASE_BRANCH` 가 메인 브랜치 이름 → 접두어 없이, 저장소의 기존 브랜치 관례 (언어 · 스타일 · 접두어 유무) 를 참고해 짓는다.
+   - `BASE_BRANCH=(detached)` 가 실제로 찍힌 경우 (detached HEAD) → 접두어 생략 + 한 줄 안내: "부모 브랜치를 알 수 없어 접두어를 생략했습니다". 이 갈래는 Step 0 출력이 `(detached)` 를 보여줬을 때만 — 값을 못 봤다는 이유로 이 갈래로 오지 않는다.
    - AI 가 새로 짓는 부분 (재분기면 자식 이름, 메인 기준이면 이름 전체) 에는 `__` 를 넣지 않는다 — 부모 구분자로 예약 (공백 → 하이픈). `/` 는 자식 이름에 넣지 않는다 (새 폴더 중첩 층 방지 — 부모에게서 물려받은 `/` 는 그대로 수용). 메인 기준 이름은 저장소 관례가 슬래시 접두어를 쓰는 경우에만 `/` 허용.
    - AI 가 짓는 이름의 언어 · 스타일은 저장소의 기존 브랜치 관례를 따른다 (재분기 자식 부분 포함).
 3. **확정** — AI 가 이름을 생성한 경우 기본은 `AskUserQuestion` 으로 제안 이름 (후보 1~3개) 을 확인받고 생성한다. 사용자가 "바로 만들어 / 알아서 해줘" 류 속행 신호를 이미 준 상황이면 확인 없이 생성하고 결과 이름을 알린다. 명시 이름은 질문 없이 그대로.
@@ -173,7 +199,7 @@ git worktree add -b <BR> <MAIN_ROOT>/.worktrees/<BR> <BASE>        # 사용자�
 
 **분기 부모 기록 (`-b` 신규 생성 케이스만)**: 신규 분기 (`-b`) 로 워크트리를 만든 경우에만, `git worktree add` 성공 직후 **별도의 후속 Bash 호출**로 분기 부모를 공유 git config 에 기록한다 (`git worktree add` 와 한 Bash 호출로 묶으면 `worktree-memory-symlink` 훅의 프리픽스 매치가 깨져 심링크가 생성되지 않는다).
 
-⚠️ **값은 실제 문자열로 치환해서 넣는다.** `<BR>` / `<BASE_BRANCH>` / `<BASE_SHA>` 는 Step 0 에서 읽은 값으로 바꿔 쓰는 자리표시자다. 셸 변수(`"$BASE_BRANCH"`) 형태로 두면 안 된다 — 셸 변수는 Bash 도구 호출 사이에 유지되지 않으므로, Step 0 과 다른 호출인 여기서는 빈 값이 기록된다. 빈 값은 `worktree-merge-back` 에서 "기록 없음" 과 구분되지 않아 부모 자동 판별이 매번 실패한다.
+⚠️ **값은 실제 문자열로 치환해서 넣는다.** `<BR>` / `<BASE_BRANCH>` / `<BASE_SHA>` 는 Step 0 **출력에 찍힌** 값으로 바꿔 쓰는 자리표시자다. 셸 변수(`"$BASE_BRANCH"`) 형태로 두면 안 된다 — 셸 변수는 Bash 도구 호출 사이에 유지되지 않으므로, Step 0 과 다른 호출인 여기서는 빈 값이 기록된다. 빈 값은 `worktree-merge-back` 에서 "기록 없음" 과 구분되지 않아 부모 자동 판별이 매번 실패한다.
 
 ```bash
 git config "branch.<BR>.js-super-parent" "<BASE_BRANCH>"
@@ -242,7 +268,7 @@ Claude 메모리 폴더: 메인 → 워크트리 심링크 (n개)
 
 기존 로컬/remote 브랜치를 attach 한 케이스는 "부모 기록: ✓" 대신 "부모 기록: 없음 (기존 브랜치 attach — 머지백 시 대상 확인)" 으로 표기한다.
 
-분기 베이스가 메인 브랜치가 아니면 (`BASE_BRANCH` ≠ `MAIN_BRANCH`) 다음 주의를 함께 출력한다 (v2.9.0+):
+분기 베이스가 메인 브랜치가 아니면 (Step 0 출력 `REBRANCH=yes`) 다음 주의를 함께 출력한다 (v2.9.0+):
 
 ```
 ℹ️ 머지 경로가 스택 구조입니다: <새브랜치> → <BASE_BRANCH> → <MAIN_BRANCH>
@@ -264,7 +290,9 @@ Claude 메모리 폴더: 메인 → 워크트리 심링크 (n개)
 | for-loop 한 방에 `git worktree add` 묶기 | 훅 프리픽스 미매치 → 심링크 미생성. 브랜치별 개별 Bash 호출. |
 | dirty 워크트리에서 말없이 분기 (또는 stash 로 넘기기) | Step 3.5 게이트 — WIP 커밋 / 커밋 시점 분기 선택. stash 금지. |
 | 기록 명령을 `git worktree add` 와 한 Bash 호출로 묶기 | 훅 프리픽스 미매치 → 심링크 미생성. 기록은 add 이후 별도 호출. |
-| 기록 명령에 `"$BASE_BRANCH"` 처럼 셸 변수를 그대로 두기 | 셸 변수는 Bash 도구 호출 사이에 유지되지 않아 빈 값이 기록된다. Step 0 에서 읽은 실제 문자열로 치환해서 넣는다. |
+| 기록 명령에 `"$BASE_BRANCH"` 처럼 셸 변수를 그대로 두기 | 셸 변수는 Bash 도구 호출 사이에 유지되지 않아 빈 값이 기록된다. Step 0 출력에 찍힌 실제 문자열로 치환해서 넣는다. |
+| Step 0 를 변수 대입만 하고 (출력 없이) 실행한 뒤 Step 1 재분기 판별을 경로 · 기억으로 추정 | Step 0 은 `REBRANCH=` 줄까지 찍는다. 출력이 안 보이면 Step 0 재실행. 추정 금지 — 재분기 접두어 누락의 실제 원인이었다. |
+| 값을 못 봤다는 이유로 detached HEAD 갈래 (접두어 생략) 로 빠짐 | 그 갈래는 Step 0 출력이 실제로 `BASE_BRANCH=(detached)` 를 찍었을 때만. |
 | Performing the memory symlink yourself in this skill | Forbidden — handled by `worktree-memory-symlink` PostToolUse hook. The agent must not run any path-mutating shell command (directory creation, symlink, or string substitution) against the Claude memory location. Past versions failed because agents mentally simulated the encoding rule and produced folder names Claude Code never reads. |
 | Clobber worktree's existing memory dir with a symlink | Forbidden. If `$WT_MEMORY` already exists, skip and tell user to migrate manually. |
 | Skip the symlink because "user didn't ask for it" | Always attempt. The whole point is zero-friction worktree start. Only skip when main memory missing or WT memory already there. |
@@ -280,6 +308,7 @@ Claude 메모리 폴더: 메인 → 워크트리 심링크 (n개)
 | ".gitignore is annoying to update" | Idempotent: only append if not already there. One-time cost. |
 | "User has secrets in .env, scary to copy automatically" | Files are already on disk; copying within the same machine doesn't expand exposure. The .worktrees/ folder is gitignored. |
 | "사용자가 준 이름이 아쉽다 — 더 좋은 이름을 제안하자" | 명시 이름은 그대로 쓴다. 제안은 이름 미지정일 때만 (Step 1). |
+| "지금 워크트리 안이니까 재분기겠지 / 메인이겠지" | 경로 · 기억으로 판정하지 않는다. Step 0 출력의 `REBRANCH=` 줄만 근거. 안 보이면 다시 찍는다. |
 
 ## Cleanup (separate operation)
 
@@ -307,6 +336,7 @@ After running this skill:
 10. 호출 위치가 dirty 였다면 Step 3.5 게이트 (WIP 커밋 / 커밋 시점 분기) 가 발화했다. (v2.9.0+)
 11. 신규 분기로 만든 워크트리마다 분기 부모 기록 (`js-super-parent` + `js-super-parent-base`) 이 남았고, attach 케이스는 기록 없이 보고에 그 사실이 표기됐다.
 12. 이름 미지정 호출에서는 AI 이름 제안이 이뤄졌고 (재분기면 `<부모>__<자식>` 형식), 사용자가 명시한 이름은 개명 없이 그대로 쓰였다.
+13. Step 0 의 출력 다섯 줄 (`REBRANCH=` 포함) 이 도구 결과에 남았고, Step 1 의 접두어 결정과 Step 4 의 부모 기록이 그 출력 문자열과 일치한다. 출력 없이 판별한 흔적이 없다.
 
 ## Related Skills
 

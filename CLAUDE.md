@@ -1972,6 +1972,9 @@ test -f skills/worktree-merge-back/tests/H18-parent-branch/README.md && echo OK
 - **N-3 생성 이름 제약** — AI 가 새로 짓는 부분에 `__` 금지 (구분자 예약). `/` 는 자식 이름에 금지 (새 중첩 층 방지 — 부모에게서 물려받은 `/` 는 수용), 메인 기준 이름은 저장소 관례를 따름. 명시 이름에는 미적용
 - **N-4 skill ↔ commands 동기** — 마커 리터럴 `부모브랜치__자식이름` 이 양쪽에 존재해야 함. 한쪽만 고치면 안내와 동작이 어긋난다
 - **N-5 훅 · Step 4 불변** — 이름 해석은 Step 1 에서 끝난다. `git worktree add ` 개별 호출 규칙 (v2.9.0) 과 `hooks/worktree-memory-symlink` 변경 0
+- **N-6 판별 근거는 Step 0 출력** (2026-09-05+) — Step 0 이 `MAIN_ROOT` / `BASE_SHA` / `BASE_BRANCH` / `MAIN_BRANCH` / `REBRANCH=yes|no` 다섯 줄을 echo 로 찍고, Step 1 은 그 `REBRANCH=` 줄만 보고 갈래를 고른다. 출력이 안 보이면 Step 0 재실행, 경로 · 기억 · 추측 판별 금지. 셸 변수는 Bash 호출 사이에 유지되지 않으므로 화면에 찍힌 문자열이 Step 1 (접두어) 과 Step 4 (부모 기록) 의 유일한 입력이다
+  - **Why**: 옛 Step 0 은 변수 대입만 하고 출력이 없었다. 세션 기록 전수 조사에서 Step 0 을 돌린 4건 모두 값 출력이 없었고, 그 상태에서 워크트리 안 + 설명만 호출이 오면 재분기 판별의 근거가 대화 기록에 없어 값을 못 본 모델이 detached 갈래 (접두어 생략) 로 빠졌다 (2026-09-05 사용자 catch — 다른 컴퓨터 4.0.0 에서 재분기 접두어 간헐 누락)
+  - 흐름도도 같이 고쳤다 — 옛 "Parse branch list" 단일 노드에는 이름 제안 · 재분기 판정이 없어 흐름도만 본 모델이 Step 1 규칙을 건너뛰었다
 
 ### 회귀 catch grep
 
@@ -1986,9 +1989,32 @@ test -f skills/js-super-sub-driven/tests/H20-worktree-naming/README.md && echo O
 # expected: OK
 ```
 
+N-6 (Step 0 출력 근거). Step 0 블록 안에 `REBRANCH=yes` / `REBRANCH=no` echo 두 줄이 있어야 하고, 옛 "Parse branch list" 단일 노드 흐름도로 되돌아가면 안 된다.
+
+```bash
+awk '/\*\*Step 0/,/\*\*Step 1/' skills/setting-up-worktrees/SKILL.md | grep -c 'echo "REBRANCH='
+# expected: 2
+
+grep -c "Parse branch list" skills/setting-up-worktrees/SKILL.md
+# expected: 0
+
+grep -cF "REBRANCH=yes?" skills/setting-up-worktrees/SKILL.md
+# expected: >= 3
+```
+
+### 회귀 패턴
+
+| 누락 | 증상 |
+|---|---|
+| Step 0 의 echo 줄 삭제 (변수 대입만 남김) | 재분기 판별 근거가 대화 기록에서 사라져 접두어가 간헐 누락 — 2026-09-05 사고 그대로 재현 |
+| Step 1 이 `REBRANCH=` 줄 대신 경로 · 기억으로 판별 | 워크트리 안에서 메인 브랜치 체크아웃 등 경계 케이스 오판 (N-2 위반) |
+| 흐름도를 "Parse branch list" 단일 노드로 되돌림 | 흐름도만 본 모델이 이름 제안 단계를 건너뜀 |
+| detached 갈래 조건을 "값이 비어 있으면" 으로 되돌림 | 값을 못 본 상태가 detached 로 오판돼 접두어 생략 |
+
 ### 영향 범위
 
 - skill 본문 1 + commands 1 + fixture 2 (신규 README + 인덱스) + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
+- N-6 (2026-09-05) 은 skill 본문 + fixture H20 + CLAUDE.md 만. `commands/worktree.md` 변경 0 (안내문에 판별 근거는 안 나온다), 훅 · scripts 변경 0
 - `worktree-merge-back` / `worktree-remove` — 본 네이밍 피처의 변경 0 (`__` 파싱 부모 판별은 범위 밖, tech-design §2 승계). 머지백의 부모 판별은 이름이 아니라 위 "워크트리 부모브랜치 기록 결합" 의 config 기록으로 한다 — 두 피처는 독립
 - `hooks/` / `scripts/` / og-* / auto-* 영향 0. 기존 워크트리 · 브랜치 이름 소급 변경 없음
 
