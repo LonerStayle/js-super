@@ -27,7 +27,7 @@ Notification 훅 (`elicitation_dialog` 매처) 이 알람을 발화하려면 도
 
 사용자가 "Other" 자유 응답 또는 "모르겠음 / 이해 안 됨" 류 답변 catch 시 → **그 질문만 단독 재호출 + prose 설명 추가**. 다음 단계 자동 진행 X (anchor 질문 강제 X 룰은 명확 yes/no 답변에만 적용).
 
-Take <slug>-requirements.md + <slug>-tech-design.md as inputs and produce a comprehensive implementation plan (`<slug>-implementation-plan.md`) decomposed into bite-sized TDD tasks. The upstream superpowers patterns (exact file paths, complete code in every step, TDD cycle, no placeholders, frequent commits) are inherited as-is. js-superpowers extends them with: change-history footer, structured "위험 코드 지점" section, and a verification gate after save.
+Take <slug>-requirements.md + <slug>-tech-design.md as inputs and produce a comprehensive implementation plan (`<slug>-implementation-plan.md`) decomposed into bite-sized tasks. The upstream superpowers patterns (exact file paths, complete code in every step, 테스트 → 구현 순서, no placeholders, frequent commits) are inherited as-is. js-superpowers extends them with: change-history footer, structured "위험 코드 지점" section, and a verification gate after save.
 
 <HARD-GATE>
 Both <slug>-requirements.md and <slug>-tech-design.md must exist in the current feature folder. If either is missing, instruct the user to run /brainstorm or /design-tech first.
@@ -71,7 +71,7 @@ You MUST create a TaskCreate task for each of these items and complete them in o
 
 1. **입력 확인** — confirm both <slug>-requirements.md and <slug>-tech-design.md exist (HARD-GATE if either missing)
 2. **파일 구조 윤곽 잡기** — which files are created/modified, with single-responsibility boundaries
-3. **구현계획서 task 목록 작성** — each task = one TDD cycle (계획서에는 `**검증**:` 자연어 설명만, 실행 단계에서 test → fail → impl → pass → commit), 2-5 minutes per step
+3. **구현계획서 task 목록 작성** — each task = 검증 한 단위 (계획서에는 `**검증**:` 자연어 설명만, 실행 단계에서 test → fail → impl → pass → commit)
 4. **위험 코드 지점 (§2) 채우기** — every risk category from <slug>-tech-design.md §6 mapped to a concrete location + mitigation
 5. **자체 점검** — spec coverage / placeholder scan / type consistency / 위험 coverage
 5.5. **문서 구조 확정 + 코드 강제 검사** — task 수를 세고, 10개 이상이면 인덱스 + `plan/` 하위 문서로 나눈다 (Plan Split 섹션). 그런 다음 `plan_guard` 검사를 돌려 코드 블록 부재 / 축약 마커 / 구조 위반을 확인한다. 위반이 하나라도 있으면 계획서는 저장되지 않는다.
@@ -134,11 +134,11 @@ If the field is omitted, `/execute-plan` assumes `per-task`.
 
 If the user explicitly requests `single` or `none` during planning, set the field accordingly and warn them once: "이 모드에서는 변경이력의 변경 전 코드를 in-memory로 보관해야 해서 토큰 비용이 큽니다. 가능하면 per-task를 권장합니다."
 
-## Bite-Sized Task Granularity (inherited from upstream)
+## Task Granularity
 
-Each step is one action (2-5 minutes):
+Task 하나는 `**검증**:` 한두 줄로 덮이는 단위다. 시간 상한이나 단언 개수 상한은 두지 않는다 — 그 보폭 제한은 사람의 작업 기억을 위한 장치였고, 실행 주체가 에이전트인 지금은 근거가 없다. Each task has four steps:
 - "`**검증**:` 설명 기반 실패 테스트 작성 + 실행 → FAIL 확인 (테스트 코드는 실행 단계가 작성)" — step
-- "Implement the minimal code to make the test pass" — step
+- "구현 코드 작성 (계획서의 수정 후 블록 그대로)" — step
 - "Run the tests and make sure they pass" — step
 - "Commit" — step (skip if git is not initialized)
 
@@ -241,7 +241,7 @@ docs/features/<date>-<slug>/
 Run: `pytest tests/path/test.py -v`
 Expected: FAIL (구현 전)
 
-- [ ] **Step 2: Write minimal implementation**
+- [ ] **Step 2: 구현 코드 작성**
 
 ```python
 def function(input):
@@ -387,7 +387,7 @@ Every step must contain the actual content an engineer needs. These are **plan f
 - **Exact file paths always** — `src/wallet/service.py:42-58`, never "the wallet service"
 - **Complete code in every step** — if a step changes code, show the code in a code block
 - **Exact commands with expected output** — never "run the tests" without the command + expected outcome
-- **DRY, YAGNI, TDD, frequent commits** — these aren't slogans, they're rules
+- **DRY, YAGNI, 테스트 → 구현 순서, frequent commits** — these aren't slogans, they're rules
 
 ## Self-Review
 
@@ -451,7 +451,7 @@ If exit 1:
 |---|---|
 | Steps that say "implement X" without code | Show the actual code in a code block. |
 | TODO / TBD / "later" markers | Forbidden. Resolve before saving. |
-| Tasks bigger than ~30 minutes | Decompose further. Each TDD cycle should fit one Task. |
+| Task 하나를 `**검증**:` 한두 줄로 못 덮음 | Decompose further. 검증 한 단위 = task 하나. |
 | Skipping §2 위험 코드 지점 | Required. Every risk category from <slug>-tech-design.md §6 must appear here. |
 
 ## Red Flags
@@ -459,7 +459,7 @@ If exit 1:
 | Thought | Reality |
 |---|---|
 | "The engineer can figure out the details" | They can't, and shouldn't have to. Spell it out. |
-| "Skip TDD for trivial tasks" | TDD is the discipline that catches the surprises. Keep the cycle. |
+| "Skip `**검증**:` for trivial tasks" | 검증이 없으면 실행 단계가 테스트를 못 쓴다. 한 줄이라도 적는다. |
 | "Plan is too long" | Length is fine if every step is concrete. Vague brevity is worse. |
 
 ## After Save — single approval gate, then execution-mode choice
