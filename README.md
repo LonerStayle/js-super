@@ -747,7 +747,7 @@ flowchart LR
 </details>
 
 <details>
-<summary><b>전체 Skill 26 개</b></summary>
+<summary><b>전체 Skill 25 개</b></summary>
 
 <br/>
 
@@ -765,7 +765,7 @@ flowchart LR
 
 **워크트리 (3)** — setting-up-worktrees / worktree-merge-back / worktree-remove
 
-**테스트·디버깅 (2)** — test-driven-development / systematic-debugging
+**디버깅 (1)** — systematic-debugging
 
 **리뷰·마무리 (3)** — requesting-code-review / receiving-code-review / finishing-a-development-branch
 

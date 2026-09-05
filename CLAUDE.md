@@ -2654,3 +2654,63 @@ grep -l "^user-invocable: false" commands/*.md | wc -l
 for f in skills/*/SKILL.md; do awk '/^---$/{c++; next} c==1 && /^user-invocable: false$/{found=1} END{exit found?0:1}' "$f" && echo "$f"; done | wc -l
 # expected: 12
 ```
+
+## TDD 규율 스킬 제거 결합
+
+`skills/test-driven-development/` 를 삭제했다. 남긴 것과 버린 것을 가른 기준은 "사람의 인지 한계를 위한 장치인가, 테스트의 독립성·유효성을 위한 장치인가" 다. 전자는 버렸고 후자는 실행 단계에 그대로 있다.
+
+### 핵심 룰
+
+- **버린 것** — 단언 하나 단위의 미세 사이클, "구현 먼저 썼으면 지우고 재시작", 최소 코드 규율, task 시간 상한 (2~5분 / 30분). 전부 사람의 작업 기억을 위한 보폭 제한이라 실행 주체가 에이전트인 지금은 근거가 없다
+- **남긴 것 (실행 단계)** — `**검증**:` 필드에서 테스트를 먼저 쓰고, FAIL 을 한 번 확인한 뒤, 구현을 붙여넣는 순서. 이유는 인지 보조가 아니라 (1) 테스트가 구현을 베끼지 않게 하는 독립성, (2) 테스트가 실제로 무언가를 잰다는 증명이다. 이 순서는 `executing-plans` 흐름도와 `implementer-prompt.md` 에 있다 — 스킬 삭제로 사라지지 않는다
+- **task 크기 기준은 검증 한 단위** — 시간이 아니라 `**검증**:` 한두 줄로 덮이는지로 자른다
+- **참조 대체는 인라인 한 줄** — 스킬을 부르던 `systematic-debugging` / `subagent-driven-development` 는 스킬 호출 대신 한 문장으로 대체했다. 다른 스킬이 이 이름을 다시 참조하면 없는 스킬 호출로 실패한다
+
+### 회귀 패턴
+
+| 누락 / 변경 | 증상 |
+|---|---|
+| 스킬 디렉토리 부활 | description 이 "어떤 기능이든 구현 전" 이라 매 세션 자동 발동 후보로 상주 — 삭제 의도 무화 |
+| 다른 스킬이 `js-super:test-driven-development` 를 참조 | 없는 스킬 호출 → 런타임 실패 |
+| 실행 단계의 FAIL 확인 단계 삭제 | 빈 구현에서도 통과하는 테스트가 걸러지지 않음. 뮤테이션 게이트가 일부 대신하지만 커밋 직전이라 늦다 |
+| writing-plans 에 시간 상한 부활 | 사람 기준 보폭이 돌아옴 |
+
+### 회귀 catch grep
+
+```bash
+test ! -d skills/test-driven-development && echo OK
+# expected: OK
+```
+
+```bash
+grep -rn "test-driven-development" skills commands README.md | grep -v "/tests/\|CREATION-LOG" | wc -l
+# expected: 0
+```
+
+```bash
+grep -c "2-5 minutes\|Write minimal implementation\|Skip TDD for trivial\|bigger than ~30 minutes" skills/writing-plans/SKILL.md
+# expected: 0
+```
+
+```bash
+grep -cF "TDD 순서 (테스트 먼저 → 구현) 는 실행 단계에서 그대로 유지된다" skills/writing-plans/SKILL.md
+# expected: 1
+```
+
+```bash
+grep -c "Run test → FAIL" skills/executing-plans/SKILL.md
+# expected: >= 1
+```
+
+```bash
+grep -cF "confirm FAIL" skills/js-super-sub-driven/implementer-prompt.md
+# expected: >= 1
+```
+
+### 영향 범위
+
+- 스킬 1 삭제 + 스킬 본문 3 (`writing-plans` / `systematic-debugging` / `subagent-driven-development`) + `README.md` + `tests/skill-triggering/run-all.sh` + 고아 프롬프트 `tests/skill-triggering/prompts/test-driven-development.txt` 삭제 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
+- 실측 (2026-09-05): 스킬 발동 테스트 5건 통과, 삭제한 TDD 프롬프트는 `brainstorming` 으로 정상 라우팅, 새 형식 계획서 (`**검증**:` 만) 로 `/auto-execute-plan` 을 돌려 두 task 모두 테스트 작성 → FAIL 확인 → 구현 byte-copy → PASS 순서를 지켰고 최종 unittest 7/7 통과
+- `executing-plans` / `js-super-sub-driven` / `implementer-prompt.md` / `auto-writing-plans` 변경 0 — 남긴 순서가 거기 있고, 버릴 항목은 거기 없었다
+- `scripts/` / `hooks/` / og-* / `/slice` 영향 0. `/slice` 는 Specifier 가 인수 테스트를 먼저 쓰는 구조라 원래부터 이 스킬을 부르지 않았다
+- `.codex-plugin/plugin.json` 의 longDescription 에 "test-driven development" 문구가 남아 있으나 일반 표현이라 그대로 둔다 (manifest 는 main 전용)
