@@ -2555,7 +2555,8 @@ grep -cF "confirm FAIL" skills/js-super-sub-driven/implementer-prompt.md
 
 ### 영향 범위
 
-- 스킬 1 삭제 + 스킬 본문 3 (`writing-plans` / `systematic-debugging` / `subagent-driven-development`) + `README.md` + `tests/skill-triggering/run-all.sh` + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
+- 스킬 1 삭제 + 스킬 본문 3 (`writing-plans` / `systematic-debugging` / `subagent-driven-development`) + `README.md` + `tests/skill-triggering/run-all.sh` + 고아 프롬프트 `tests/skill-triggering/prompts/test-driven-development.txt` 삭제 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
+- 실측 (2026-09-05): 스킬 발동 테스트 5건 통과, 삭제한 TDD 프롬프트는 `brainstorming` 으로 정상 라우팅, 새 형식 계획서 (`**검증**:` 만) 로 `/auto-execute-plan` 을 돌려 두 task 모두 테스트 작성 → FAIL 확인 → 구현 byte-copy → PASS 순서를 지켰고 최종 unittest 7/7 통과
 - `executing-plans` / `js-super-sub-driven` / `implementer-prompt.md` / `auto-writing-plans` 변경 0 — 남긴 순서가 거기 있고, 버릴 항목은 거기 없었다
 - `scripts/` / `hooks/` / og-* / `/slice` 영향 0. `/slice` 는 Specifier 가 인수 테스트를 먼저 쓰는 구조라 원래부터 이 스킬을 부르지 않았다
 - `.codex-plugin/plugin.json` 의 longDescription 에 "test-driven development" 문구가 남아 있으나 일반 표현이라 그대로 둔다 (manifest 는 main 전용)
