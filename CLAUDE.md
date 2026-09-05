@@ -1972,6 +1972,9 @@ test -f skills/worktree-merge-back/tests/H18-parent-branch/README.md && echo OK
 - **N-3 생성 이름 제약** — AI 가 새로 짓는 부분에 `__` 금지 (구분자 예약). `/` 는 자식 이름에 금지 (새 중첩 층 방지 — 부모에게서 물려받은 `/` 는 수용), 메인 기준 이름은 저장소 관례를 따름. 명시 이름에는 미적용
 - **N-4 skill ↔ commands 동기** — 마커 리터럴 `부모브랜치__자식이름` 이 양쪽에 존재해야 함. 한쪽만 고치면 안내와 동작이 어긋난다
 - **N-5 훅 · Step 4 불변** — 이름 해석은 Step 1 에서 끝난다. `git worktree add ` 개별 호출 규칙 (v2.9.0) 과 `hooks/worktree-memory-symlink` 변경 0
+- **N-6 판별 근거는 Step 0 출력** (2026-09-05+) — Step 0 이 `MAIN_ROOT` / `BASE_SHA` / `BASE_BRANCH` / `MAIN_BRANCH` / `REBRANCH=yes|no` 다섯 줄을 echo 로 찍고, Step 1 은 그 `REBRANCH=` 줄만 보고 갈래를 고른다. 출력이 안 보이면 Step 0 재실행, 경로 · 기억 · 추측 판별 금지. 셸 변수는 Bash 호출 사이에 유지되지 않으므로 화면에 찍힌 문자열이 Step 1 (접두어) 과 Step 4 (부모 기록) 의 유일한 입력이다
+  - **Why**: 옛 Step 0 은 변수 대입만 하고 출력이 없었다. 세션 기록 전수 조사에서 Step 0 을 돌린 4건 모두 값 출력이 없었고, 그 상태에서 워크트리 안 + 설명만 호출이 오면 재분기 판별의 근거가 대화 기록에 없어 값을 못 본 모델이 detached 갈래 (접두어 생략) 로 빠졌다 (2026-09-05 사용자 catch — 다른 컴퓨터 4.0.0 에서 재분기 접두어 간헐 누락)
+  - 흐름도도 같이 고쳤다 — 옛 "Parse branch list" 단일 노드에는 이름 제안 · 재분기 판정이 없어 흐름도만 본 모델이 Step 1 규칙을 건너뛰었다
 
 ### 회귀 catch grep
 
@@ -1986,9 +1989,32 @@ test -f skills/js-super-sub-driven/tests/H20-worktree-naming/README.md && echo O
 # expected: OK
 ```
 
+N-6 (Step 0 출력 근거). Step 0 블록 안에 `REBRANCH=yes` / `REBRANCH=no` echo 두 줄이 있어야 하고, 옛 "Parse branch list" 단일 노드 흐름도로 되돌아가면 안 된다.
+
+```bash
+awk '/\*\*Step 0/,/\*\*Step 1/' skills/setting-up-worktrees/SKILL.md | grep -c 'echo "REBRANCH='
+# expected: 2
+
+grep -c "Parse branch list" skills/setting-up-worktrees/SKILL.md
+# expected: 0
+
+grep -cF "REBRANCH=yes?" skills/setting-up-worktrees/SKILL.md
+# expected: >= 3
+```
+
+### 회귀 패턴
+
+| 누락 | 증상 |
+|---|---|
+| Step 0 의 echo 줄 삭제 (변수 대입만 남김) | 재분기 판별 근거가 대화 기록에서 사라져 접두어가 간헐 누락 — 2026-09-05 사고 그대로 재현 |
+| Step 1 이 `REBRANCH=` 줄 대신 경로 · 기억으로 판별 | 워크트리 안에서 메인 브랜치 체크아웃 등 경계 케이스 오판 (N-2 위반) |
+| 흐름도를 "Parse branch list" 단일 노드로 되돌림 | 흐름도만 본 모델이 이름 제안 단계를 건너뜀 |
+| detached 갈래 조건을 "값이 비어 있으면" 으로 되돌림 | 값을 못 본 상태가 detached 로 오판돼 접두어 생략 |
+
 ### 영향 범위
 
 - skill 본문 1 + commands 1 + fixture 2 (신규 README + 인덱스) + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
+- N-6 (2026-09-05) 은 skill 본문 + fixture H20 + CLAUDE.md 만. `commands/worktree.md` 변경 0 (안내문에 판별 근거는 안 나온다), 훅 · scripts 변경 0
 - `worktree-merge-back` / `worktree-remove` — 본 네이밍 피처의 변경 0 (`__` 파싱 부모 판별은 범위 밖, tech-design §2 승계). 머지백의 부모 판별은 이름이 아니라 위 "워크트리 부모브랜치 기록 결합" 의 config 기록으로 한다 — 두 피처는 독립
 - `hooks/` / `scripts/` / og-* / auto-* 영향 0. 기존 워크트리 · 브랜치 이름 소급 변경 없음
 
@@ -2500,6 +2526,134 @@ grep -c "## 슬라이스 흐름 (\`/slice\`) — 두 번째 실행 흐름 결합
 - `hooks/` / `agents/` / `evals/` / 6 manifest 변경 0. 버전 bump 는 main 전용 룰에 따라 main 에서
 - 자동 발동 경로 없음 — `disable-model-invocation: true`, 명시 슬래시 호출만
 - 이 흐름이 만드는 유일한 산출물은 `docs/slices/YYYY-MM.md` 다. 기존 흐름의 `docs/features/` 구조와 겹치지 않는다
+
+## /brain-guide 시작 흐름 판정 결합
+
+`commands/brain-guide.md` — 하려는 일 설명을 받아 잡일 묶음 (`/fast-tasks`) / 단독 브레인스토밍 (`/brainstorm`) / 진행 중인 큰 작업의 피처 (`/brainstorm`, 소속 표식은 브레인스토밍이 붙임) / 새 큰 작업 (`/epic` 후 `/brainstorm`) 네 갈래 중 하나를 권장한다. 커맨드 전용 (스킬 없음 — 컨텍스트 상주 비용 0, 이름 충돌 없음). 판정만 하고 파일을 만들거나 흐름을 시작하지 않는다.
+
+### 핵심 룰
+
+- **다음 명령 칸은 실제 커맨드 이름** — `/epic` · `/brainstorm` · `/fast-tasks` 가 rename 되면 이 본문의 갈래 표도 함께 고친다. 한쪽만 바꾸면 없는 명령을 안내한다
+- **진행 중 판별 = 큰 그림의 상태 줄** — `완료` 가 아니면 진행 중, 줄이 없어도 진행 중. `scripts/epic_scan.py` 와 브레인스토밍 스킬 "큰 작업 맥락" 섹션과 같은 규약이다. 규약을 바꾸면 세 곳 동시 수정
+- **예상도 (`forecast.md`) 를 읽지 않는다** — 브레인스토밍 스킬과 같은 이유. 읽으면 판정이 예상을 따라간다
+- **애매하면 작은 쪽** — 큰 작업은 신호 둘 이상일 때만. 큰 작업 파일 셋의 세션당 읽기·갱신 비용이 한 번에 끝날 일에는 순손실이다
+- **실행 없음** — `/epic` 은 `disable-model-invocation: true` 라 모델이 부를 수 없고, 나머지도 부르지 않는다. 사용자가 명령을 친다
+
+### 회귀 패턴
+
+| 누락 / 변경 | 증상 |
+|---|---|
+| `skills/brain-guide/` 신설 | 커맨드가 스킬을 가려 호출 불가 + description 상주 비용 |
+| `disable-model-invocation` 제거 | 대화 중 자동 발동 — 브레인스토밍 진입 직전에 끼어든다 |
+| 갈래 표의 명령 이름만 옛것으로 남음 | 없는 명령 안내 |
+| 예상도 읽기 추가 | 판정이 예상을 따라가 예상도 분리 취지 소실 |
+| 커맨드가 `/epic` 이나 브레인스토밍을 대신 시작 | "권장만" 이라는 존재 이유 소실 + `/epic` 은 호출 자체가 안 됨 |
+
+### 회귀 catch grep
+
+```bash
+test -f commands/brain-guide.md && test ! -d skills/brain-guide && echo OK
+# expected: OK
+```
+
+```bash
+grep -c "disable-model-invocation: true" commands/brain-guide.md
+# expected: 1
+```
+
+```bash
+grep -cF "/epic" commands/brain-guide.md
+# expected: >= 1
+```
+
+```bash
+grep -cF "/fast-tasks" commands/brain-guide.md
+# expected: >= 1
+```
+
+```bash
+grep -cF "예상도는 읽지 않습니다" commands/brain-guide.md
+# expected: 1
+```
+
+```bash
+grep -cF "작은 쪽" commands/brain-guide.md
+# expected: >= 1
+```
+
+```bash
+grep -c "brain-guide" README.md
+# expected: 1
+```
+
+### 영향 범위
+
+- 커맨드 1 신규 + `README.md` 워크플로 표 1행 + 본 섹션. `skills/` / `scripts/` / `hooks/` 변경 0
+- `/epic` · 브레인스토밍 스킬 · `epic_scan.py` 변경 0 — 같은 규약을 읽기만 한다
+- 자동 발동 경로 없음. 버전 bump 는 main 전용 룰에 따라 main 에서
+
+## 커맨드가 감싸는 스킬은 메뉴에서 숨긴다 (`user-invocable: false`)
+
+Claude Code 가 커맨드를 스킬에 통합하면서 **모든 스킬이 기본으로 `/` 메뉴에 뜬다.** 그래서 `/brainstorm` (커맨드) 과 `/brainstorming` (스킬) 이 사용자에게 나란히 보였다 (2026-09-05 사용자 catch). 커맨드가 감싸는 스킬의 프론트매터에 `user-invocable: false` 를 넣어 메뉴에서만 숨겼다. 모델은 그대로 부를 수 있다 (공식 문서: "Claude Code hides it from the `/` menu and doesn't run it when you type `/name`" — Skill 도구 호출과 체인 invoke 는 영향 없음).
+
+### 적용한 12 스킬 (커맨드 11개가 감싼다)
+
+| 사용자가 치는 커맨드 | 숨긴 스킬 |
+|---|---|
+| `/brainstorm` | `brainstorming` |
+| `/design-tech` | `tech-design` |
+| `/write-plan` | `writing-plans` |
+| `/execute-plan` | `executing-plans` + `js-super-sub-driven` (라우터 — task 수로 둘 중 하나 선택) |
+| `/worktree` | `setting-up-worktrees` |
+| `/merge-back-worktree` | `worktree-merge-back` |
+| `/remove-worktree` | `worktree-remove` |
+| `/auto-brainstorm` | `auto-brainstorming` |
+| `/auto-design-tech` | `auto-tech-design` |
+| `/auto-write-plan` | `auto-writing-plans` |
+| `/auto-execute-plan` | `auto-executing-plans` |
+
+커맨드 없이 메뉴에만 뜨는 내부 스킬 (`change-history` / `verifying-spec` / `code-pretty` 등 14개) 은 이번에 손대지 않았다. 숨길지는 별도 결정.
+
+### 왜 두 파일을 하나로 합치지 않는가
+
+스킬 하나로 합치면 셋을 잃는다. 이 근거를 지우면 다음 세션이 "같은 기능이면 하나로" 로 되돌린다.
+
+- **진입 통제** — 스킬 하나는 "사용자 + 모델 모두 호출" 아니면 "사용자만" 둘 중 하나다. auto-* 는 사용자와 체인 앞 단계는 불러야 하고 자유 요청에서 모델이 고르면 안 된다. 이 조합은 커맨드 (`disable-model-invocation: true`, 사용자 전용 입구) + 스킬 (모델 호출용 본체) 두 파일이어야만 표현된다. 워크트리 머지백 · 제거도 같은 구조
+- **슬래시 이름** — 합치면 슬래시가 스킬 이름을 따라 `/brainstorming` 이 된다. 짧은 이름을 지키려면 스킬 디렉토리 개명이 필요한데, 체인 invoke · 본 파일 회귀 룰 · fixture 가 그 이름을 참조한다 ("커맨드 이름 ↔ 스킬 이름 충돌 금지" 섹션에서 슬래시 쪽을 바꾼 이유)
+- **라우터** — `/execute-plan` 은 두 스킬 중 하나로 보내는 역할이라 스킬 하나에 못 넣는다
+
+og-* 는 체인이 없어서 커맨드 하나로 합쳤고, 그것이 합치기가 맞는 유일한 경우였다.
+
+### 지켜야 할 것
+
+- **스킬에 `disable-model-invocation: true` 를 넣지 않는다.** 커맨드가 Skill 도구로 위임하므로 스킬은 모델이 부를 수 있어야 한다. 넣는 순간 커맨드 → 스킬 위임과 체인이 모두 끊긴다 (공식 문서: "To keep Claude from invoking it through the Skill tool, set `disable-model-invocation: true`"). 자동 발동 차단은 커맨드 쪽 플래그 + 스킬 description 의 진입 제약 문구로 한다 (v2.8.1 auto-* 룰)
+- **커맨드에 `user-invocable: false` 를 넣지 않는다.** 커맨드는 사용자 입구다. 넣으면 아무도 못 부른다
+- **새 커맨드가 기존 스킬을 감싸게 되면 그 스킬에도 이 줄을 넣는다.** 빠뜨리면 같은 기능이 메뉴에 두 번 뜨는 회귀가 재발한다. 반대로 커맨드를 지워 스킬만 남기면 이 줄도 지운다 (사용자가 부를 길이 없어진다)
+- 반영은 플러그인 캐시 기준이라 머지 후 `/reload-plugins` 가 필요하다
+
+### 회귀 catch grep
+
+```bash
+grep -lF "user-invocable: false" skills/brainstorming/SKILL.md skills/tech-design/SKILL.md skills/writing-plans/SKILL.md skills/executing-plans/SKILL.md skills/js-super-sub-driven/SKILL.md skills/setting-up-worktrees/SKILL.md skills/worktree-merge-back/SKILL.md skills/worktree-remove/SKILL.md skills/auto-brainstorming/SKILL.md skills/auto-tech-design/SKILL.md skills/auto-writing-plans/SKILL.md skills/auto-executing-plans/SKILL.md | wc -l
+# expected: 12
+```
+
+```bash
+grep -l "^disable-model-invocation: true" skills/*/SKILL.md | wc -l
+# expected: 0
+```
+
+```bash
+grep -l "^user-invocable: false" commands/*.md | wc -l
+# expected: 0
+```
+
+플래그가 프론트매터 밖 (본문) 에 들어가면 효과가 없다. 첫 `---` 와 두 번째 `---` 사이에 있어야 한다.
+
+```bash
+for f in skills/*/SKILL.md; do awk '/^---$/{c++; next} c==1 && /^user-invocable: false$/{found=1} END{exit found?0:1}' "$f" && echo "$f"; done | wc -l
+# expected: 12
+```
 
 ## TDD 규율 스킬 제거 결합
 
