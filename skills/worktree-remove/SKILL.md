@@ -1,6 +1,7 @@
 ---
 name: worktree-remove
 description: 커맨드 /remove-worktree 명시 호출로만 진입 — 자유 요청에서 자동 선택 금지. 현재 feature 워크트리를 정리 (git worktree remove + 부모 기준 머지 확인을 통과한 브랜치만 삭제, --force 옵트인 시 확인 없이 삭제). worktree-only (main 에서 호출 시 차단).
+user-invocable: false
 ---
 
 # Worktree Remove (v2.5.1+)

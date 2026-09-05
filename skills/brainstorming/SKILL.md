@@ -1,6 +1,7 @@
 ---
 name: brainstorming
 description: You MUST use this before creating any feature, component, or behavior change. Runs a Socratic dialogue — one question at a time, alternatives with tradeoffs, then a free-form requirements doc whose only fixed parts are the title, a `## 요구 항목` section with 요구 N anchors, and the change-log footer. Writes <slug>-requirements.md to docs/features/YYYY-MM-DD-<slug>/. Does NOT cover technical design — that belongs to tech-design.
+user-invocable: false
 ---
 
 # Brainstorming → <slug>-requirements.md (Socratic)
