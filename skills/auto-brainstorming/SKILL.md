@@ -1,6 +1,7 @@
 ---
 name: auto-brainstorming
 description: auto-flow 진입점. /auto-brainstorm 명시 호출 전용 — 대화 중 자동 선택 금지 (js-super 기본 진입은 brainstorming). Socratic clarifying Q (1~5개 적응) + AI 자동 approach 선택 + 자동 section 작성 + change-history 자동 + auto-tech-design 자동 invoke. 사용자 입력은 clarifying Q 답변에만. AskUserQuestion / Visual Companion 호출 X.
+user-invocable: false
 ---
 
 # Auto Brainstorming → <slug>-requirements.md (Socratic auto)

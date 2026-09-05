@@ -270,8 +270,7 @@ Done!
 - **js-super:requesting-code-review** - Code review template for reviewer subagents
 - **js-super:finishing-a-development-branch** - Complete development after all tasks
 
-**Subagents should use:**
-- **js-super:test-driven-development** - Subagents follow TDD for each task
+**Subagents write the failing test before the implementation** for each task — the order lives in the implementer prompt, not in a separate skill.
 
 **Alternative workflow:**
 - **js-super:executing-plans** - Use for parallel session instead of same-session execution

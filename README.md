@@ -516,6 +516,7 @@ flowchart TD
 | `/og-*` 3 개 | upstream 흐름 | js-super 확장이 무겁다 싶을 때 |
 | `/fast-tasks` | task list | 요구사항 문서 없이 잡일 묶어 처리 |
 | `/epic <설명>` | 큰 그림 3 파일 | 여러 브레인스토밍으로 나눌 큰 작업 관리 |
+| `/brain-guide <설명>` | 권장 한 줄 | 잡일 묶음 / 단독 브레인스토밍 / 큰 작업 중 어느 흐름으로 시작할지 판정. 파일을 만들지 않고 흐름을 시작하지도 않음 |
 | `/slice <한 줄>` | 코드 + 테스트 | 두 번째 흐름 — 계획 문서 없이 명세 → 구현 → 강화 |
 
 > **`/slice` 는 나란히 있는 두 번째 흐름입니다.** 위 네 단계를 대체하지 않고 섞이지도 않습니다. 시작은 `/slice "하고 싶은 것 한 줄"` 한 번입니다. 밖에서 판정하는 인수 테스트 1~3 개를 먼저 쓰고, 그것이 통과하도록 구현합니다.
@@ -746,7 +747,7 @@ flowchart LR
 </details>
 
 <details>
-<summary><b>전체 Skill 26 개</b></summary>
+<summary><b>전체 Skill 25 개</b></summary>
 
 <br/>
 
@@ -764,7 +765,7 @@ flowchart LR
 
 **워크트리 (3)** — setting-up-worktrees / worktree-merge-back / worktree-remove
 
-**테스트·디버깅 (2)** — test-driven-development / systematic-debugging
+**디버깅 (1)** — systematic-debugging
 
 **리뷰·마무리 (3)** — requesting-code-review / receiving-code-review / finishing-a-development-branch
 
