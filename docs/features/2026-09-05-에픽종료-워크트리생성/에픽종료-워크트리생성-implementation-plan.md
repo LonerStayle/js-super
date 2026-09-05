@@ -1270,3 +1270,26 @@ git commit -m "docs(epic): README 커맨드 표 2행 + CLAUDE.md 에픽 종료 �
 - **무엇이**: 에픽종료-워크트리생성-implementation-plan.md 전체 (Task 9건, §2 위험 코드 지점 10건, §3 롤백)
 - **영향범위**: 없음 (최초 생성)
 - **연관 항목**: CH-20260905-001, CH-20260905-002
+
+### [2026-09-05 13:38] [코드-수정] (batch: tasks 1..9)
+- **id**: CH-20260905-005
+- **이유**: 구현계획서 Task 1~9 실행 — 에픽 파트 마무리를 실행 끝으로 옮기고 다음 파트 워크트리 생성 + 세션 인수인계를 붙임
+- **무엇이**: scripts/epic_chain.py (신규) · scripts/tests/test_epic_chain.py (신규, 9건) · skills/epic-close/SKILL.md (신규) · commands/epic-next.md (신규) · commands/epic-handoff.md (신규) · skills/finishing-a-development-branch/SKILL.md (Step 3) · skills/brainstorming/SKILL.md (8.5 제거 · 흐름도 노드 1 간선 2 제거 · 큰 작업 맥락 꼬리 복구 · Related Skills 헤더 복구) · skills/tech-design/SKILL.md (2개 확정 안내 한 줄) · commands/epic.md (하지 않는 것 한 줄) · H25 갱신 · H27 신설 · tests/README.md 인덱스 · README.md 커맨드 표 2행 · CLAUDE.md (에픽 섹션 불릿 2 + 회귀 표 1행 + 결합 메모 신설)
+- **영향범위**: 브레인스토밍 승인 직후 에픽 파일 갱신이 더 이상 일어나지 않는다 (실행 끝으로 이동). 마무리 스킬을 거치는 모든 흐름 (인라인 · 보조 에이전트 · og · auto 실행) 이 epic-close 를 부르지만 발동 검사 (진행 중 에픽 + 이번 피처의 소속 표식) 가 걸러낸다. 결합 규칙 214 → 229
+- **위험 카테고리**: side-effect
+- **task별 세부 (9건)**:
+  - Task 1: scripts/epic_chain.py, scripts/tests/test_epic_chain.py — 브랜치 파싱 · 다음 이름 · 미추적 경로 · 최근 폴더 (RISK side-effect 1건: ls-files 가 비면 무시된 경로도 복사 대상 — 의도된 동작) — commits: a5c1ec5
+  - Task 2: skills/epic-close/SKILL.md — 8단계 절차 + 스크립트 위치 해석 + 다른 하네스 + Anti-Patterns (none) — commits: 60daf72
+  - Task 3: commands/epic-next.md — 명시 호출 전용 수동 진입 (none) — commits: e32d7c9
+  - Task 4: commands/epic-handoff.md — 부모 찾기 · 인사 · 인수인계 수신 · 브레인스토밍 시작 · 대체 경로 (none) — commits: d34ea03
+  - Task 5: skills/finishing-a-development-branch/SKILL.md — Step 3 epic-close 호출 (side-effect: 모든 실행 흐름이 지나감, 발동 검사가 걸러냄) — commits: 77d1ee5
+  - Task 6: skills/brainstorming/SKILL.md — 7곳 수정, 아래에서 위로 적용, dot 미선언 노드 0 (breaking: H25 기대 변경 → Task 8 동반) — commits: 0045824
+  - Task 7: skills/tech-design/SKILL.md, commands/epic.md — 안내 한 줄씩 (none) — commits: dea9f9e
+  - Task 8: H25 4곳 · H27 신설 (시나리오 7) · tests/README.md 인덱스 (none) — commits: 467b50f
+  - Task 9: README.md 2행 · CLAUDE.md 4곳 (결합 메모 92줄) (none) — commits: ff9bf37
+- **실행 중 발견해 고친 것 (1건)**:
+  - 계획서 블록을 손으로 옮기지 않고 스크래치 도우미가 펜스 길이를 보고 바이트 그대로 꺼내 적용했다 (중첩 펜스 잘림 재발 차단). 12개 원본 블록 모두 1회 일치, 신규 5 파일의 끝부분이 계획서와 같음을 tail 로 확인
+- **검증**: pytest 9건 통과 (epic_chain). 각 task 의 검증 grep 전부 기대값 일치. 변경분 검사 게이트: task 1~9 발견 없음 (변경 파일 합계 12) — 건너뜀 6항목 (pytest · coverage · lizard · mutmut 미설치, CRAP 데이터 없음, jscpd 미설치 — 이 워크트리에 가상환경이 없어 시스템 파이썬으로 잰 결과), 의존 방향 통과
+- **연관 commits**: a5c1ec5..ff9bf37
+- **변경 전/후 코드**: 생략 — `git show <SHA>` 로 조회
+- **연관 항목**: CH-20260905-003
