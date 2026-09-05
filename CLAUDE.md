@@ -2203,10 +2203,101 @@ grep -c "분할 계획서 예외 (하위 문서)" skills/change-history/SKILL.md
 - **소속 표식** — 피처 요구사항 문서 머리의 `> **큰 작업**: <폴더명>` 한 줄. 이 형식을 바꾸면 스캔 스크립트와 커맨드 본문을 함께 고쳐야 한다
 - **상태 표식** — 큰 그림의 `> **상태**: 진행 중` / `완료`. 줄이 없으면 진행 중으로 본다
 - **진행 상태는 저장하지 않는다** — 볼 때마다 산출물 파일로 센다. 체크박스를 파일에 적어두면 갱신이 언젠가 빠지고 그때부터 적힌 것과 실제가 어긋난다
-- **없으면 조용히 지나간다** — 진행 중인 큰 작업이 없으면 브레인스토밍의 두 단계를 건너뛰고 안내도 출력하지 않는다
+- **없으면 조용히 지나간다** — 진행 중인 큰 작업이 없으면 브레인스토밍의 시작 단계를 건너뛰고 안내도 출력하지 않는다. 실행 끝의 `epic-close` 도 같다
 - **예상도는 시작 단계가 읽지 않는다** — 읽으면 다음 주제가 그 예상을 따라가 예상도를 분리한 이유가 사라진다
-- **워크트리는 제안만** — 부모 관계를 알려주는 데까지. 만드는 일은 `setting-up-worktrees` 가 한다
+- **마무리와 워크트리는 `epic-close` 가** — 브레인스토밍에 있던 마무리 단계 (8.5) 는 파트 실행이 끝난 뒤로 옮겨졌고, 다음 파트 워크트리도 거기서 만든다. "에픽 종료 워크트리 생성 결합" 참조
 - **자동 흐름 비적용** — `auto-brainstorming` 계열에는 넣지 않는다 (요구사항 범위 밖)
+
+## 에픽 종료 워크트리 생성 결합
+
+큰 작업 파트의 실행이 끝나면 에픽 파일을 갱신·커밋하고 다음 파트 워크트리를 만든 뒤, 새 세션이 인사하면 인수인계를 보내 곧바로 다음 브레인스토밍이 시작되게 한 기능. 브레인스토밍에 있던 마무리 단계 (8.5) 는 여기로 옮겨져 없어졌다. spec: `docs/features/2026-09-05-에픽종료-워크트리생성/`.
+
+### 핵심 룰
+
+- **마무리 절차는 `skills/epic-close/` 한 곳** — 실행이 끝나는 자리 셋 (인라인 실행 · 보조 에이전트 실행 · 수동 `/epic-next`) 이 모두 이 스킬을 이름으로 부른다. 앞의 둘은 `finishing-a-development-branch` Step 3 를 거친다. 두 실행 스킬 본문에는 사본을 두지 않는다
+- **발동 조건은 스킬 안에서** — 진행 중 에픽 + 이번 피처의 소속 표식. "이번 피처" 는 인자로 받거나, 없으면 `docs/features/` 전체에서 파일이 가장 최근에 수정된 폴더다 (방금 실행이 끝난 피처는 계획서 변경이력이 막 갱신된다). 그 폴더에 표식이 없으면 아무 출력 없이 돌아간다 — 표식 있는 다른 피처로 옮겨 가지 않는다. og / auto 브레인스토밍은 표식을 남기지 않아 걸러지고, 표식이 붙은 피처를 자동 실행 커맨드로 실행한 경우는 원하는 발동이다 (요구 2)
+- **순서는 갱신 → 갱신 커밋 → 선택 → 생성** — 커밋이 자식이 최신 큰 그림을 물려받는 유일한 경로다. 커밋 전에 워크트리를 만들지 않는다. 갱신 커밋은 에픽 폴더만 명시해 담는다
+- **사슬은 앞으로만, 항상 하나** — 되돌려 합치는 단계 없음, 형제 워크트리 동시 생성 없음. 이름은 `<에픽 워크트리>__ep_part<N>_<작업명>` 평탄형 (앞 파트 이름 누적 안 함). 계산은 `scripts/epic_chain.py`
+- **미추적 문서는 폴더 단위로 복사** — 후보는 에픽 폴더 전체와 이번 파트의 피처 폴더. `git ls-files` 가 비면 복사한다. 예상도도 이 경로로 자식에 간다
+- **인수인계는 자식이 먼저 인사** — `/epic-handoff` 가 `js-super-parent` 기록과 세션 이름 (브랜치 이름 포함 관례) 으로 부모를 찾아 인사하고, 부모는 인사가 온 뒤에만 `SendMessage` 로 보낸다. 내용은 파일에 없는 네 가지 (다음 파트 · 이번 파트의 결정 · 읽을 경로 · 부모 브랜치). 에픽 파일 본문과 `forecast.md` 는 넣지 않는다
+- **부모 무응답은 시간이 아니라 사용자 입력으로** — 자식은 "그냥 시작" 입력을 받으면 인수인계 없이 브레인스토밍을 시작한다. `ListAgents` 반복 조회 금지
+- **2개 문서 트랙은 수동** — 실행이 스킬 밖에서 끝나 신호가 없다. 기술설계의 2개 확정 종료 안내가 `/epic-next` 한 줄을 붙인다
+
+### 회귀 패턴
+
+| 누락 / 변경 | 증상 |
+|---|---|
+| 두 실행 스킬에 절차 사본 삽입 | 한쪽만 고치면 실행 방식에 따라 동작이 갈린다 |
+| 발동 검사 약화 (에픽 없을 때 안내 출력) | 단발성 피처마다 노이즈 — 요구 14 위반 |
+| 커밋 전에 워크트리 생성 | 자식이 옛 큰 그림을 물려받는다 |
+| 형제 생성 옵션 추가 | 큰 그림 파일이 두 갈래로 갈린다 |
+| 복사 후보를 인수인계 목록으로 좁힘 | `forecast.md` 가 자식에 안 간다 (성공 기준 4) |
+| 인사 전에 인수인계 전송 / 이름 관례 삭제 | 자식이 부모를 못 찾거나 잘못된 세션이 받는다 |
+| 브레인스토밍에 8.5 부활 | 요구사항 직후 갱신 → 다음 파트가 앞 파트 코드 없이 시작 |
+| 계획서 수정 후 블록을 백틱 세 개로 열고 안에 마크다운 예시를 넣음 | 이 기능의 원인이었던 잘림 재발 — 바깥 펜스는 백틱 네 개 |
+
+### 회귀 catch grep
+
+```bash
+test -d skills/epic-close && test -f commands/epic-next.md && test -f commands/epic-handoff.md && echo OK
+# expected: OK
+```
+
+```bash
+grep -c "js-super:epic-close" skills/finishing-a-development-branch/SKILL.md commands/epic-next.md
+# expected: 각 1
+```
+
+```bash
+grep -c "disable-model-invocation: true" commands/epic-next.md commands/epic-handoff.md
+# expected: 각 1
+```
+
+```bash
+grep -cE "^8\.5\. |큰 작업 갱신" skills/brainstorming/SKILL.md
+# expected: 0
+```
+
+```bash
+grep -c "^## Related Skills" skills/brainstorming/SKILL.md
+# expected: 1
+```
+
+```bash
+grep -c "epic-close\|epic_chain" skills/executing-plans/SKILL.md skills/js-super-sub-driven/SKILL.md
+# expected: 각 0
+```
+
+```bash
+python3 -c "from scripts.epic_chain import next_branch_name; print(next_branch_name('결제__ep_part2_환불', '정산'))"
+# expected: 결제__ep_part3_정산
+```
+
+```bash
+grep -c "git add -A" skills/epic-close/SKILL.md
+# expected: 2
+```
+
+```bash
+grep -c "/epic-next" skills/tech-design/SKILL.md commands/epic.md
+# expected: 각 1
+```
+
+```bash
+test -f skills/js-super-sub-driven/tests/H27-epic-close/README.md && echo OK
+# expected: OK
+```
+
+```bash
+for c in commands/epic-next.md commands/epic-handoff.md; do n=$(basename "$c" .md); [ -d "skills/$n" ] && echo "충돌: $n"; done; test ! -f commands/epic-close.md && echo NO_COLLISION
+# expected: NO_COLLISION
+```
+
+### 영향 범위
+
+- 신규 5 (`skills/epic-close/SKILL.md` · `commands/epic-next.md` · `commands/epic-handoff.md` · `scripts/epic_chain.py` · 그 테스트) + 수정 7 (`finishing-a-development-branch` · `brainstorming` · `tech-design` · `commands/epic.md` · H25 · tests 인덱스 · README) + 본 섹션. 버전 bump 는 main 전용 룰에 따라 main 에서
+- `executing-plans` / `js-super-sub-driven` / `setting-up-worktrees` / `scripts/epic_scan.py` / hooks 본문 변경 0
+- og-\* / auto-\* / worktree 계열 영향 0 — 마무리 스킬을 거쳐도 발동 검사가 걸러낸다
 
 ## 검사 게이트 ↔ 두 실행 흐름 결합
 
@@ -2237,7 +2328,7 @@ grep -c "분할 계획서 예외 (하위 문서)" skills/change-history/SKILL.md
 | 큰 작업이 없을 때 안내 문구 출력 | 큰 작업을 안 쓰는 사용자에게 매번 노이즈 |
 | 시작 단계가 예상도를 읽음 | 다음 주제가 예상을 따라가 폭포수로 굳는다 |
 | 갱신을 판정이 아니라 의무로 되돌림 | 바뀐 게 없는데 문구만 다듬는 변경이 쌓인다 |
-| 브레인스토밍 항목 번호를 밀어서 삽입 | 흐름도와 절차 상세의 번호 참조가 어긋난다. 0.5 / 8.5 를 쓴 이유 |
+| 브레인스토밍 항목 번호를 밀어서 삽입 | 흐름도와 절차 상세의 번호 참조가 어긋난다. 0.5 를 쓴 이유 (옛 8.5 는 에픽 종료 워크트리 생성 결합에서 `epic-close` 로 옮겨져 없어졌다) |
 | 커맨드가 워크트리를 직접 생성 | 만들기와 되돌리기를 떠안고 기존 워크트리 절차와 둘로 갈린다 |
 
 ### 회귀 catch grep
