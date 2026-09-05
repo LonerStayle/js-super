@@ -518,11 +518,12 @@ flowchart TD
 | `/epic <설명>` | 큰 그림 3 파일 | 여러 브레인스토밍으로 나눌 큰 작업 관리 |
 | `/epic-next [피처 폴더]` | 에픽 파일 갱신 커밋 + 다음 파트 워크트리 | 파트 실행이 끝났는데 자동 마무리가 안 도는 경우 (2개 문서 트랙 등) |
 | `/epic-handoff` | 부모 세션 인사 → 인수인계 수신 → 브레인스토밍 시작 | 다음 파트 워크트리에서 연 새 세션에서 한 번 |
+| `/brain-guide <설명>` | 권장 한 줄 | 잡일 묶음 / 단독 브레인스토밍 / 큰 작업 중 어느 흐름으로 시작할지 판정. 파일을 만들지 않고 흐름을 시작하지도 않음 |
 | `/slice <한 줄>` | 코드 + 테스트 | 두 번째 흐름 — 계획 문서 없이 명세 → 구현 → 강화 |
 
 > **`/slice` 는 나란히 있는 두 번째 흐름입니다.** 위 네 단계를 대체하지 않고 섞이지도 않습니다. 시작은 `/slice "하고 싶은 것 한 줄"` 한 번입니다. 밖에서 판정하는 인수 테스트 1~3 개를 먼저 쓰고, 그것이 통과하도록 구현합니다.
 >
-> 그 다음 `/check-code` 와 같은 검사 게이트를 최대 세 바퀴 돌며 고칩니다. 요구사항 · 설계 · 계획 문서는 만들지 않고, 남는 것은 `docs/slices/YYYY-MM.md` 의 12 줄짜리 장부 한 블록뿐입니다. 사람이 오는 자리는 세 곳입니다. 요청이 모호할 때, 슬라이스가 끝났을 때, 슬라이스 세 개마다 아키텍처를 볼지 물을 때입니다. 어느 쪽이 손에 맞는지는 둘 다 써 본 뒤에 정하시면 됩니다.
+> 그 다음 `/check-code` 와 같은 검사 게이트를 최대 세 바퀴 돌며 고칩니다. 요구사항 · 설계 · 계획 문서는 만들지 않고, 남는 것은 `docs/slices/YYYY-MM.md` 의 12 줄짜리 장부 한 블록뿐입니다. 사람이 오는 자리는 세 곳입니다. 요청이 모호할 때, 슬라이스가 끝났을 때, 슬라이스 세 개마다 아키텍처를 볼지 물을 때입니다. 그 밖에 프로젝트당 한 번, 뮤테이션 도구가 없으면 설치할지 묻습니다. 어느 쪽이 손에 맞는지는 둘 다 써 본 뒤에 정하시면 됩니다.
 
 ### 유틸리티
 
@@ -748,7 +749,7 @@ flowchart LR
 </details>
 
 <details>
-<summary><b>전체 Skill 26 개</b></summary>
+<summary><b>전체 Skill 25 개</b></summary>
 
 <br/>
 
@@ -766,7 +767,7 @@ flowchart LR
 
 **워크트리 (3)** — setting-up-worktrees / worktree-merge-back / worktree-remove
 
-**테스트·디버깅 (2)** — test-driven-development / systematic-debugging
+**디버깅 (1)** — systematic-debugging
 
 **리뷰·마무리 (3)** — requesting-code-review / receiving-code-review / finishing-a-development-branch
 
@@ -799,7 +800,21 @@ flowchart LR
 | Hook 처리 | `jq` 또는 `python3` (둘 중 하나) |
 | Claude Code | 최신 버전 권장 |
 
-> js-super 자체는 **외부 의존성 0**.
+> js-super 자체는 **외부 의존성 0**. 아래 검사 도구는 없어도 됩니다 — 없으면 그 항목만 건너뛰고 결과 표에 "건너뜀" 과 설치 명령이 적힙니다. 통과로 읽히지 않습니다.
+
+### 변경분 검사 게이트가 쓰는 도구 (선택)
+
+`/execute-plan` · `/slice` · `/check-code` 가 커밋 직전에 일곱 항목을 잽니다. 항목마다 부르는 도구가 있고, **검사 대상 프로젝트에** 설치돼 있어야 합니다. 플러그인이 대신 설치하지 않습니다.
+
+| 항목 | 파이썬 | 자바스크립트 | 그 밖의 언어 |
+|---|---|---|---|
+| C1 테스트 · C2 커버리지 | `pytest`, `coverage` | `vitest` / `jest` / node 내장 러너 | 재지 않음 |
+| C3 복잡도 · C4 CRAP | `lizard` | `lizard` | 재지 않음 |
+| C5 중복 | `jscpd` | `jscpd` | 재지 않음 |
+| C6 의존 방향 | 내장 | `dependency-cruiser` | 재지 않음 |
+| C7 뮤테이션 | `mutmut` | `@stryker-mutator/core` + 러너 플러그인 | 고 `gremlins` · C# `dotnet-stryker` · 자바 Gradle + PIT (기본 꺼짐) · 러스트 `cargo-mutants` (기본 꺼짐) |
+
+뮤테이션 도구는 `/execute-plan` 과 `/slice` 에 들어갈 때 한 번 확인합니다. 프로젝트 언어의 도구가 없고 테스트가 있으면 설치할지 묻고, 답은 `.js-super/mutation-tools.json` 에 언어별로 남겨 다시 묻지 않습니다. 이 파일은 커밋할 필요가 없으니 `.gitignore` 에 `.js-super/` 를 넣어 두면 좋습니다. 자바 · 러스트는 기본이 꺼져 있어 묻지 않고, `.code-gate.json` 에 켜는 법만 한 번 안내합니다. `/auto-execute-plan` 은 묻지 않습니다.
 
 <br/>
 

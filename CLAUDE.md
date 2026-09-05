@@ -1972,6 +1972,9 @@ test -f skills/worktree-merge-back/tests/H18-parent-branch/README.md && echo OK
 - **N-3 생성 이름 제약** — AI 가 새로 짓는 부분에 `__` 금지 (구분자 예약). `/` 는 자식 이름에 금지 (새 중첩 층 방지 — 부모에게서 물려받은 `/` 는 수용), 메인 기준 이름은 저장소 관례를 따름. 명시 이름에는 미적용
 - **N-4 skill ↔ commands 동기** — 마커 리터럴 `부모브랜치__자식이름` 이 양쪽에 존재해야 함. 한쪽만 고치면 안내와 동작이 어긋난다
 - **N-5 훅 · Step 4 불변** — 이름 해석은 Step 1 에서 끝난다. `git worktree add ` 개별 호출 규칙 (v2.9.0) 과 `hooks/worktree-memory-symlink` 변경 0
+- **N-6 판별 근거는 Step 0 출력** (2026-09-05+) — Step 0 이 `MAIN_ROOT` / `BASE_SHA` / `BASE_BRANCH` / `MAIN_BRANCH` / `REBRANCH=yes|no` 다섯 줄을 echo 로 찍고, Step 1 은 그 `REBRANCH=` 줄만 보고 갈래를 고른다. 출력이 안 보이면 Step 0 재실행, 경로 · 기억 · 추측 판별 금지. 셸 변수는 Bash 호출 사이에 유지되지 않으므로 화면에 찍힌 문자열이 Step 1 (접두어) 과 Step 4 (부모 기록) 의 유일한 입력이다
+  - **Why**: 옛 Step 0 은 변수 대입만 하고 출력이 없었다. 세션 기록 전수 조사에서 Step 0 을 돌린 4건 모두 값 출력이 없었고, 그 상태에서 워크트리 안 + 설명만 호출이 오면 재분기 판별의 근거가 대화 기록에 없어 값을 못 본 모델이 detached 갈래 (접두어 생략) 로 빠졌다 (2026-09-05 사용자 catch — 다른 컴퓨터 4.0.0 에서 재분기 접두어 간헐 누락)
+  - 흐름도도 같이 고쳤다 — 옛 "Parse branch list" 단일 노드에는 이름 제안 · 재분기 판정이 없어 흐름도만 본 모델이 Step 1 규칙을 건너뛰었다
 
 ### 회귀 catch grep
 
@@ -1986,9 +1989,32 @@ test -f skills/js-super-sub-driven/tests/H20-worktree-naming/README.md && echo O
 # expected: OK
 ```
 
+N-6 (Step 0 출력 근거). Step 0 블록 안에 `REBRANCH=yes` / `REBRANCH=no` echo 두 줄이 있어야 하고, 옛 "Parse branch list" 단일 노드 흐름도로 되돌아가면 안 된다.
+
+```bash
+awk '/\*\*Step 0/,/\*\*Step 1/' skills/setting-up-worktrees/SKILL.md | grep -c 'echo "REBRANCH='
+# expected: 2
+
+grep -c "Parse branch list" skills/setting-up-worktrees/SKILL.md
+# expected: 0
+
+grep -cF "REBRANCH=yes?" skills/setting-up-worktrees/SKILL.md
+# expected: >= 3
+```
+
+### 회귀 패턴
+
+| 누락 | 증상 |
+|---|---|
+| Step 0 의 echo 줄 삭제 (변수 대입만 남김) | 재분기 판별 근거가 대화 기록에서 사라져 접두어가 간헐 누락 — 2026-09-05 사고 그대로 재현 |
+| Step 1 이 `REBRANCH=` 줄 대신 경로 · 기억으로 판별 | 워크트리 안에서 메인 브랜치 체크아웃 등 경계 케이스 오판 (N-2 위반) |
+| 흐름도를 "Parse branch list" 단일 노드로 되돌림 | 흐름도만 본 모델이 이름 제안 단계를 건너뜀 |
+| detached 갈래 조건을 "값이 비어 있으면" 으로 되돌림 | 값을 못 본 상태가 detached 로 오판돼 접두어 생략 |
+
 ### 영향 범위
 
 - skill 본문 1 + commands 1 + fixture 2 (신규 README + 인덱스) + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
+- N-6 (2026-09-05) 은 skill 본문 + fixture H20 + CLAUDE.md 만. `commands/worktree.md` 변경 0 (안내문에 판별 근거는 안 나온다), 훅 · scripts 변경 0
 - `worktree-merge-back` / `worktree-remove` — 본 네이밍 피처의 변경 0 (`__` 파싱 부모 판별은 범위 밖, tech-design §2 승계). 머지백의 부모 판별은 이름이 아니라 위 "워크트리 부모브랜치 기록 결합" 의 config 기록으로 한다 — 두 피처는 독립
 - `hooks/` / `scripts/` / og-* / auto-* 영향 0. 기존 워크트리 · 브랜치 이름 소급 변경 없음
 
@@ -2449,7 +2475,7 @@ grep -c '변경분 검사 리포트\\n(커밋 직전, 막지 않음)' skills/exe
 - **S-8 산출물은 슬라이스 노트 하나** — `docs/slices/YYYY-MM.md` 에 슬라이스당 12줄 이하 한 블록. 존재 이유는 **면제한 것과 그 이유**를 남기는 것이다. 변경이력 꼬리말 · RISK 주석 · 용어집은 붙이지 않는다 (기존 흐름의 거버넌스를 끌어오면 두 흐름이 섞인다)
 - **S-9 아키텍처 정리는 권유만** — 세 슬라이스마다 캐묻기 질문 셋을 던져 답을 보여주는 데까지. 정리 자체는 하지 않는다. 원전이 자동화에 실패했다고 두 번 말한 자리다
 - **S-10 상호 호출 금지** — `/slice` 안에서 기존 흐름의 스킬을 부르지 않고, 기존 흐름에서 `/slice` 를 부르지 않는다. 나란히 두는 것이지 섞는 것이 아니다
-- **S-11 프롬프트 줄 수 상한** — 공통 35 / Specifier 60 / Coder 55 / Hardener 75. 한 역할에게 실제로 가는 프롬프트는 공통 + 역할이라 최대 110줄이고, 커맨드 본문 전체는 320줄이다. 원전이 "최초 프롬프트를 절대 최소로" 라고 못박은 자리라 이 상한이 이 흐름의 설계 원리다. 룰을 산문으로 늘리지 말고 도구가 판정하게 한다
+- **S-11 프롬프트 줄 수 상한** — 공통 35 / Specifier 60 / Coder 55 / Hardener 75. 한 역할에게 실제로 가는 프롬프트는 공통 + 역할이라 최대 110줄이고, 커맨드 본문 전체는 330줄 상한이다 (역할 프롬프트 블록 밖의 메인 절차 — Step 0 의 뮤테이션 도구 확인 — 가 들어가며 320 에서 올렸다. 보조 에이전트에게 가는 줄 수는 그대로다). 원전이 "최초 프롬프트를 절대 최소로" 라고 못박은 자리라 이 상한이 이 흐름의 설계 원리다. 룰을 산문으로 늘리지 말고 도구가 판정하게 한다
 
 ### 원전과 갈라선 지점 (정직성)
 
@@ -2502,10 +2528,10 @@ grep -c "GATE_ABSENT" commands/slice.md
 # expected: 3
 ```
 
-커맨드 본문 전체 상한 320줄.
+커맨드 본문 전체 상한 330줄.
 
 ```bash
-awk 'END{print (NR<=320)?0:1}' commands/slice.md
+awk 'END{print (NR<=330)?0:1}' commands/slice.md
 # expected: 0
 ```
 
@@ -2591,3 +2617,263 @@ grep -c "## 슬라이스 흐름 (\`/slice\`) — 두 번째 실행 흐름 결합
 - `hooks/` / `agents/` / `evals/` / 6 manifest 변경 0. 버전 bump 는 main 전용 룰에 따라 main 에서
 - 자동 발동 경로 없음 — `disable-model-invocation: true`, 명시 슬래시 호출만
 - 이 흐름이 만드는 유일한 산출물은 `docs/slices/YYYY-MM.md` 다. 기존 흐름의 `docs/features/` 구조와 겹치지 않는다
+
+## /brain-guide 시작 흐름 판정 결합
+
+`commands/brain-guide.md` — 하려는 일 설명을 받아 잡일 묶음 (`/fast-tasks`) / 단독 브레인스토밍 (`/brainstorm`) / 진행 중인 큰 작업의 피처 (`/brainstorm`, 소속 표식은 브레인스토밍이 붙임) / 새 큰 작업 (`/epic` 후 `/brainstorm`) 네 갈래 중 하나를 권장한다. 커맨드 전용 (스킬 없음 — 컨텍스트 상주 비용 0, 이름 충돌 없음). 판정만 하고 파일을 만들거나 흐름을 시작하지 않는다.
+
+### 핵심 룰
+
+- **다음 명령 칸은 실제 커맨드 이름** — `/epic` · `/brainstorm` · `/fast-tasks` 가 rename 되면 이 본문의 갈래 표도 함께 고친다. 한쪽만 바꾸면 없는 명령을 안내한다
+- **진행 중 판별 = 큰 그림의 상태 줄** — `완료` 가 아니면 진행 중, 줄이 없어도 진행 중. `scripts/epic_scan.py` 와 브레인스토밍 스킬 "큰 작업 맥락" 섹션과 같은 규약이다. 규약을 바꾸면 세 곳 동시 수정
+- **예상도 (`forecast.md`) 를 읽지 않는다** — 브레인스토밍 스킬과 같은 이유. 읽으면 판정이 예상을 따라간다
+- **애매하면 작은 쪽** — 큰 작업은 신호 둘 이상일 때만. 큰 작업 파일 셋의 세션당 읽기·갱신 비용이 한 번에 끝날 일에는 순손실이다
+- **실행 없음** — `/epic` 은 `disable-model-invocation: true` 라 모델이 부를 수 없고, 나머지도 부르지 않는다. 사용자가 명령을 친다
+
+### 회귀 패턴
+
+| 누락 / 변경 | 증상 |
+|---|---|
+| `skills/brain-guide/` 신설 | 커맨드가 스킬을 가려 호출 불가 + description 상주 비용 |
+| `disable-model-invocation` 제거 | 대화 중 자동 발동 — 브레인스토밍 진입 직전에 끼어든다 |
+| 갈래 표의 명령 이름만 옛것으로 남음 | 없는 명령 안내 |
+| 예상도 읽기 추가 | 판정이 예상을 따라가 예상도 분리 취지 소실 |
+| 커맨드가 `/epic` 이나 브레인스토밍을 대신 시작 | "권장만" 이라는 존재 이유 소실 + `/epic` 은 호출 자체가 안 됨 |
+
+### 회귀 catch grep
+
+```bash
+test -f commands/brain-guide.md && test ! -d skills/brain-guide && echo OK
+# expected: OK
+```
+
+```bash
+grep -c "disable-model-invocation: true" commands/brain-guide.md
+# expected: 1
+```
+
+```bash
+grep -cF "/epic" commands/brain-guide.md
+# expected: >= 1
+```
+
+```bash
+grep -cF "/fast-tasks" commands/brain-guide.md
+# expected: >= 1
+```
+
+```bash
+grep -cF "예상도는 읽지 않습니다" commands/brain-guide.md
+# expected: 1
+```
+
+```bash
+grep -cF "작은 쪽" commands/brain-guide.md
+# expected: >= 1
+```
+
+```bash
+grep -c "brain-guide" README.md
+# expected: 1
+```
+
+### 영향 범위
+
+- 커맨드 1 신규 + `README.md` 워크플로 표 1행 + 본 섹션. `skills/` / `scripts/` / `hooks/` 변경 0
+- `/epic` · 브레인스토밍 스킬 · `epic_scan.py` 변경 0 — 같은 규약을 읽기만 한다
+- 자동 발동 경로 없음. 버전 bump 는 main 전용 룰에 따라 main 에서
+
+## 커맨드가 감싸는 스킬은 메뉴에서 숨긴다 (`user-invocable: false`)
+
+Claude Code 가 커맨드를 스킬에 통합하면서 **모든 스킬이 기본으로 `/` 메뉴에 뜬다.** 그래서 `/brainstorm` (커맨드) 과 `/brainstorming` (스킬) 이 사용자에게 나란히 보였다 (2026-09-05 사용자 catch). 커맨드가 감싸는 스킬의 프론트매터에 `user-invocable: false` 를 넣어 메뉴에서만 숨겼다. 모델은 그대로 부를 수 있다 (공식 문서: "Claude Code hides it from the `/` menu and doesn't run it when you type `/name`" — Skill 도구 호출과 체인 invoke 는 영향 없음).
+
+### 적용한 12 스킬 (커맨드 11개가 감싼다)
+
+| 사용자가 치는 커맨드 | 숨긴 스킬 |
+|---|---|
+| `/brainstorm` | `brainstorming` |
+| `/design-tech` | `tech-design` |
+| `/write-plan` | `writing-plans` |
+| `/execute-plan` | `executing-plans` + `js-super-sub-driven` (라우터 — task 수로 둘 중 하나 선택) |
+| `/worktree` | `setting-up-worktrees` |
+| `/merge-back-worktree` | `worktree-merge-back` |
+| `/remove-worktree` | `worktree-remove` |
+| `/auto-brainstorm` | `auto-brainstorming` |
+| `/auto-design-tech` | `auto-tech-design` |
+| `/auto-write-plan` | `auto-writing-plans` |
+| `/auto-execute-plan` | `auto-executing-plans` |
+
+커맨드 없이 메뉴에만 뜨는 내부 스킬 (`change-history` / `verifying-spec` / `code-pretty` 등 14개) 은 이번에 손대지 않았다. 숨길지는 별도 결정.
+
+### 왜 두 파일을 하나로 합치지 않는가
+
+스킬 하나로 합치면 셋을 잃는다. 이 근거를 지우면 다음 세션이 "같은 기능이면 하나로" 로 되돌린다.
+
+- **진입 통제** — 스킬 하나는 "사용자 + 모델 모두 호출" 아니면 "사용자만" 둘 중 하나다. auto-* 는 사용자와 체인 앞 단계는 불러야 하고 자유 요청에서 모델이 고르면 안 된다. 이 조합은 커맨드 (`disable-model-invocation: true`, 사용자 전용 입구) + 스킬 (모델 호출용 본체) 두 파일이어야만 표현된다. 워크트리 머지백 · 제거도 같은 구조
+- **슬래시 이름** — 합치면 슬래시가 스킬 이름을 따라 `/brainstorming` 이 된다. 짧은 이름을 지키려면 스킬 디렉토리 개명이 필요한데, 체인 invoke · 본 파일 회귀 룰 · fixture 가 그 이름을 참조한다 ("커맨드 이름 ↔ 스킬 이름 충돌 금지" 섹션에서 슬래시 쪽을 바꾼 이유)
+- **라우터** — `/execute-plan` 은 두 스킬 중 하나로 보내는 역할이라 스킬 하나에 못 넣는다
+
+og-* 는 체인이 없어서 커맨드 하나로 합쳤고, 그것이 합치기가 맞는 유일한 경우였다.
+
+### 지켜야 할 것
+
+- **스킬에 `disable-model-invocation: true` 를 넣지 않는다.** 커맨드가 Skill 도구로 위임하므로 스킬은 모델이 부를 수 있어야 한다. 넣는 순간 커맨드 → 스킬 위임과 체인이 모두 끊긴다 (공식 문서: "To keep Claude from invoking it through the Skill tool, set `disable-model-invocation: true`"). 자동 발동 차단은 커맨드 쪽 플래그 + 스킬 description 의 진입 제약 문구로 한다 (v2.8.1 auto-* 룰)
+- **커맨드에 `user-invocable: false` 를 넣지 않는다.** 커맨드는 사용자 입구다. 넣으면 아무도 못 부른다
+- **새 커맨드가 기존 스킬을 감싸게 되면 그 스킬에도 이 줄을 넣는다.** 빠뜨리면 같은 기능이 메뉴에 두 번 뜨는 회귀가 재발한다. 반대로 커맨드를 지워 스킬만 남기면 이 줄도 지운다 (사용자가 부를 길이 없어진다)
+- 반영은 플러그인 캐시 기준이라 머지 후 `/reload-plugins` 가 필요하다
+
+### 회귀 catch grep
+
+```bash
+grep -lF "user-invocable: false" skills/brainstorming/SKILL.md skills/tech-design/SKILL.md skills/writing-plans/SKILL.md skills/executing-plans/SKILL.md skills/js-super-sub-driven/SKILL.md skills/setting-up-worktrees/SKILL.md skills/worktree-merge-back/SKILL.md skills/worktree-remove/SKILL.md skills/auto-brainstorming/SKILL.md skills/auto-tech-design/SKILL.md skills/auto-writing-plans/SKILL.md skills/auto-executing-plans/SKILL.md | wc -l
+# expected: 12
+```
+
+```bash
+grep -l "^disable-model-invocation: true" skills/*/SKILL.md | wc -l
+# expected: 0
+```
+
+```bash
+grep -l "^user-invocable: false" commands/*.md | wc -l
+# expected: 0
+```
+
+플래그가 프론트매터 밖 (본문) 에 들어가면 효과가 없다. 첫 `---` 와 두 번째 `---` 사이에 있어야 한다.
+
+```bash
+for f in skills/*/SKILL.md; do awk '/^---$/{c++; next} c==1 && /^user-invocable: false$/{found=1} END{exit found?0:1}' "$f" && echo "$f"; done | wc -l
+# expected: 12
+```
+
+## TDD 규율 스킬 제거 결합
+
+`skills/test-driven-development/` 를 삭제했다. 남긴 것과 버린 것을 가른 기준은 "사람의 인지 한계를 위한 장치인가, 테스트의 독립성·유효성을 위한 장치인가" 다. 전자는 버렸고 후자는 실행 단계에 그대로 있다.
+
+### 핵심 룰
+
+- **버린 것** — 단언 하나 단위의 미세 사이클, "구현 먼저 썼으면 지우고 재시작", 최소 코드 규율, task 시간 상한 (2~5분 / 30분). 전부 사람의 작업 기억을 위한 보폭 제한이라 실행 주체가 에이전트인 지금은 근거가 없다
+- **남긴 것 (실행 단계)** — `**검증**:` 필드에서 테스트를 먼저 쓰고, FAIL 을 한 번 확인한 뒤, 구현을 붙여넣는 순서. 이유는 인지 보조가 아니라 (1) 테스트가 구현을 베끼지 않게 하는 독립성, (2) 테스트가 실제로 무언가를 잰다는 증명이다. 이 순서는 `executing-plans` 흐름도와 `implementer-prompt.md` 에 있다 — 스킬 삭제로 사라지지 않는다
+- **task 크기 기준은 검증 한 단위** — 시간이 아니라 `**검증**:` 한두 줄로 덮이는지로 자른다
+- **참조 대체는 인라인 한 줄** — 스킬을 부르던 `systematic-debugging` / `subagent-driven-development` 는 스킬 호출 대신 한 문장으로 대체했다. 다른 스킬이 이 이름을 다시 참조하면 없는 스킬 호출로 실패한다
+
+### 회귀 패턴
+
+| 누락 / 변경 | 증상 |
+|---|---|
+| 스킬 디렉토리 부활 | description 이 "어떤 기능이든 구현 전" 이라 매 세션 자동 발동 후보로 상주 — 삭제 의도 무화 |
+| 다른 스킬이 `js-super:test-driven-development` 를 참조 | 없는 스킬 호출 → 런타임 실패 |
+| 실행 단계의 FAIL 확인 단계 삭제 | 빈 구현에서도 통과하는 테스트가 걸러지지 않음. 뮤테이션 게이트가 일부 대신하지만 커밋 직전이라 늦다 |
+| writing-plans 에 시간 상한 부활 | 사람 기준 보폭이 돌아옴 |
+
+### 회귀 catch grep
+
+```bash
+test ! -d skills/test-driven-development && echo OK
+# expected: OK
+```
+
+```bash
+grep -rn "test-driven-development" skills commands README.md | grep -v "/tests/\|CREATION-LOG" | wc -l
+# expected: 0
+```
+
+```bash
+grep -c "2-5 minutes\|Write minimal implementation\|Skip TDD for trivial\|bigger than ~30 minutes" skills/writing-plans/SKILL.md
+# expected: 0
+```
+
+```bash
+grep -cF "TDD 순서 (테스트 먼저 → 구현) 는 실행 단계에서 그대로 유지된다" skills/writing-plans/SKILL.md
+# expected: 1
+```
+
+```bash
+grep -c "Run test → FAIL" skills/executing-plans/SKILL.md
+# expected: >= 1
+```
+
+```bash
+grep -cF "confirm FAIL" skills/js-super-sub-driven/implementer-prompt.md
+# expected: >= 1
+```
+
+### 영향 범위
+
+- 스킬 1 삭제 + 스킬 본문 3 (`writing-plans` / `systematic-debugging` / `subagent-driven-development`) + `README.md` + `tests/skill-triggering/run-all.sh` + 고아 프롬프트 `tests/skill-triggering/prompts/test-driven-development.txt` 삭제 + CLAUDE.md. 버전 bump 는 main 전용 룰에 따라 main 에서
+- 실측 (2026-09-05): 스킬 발동 테스트 5건 통과, 삭제한 TDD 프롬프트는 `brainstorming` 으로 정상 라우팅, 새 형식 계획서 (`**검증**:` 만) 로 `/auto-execute-plan` 을 돌려 두 task 모두 테스트 작성 → FAIL 확인 → 구현 byte-copy → PASS 순서를 지켰고 최종 unittest 7/7 통과
+- `executing-plans` / `js-super-sub-driven` / `implementer-prompt.md` / `auto-writing-plans` 변경 0 — 남긴 순서가 거기 있고, 버릴 항목은 거기 없었다
+- `scripts/` / `hooks/` / og-* / `/slice` 영향 0. `/slice` 는 Specifier 가 인수 테스트를 먼저 쓰는 구조라 원래부터 이 스킬을 부르지 않았다
+- `.codex-plugin/plugin.json` 의 longDescription 에 "test-driven development" 문구가 남아 있으나 일반 표현이라 그대로 둔다 (manifest 는 main 전용)
+
+## 뮤테이션 도구 사전 확인 결합 (`/execute-plan` · `/slice` 진입 시 한 번만 묻기)
+
+게이트는 도구가 없으면 C7 을 건너뛰고 설치 명령을 결과 표에 싣는데, 그 표는 커밋 직전에야 나와 그 회차는 이미 뮤테이션 없이 지나간 뒤다 (사용자 catch — "뭘 깔아야 하는지 안내를 해야 하는 거 아니냐"). 그래서 두 실행 흐름의 **진입 시점**에 `scripts/preflight.py mutation-tools` 로 먼저 보고, 없으면 `AskUserQuestion` 으로 한 번 묻고, 답을 `.js-super/mutation-tools.json` 에 언어별로 남겨 다시 묻지 않는다.
+
+### 핵심 룰
+
+- **묻는 자리는 둘** — `commands/execute-plan.md` § 0 (실행 모드 질문 앞) 과 `commands/slice.md` Step 0. 스킬 본문 (`executing-plans` / `js-super-sub-driven`) 에는 넣지 않는다. `/auto-execute-plan` 은 `js-super-sub-driven` 을 직접 부르므로 스킬에 넣으면 자동 흐름도 묻게 되고, 그것은 auto-* 의 "AskUserQuestion 호출 부재" 룰과 정면 충돌한다. **자동 흐름 제외는 사용자 결정**
+- **묻는 조건은 넷의 AND** — 지원 언어 파일 있음 · 테스트 있음 · 도구 없음 · 기록 없음. 테스트가 없는 프로젝트에서는 도구를 깔아도 못 재므로 묻지 않는다 (첫인상 소음 방지). 기본이 꺼진 언어 (자바 · 러스트) 는 묻지 않고 `.code-gate.json` 에 켜는 법만 한 번 안내한다 (`noted` 로 기록)
+- **기록은 `.js-super/mutation-tools.json`** — `.code-gate.json` 에 쓰지 않는다. 그 파일은 사람만 고친다 (게이트의 회피 방지 장치, `/slice` S-7). 결정값은 `declined` / `installed` / `install_failed` / `noted` 넷. 깨진 기록 파일은 없는 것으로 본다
+- **도구 유무와 설치 명령의 출처는 게이트와 어댑터** — `code_gate.probe_tools` / `resolve_python` / `detect_pytest_paths`, 어댑터 레지스트리 (`_registered_adapters`), 어댑터 모듈의 `MUTATION_*SUFFIXES` · `_INSTALL_HINT` · `STRYKER_RUNNER_PLUGINS` · `STRYKER_CONFIG_NAMES`. preflight 에 언어 이름이나 도구 이름을 손으로 적지 않는다 — 어댑터를 더하면 자동으로 따라온다. 게이트에는 인자를 더하지 않는다 (게이트 docstring 계약 4 — 흐름 구분 인자 없음)
+- **설치 범위를 거짓으로 적지 않는다** — 파이썬은 프로젝트 가상환경이 있을 때만 "프로젝트 로컬" 이고, 없으면 시스템 파이썬에 깔리므로 "사용자 환경" 으로 표기하고 안내를 붙인다. 고 (`go install` → GOPATH/bin) · C# (`dotnet tool install -g`) 은 게이트가 PATH 에서만 찾아 프로젝트 로컬 설치가 없다 — "사용자 환경 (프로젝트 밖)" 으로 표기하고 질문 본문에서 빼지 않는다. 사용자가 "예" 를 고른 뒤에만, 표의 명령을 **그대로** 실행한다 (전역 설치로 바꾸지 않는다)
+- **자바스크립트는 본체 + 러너 플러그인** — `@stryker-mutator/core` 만 있으면 게이트가 `command` 러너로 떨어져 재지 않는다. 러너 플러그인 디렉토리나 프로젝트 Stryker 설정이 있어야 "있음" 이고, 설치 명령은 package.json 의 러너에 맞는 플러그인을 함께 적는다
+- **막지 않는다** — 어느 답이든 흐름은 다음 단계로 간다. 스크립트를 못 찾으면 (`PREFLIGHT_ABSENT`) 한 줄 알리고 진행. critical 7 표에 행을 더하지 않는다
+- **`preflight.py` 는 추가 전용** — 기존 함수 시그니처 · exit code 규약 무변경 (3 skill 의 bash one-liner 동기 불필요). 게이트 import 는 함수 안에서 늦게 한다 (`_gate()`) — 다른 preflight 함수는 게이트를 모른다. `__main__` 진입점 (`mutation-tools` 하위 명령) 이 처음 생겼다
+
+### 회귀 패턴
+
+| 누락 / 변경 | 증상 |
+|---|---|
+| 확인 단계를 스킬 본문으로 옮김 | `/auto-execute-plan` 이 묻기 시작 — auto-* 의 도구 호출 0 룰 파괴 |
+| 기록을 `.code-gate.json` 에 씀 | 에이전트가 사람 전용 파일을 고치는 선례 — 회피 방지 장치 붕괴 |
+| "테스트 있음" 조건 삭제 | 테스트 없는 프로젝트에서 매번 설치를 물음 — 답해도 달라지는 게 없다 |
+| 스크립트에 언어 · 도구 이름 하드코딩 | 어댑터를 더해도 사전 확인이 그 언어를 모름 |
+| 설치 범위 표기 삭제 | 시스템 파이썬 · GOPATH 설치를 "프로젝트 로컬" 로 읽고 동의 |
+| 확인 결과로 흐름을 막음 | 도구 없는 프로젝트에서 실행 흐름 자체가 멈춤 |
+| Bash 호출 사이에 `$P` 재사용 | 셸 상태가 남지 않아 기록 명령이 빈 경로로 실패 |
+| `noted` 기록 없이 안내만 | 자바 · 러스트 안내가 매 회차 반복 |
+
+### 회귀 catch grep
+
+```bash
+grep -lF "mutation-tools" commands/execute-plan.md commands/slice.md | wc -l
+# expected: 2
+```
+
+```bash
+grep -c "mutation-tools" skills/auto-executing-plans/SKILL.md commands/auto-execute-plan.md skills/executing-plans/SKILL.md skills/js-super-sub-driven/SKILL.md
+# expected: 각 0
+```
+
+```bash
+grep -cF "MUTATION_TOOLS_ASK" scripts/preflight.py
+# expected: 1
+```
+
+```bash
+grep -cF "code-gate.json" scripts/preflight.py
+# expected: 2 (주석 1 + 기본 꺼짐 안내 문장 1 — 쓰기 경로가 생기면 회귀)
+```
+
+```bash
+python3 -c "from scripts.preflight import mutation_tools_check, record_mutation_decision, read_mutation_decisions, MUTATION_TOOLS_MARKER; print(MUTATION_TOOLS_MARKER)"
+# expected: .js-super/mutation-tools.json
+```
+
+```bash
+grep -cE "gremlins|cargo-mutants|dotnet-stryker|gradle|PIT" scripts/preflight.py
+# expected: 0 (고 · C# · 자바 · 러스트의 도구 이름은 어댑터에서만 온다. 파이썬 · 자바스크립트는 pip 이름과 Stryker 패키지 조립이 분기에 필요해 예외)
+```
+
+```bash
+test -f tests/eval-fixtures/H27-mutation-tools/README.md && echo OK
+# expected: OK
+```
+
+### 영향 범위
+
+- `scripts/preflight.py` (추가 전용) + `scripts/tests/test_mutation_tools_check.py` (신규) + 커맨드 2 (`execute-plan` / `slice`) + `README.md` 필요한 도구 섹션 + fixture H27 + CLAUDE.md (본 섹션 + `/slice` 상한 330). 버전 bump 는 main 전용 룰에 따라 main 에서
+- `scripts/code_gate.py` / `scripts/mutation/` 무변경 — 읽기만 한다
+- 스킬 본문 전체 변경 0. `/check-code` 변경 0 (수동 리포트 커맨드에는 묻는 자리가 없다)
+- `/slice` 의 S-10 (상호 호출 금지) 유지 — 스크립트를 부르는 것이지 스킬을 부르는 것이 아니다

@@ -1,6 +1,7 @@
 ---
 name: tech-design
 description: Use after brainstorming has produced <slug>-requirements.md, before writing-plans. Conducts a technical-design dialogue (architecture → impacted components → data model → external interfaces → key decisions w/ alternatives → preliminary risks → testing strategy) and writes <slug>-tech-design.md. Ends with the main agent's spec verification gate (verifying-spec) before handing off to /write-plan.
+user-invocable: false
 ---
 
 # Designing Direction → <slug>-tech-design.md (Technical Spec)
