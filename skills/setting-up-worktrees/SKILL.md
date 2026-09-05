@@ -1,6 +1,7 @@
 ---
 name: setting-up-worktrees
 description: Use when the user asks to create one or more git worktrees ("워크트리 만들어줘", "<티켓명> 워크트리"). Default location is <main-repo-root>/.worktrees/<branch-name>; creates the branch from current HEAD if it doesn't exist, then auto-copies the project's 로컬 빌드 환경 파일 (LLM-judged per platform — Node `.env*`, Android `local.properties`/keystore, iOS `*.xcconfig`, etc.) AND symlinks the main repo's Claude Code memory folder so the worktree shares user/feedback/project memory from the start. NEVER asks the user which files to copy — detects candidates, notifies, and copies (honoring explicit excludes). Invoked from inside a worktree, it places the new worktree under the MAIN repo root's .worktrees/ (no nesting) and branches from the invoking worktree's current HEAD. 이름 없이 작업 설명만 주면 브랜치 이름을 AI 가 제안한다 — 재분기 시 `<부모브랜치>__<자식이름>` 형식 (누적 가능), 사용자가 명시한 이름은 그대로 존중.
+user-invocable: false
 ---
 
 # Setting Up Worktrees (Quick Batch Creation)

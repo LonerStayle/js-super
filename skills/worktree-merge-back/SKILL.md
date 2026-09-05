@@ -1,6 +1,7 @@
 ---
 name: worktree-merge-back
 description: 커맨드 /merge-back-worktree 명시 호출로만 진입 — 자유 요청에서 자동 선택 금지. feature 워크트리 안에서 생성 시 기록된 직계 부모 브랜치를 먼저 흡수해 충돌을 sandbox 에서 해소한 뒤 그 부모로 안전 머지 + env 동기화. worktree-only (main 에서 호출 시 차단).
+user-invocable: false
 ---
 
 # Worktree Merge-Back (v2.5.2 — auto)
