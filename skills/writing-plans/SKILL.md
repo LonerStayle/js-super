@@ -1,6 +1,7 @@
 ---
 name: writing-plans
 description: Use when <slug>-requirements.md and <slug>-tech-design.md exist for a feature, before touching code. Reads both, produces <slug>-implementation-plan.md (단계별 plan with bite-sized TDD tasks). Ends with the main agent's spec verification gate (verifying-spec) — covers 요구사항 + 개발방향 ↔ 구현계획서 consistency + code impact.
+user-invocable: false
 ---
 
 # Writing Plans → <slug>-implementation-plan.md

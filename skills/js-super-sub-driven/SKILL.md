@@ -1,6 +1,7 @@
 ---
 name: js-super-sub-driven
 description: 서브에이전트 실행 경로 (1인 개발 + 사전 검증 게이트 가정). v1.1.14+ wave-parallel — 메인이 plan 분석으로 DAG 추론 → wave 단위 pair-parallel dispatch (implementer + spec reviewer). 메인이 wave 끝에서 직렬 commit + post-hoc 충돌 검출. quality reviewer는 사전 verifying-spec + TDD + RISK + 변경이력으로 분산 흡수.
+user-invocable: false
 ---
 
 # js-super-sub-driven (v1.1.14 wave-parallel)

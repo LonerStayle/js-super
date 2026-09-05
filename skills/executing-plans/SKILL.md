@@ -1,6 +1,7 @@
 ---
 name: executing-plans
 description: Use when you have a written implementation plan (<slug>-implementation-plan.md) to execute in a separate session with review checkpoints. js-superpowers extension — picks git-fast mode (default, uses `git diff HEAD` against working tree pre-commit for before/after extraction so per-edit Read snapshot is skipped; commits code only per task, with a single end-of-run `[log] all tasks` commit for the plan footer) or memory-fallback mode (when no git or commits forbidden). Per-edit: risk-annotation 3-checklist + RISK comments. Change-history: git-fast batches ALL tasks into ONE end-of-run consolidated [코드-수정] entry; memory-fallback writes one consolidated entry per task — either way drastically reducing 구현계획서.md Read/Edit cost.
+user-invocable: false
 ---
 
 # Executing Plans
