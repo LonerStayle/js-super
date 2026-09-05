@@ -1,6 +1,6 @@
 ---
 name: finishing-a-development-branch
-description: Use when implementation is complete and tests pass. Runs the test gate one final time and emits a single termination message; user manually decides merge / PR / keep / discard. (v1.1.14 슬림화 — AskUserQuestion 게이트 + boilerplate 제거)
+description: Use when implementation is complete and tests pass. Runs the test gate one final time and emits a single termination message; user manually decides merge / PR / keep / discard. (v1.1.14 슬림화 — AskUserQuestion 게이트 + boilerplate 제거.) 큰 작업(에픽)에 속한 피처면 Step 3 에서 `epic-close` 로 위임해 다음 파트 워크트리와 인수인계를 잇는다 — 에픽이 없으면 그 단계는 무출력.
 ---
 
 # Finishing a Development Branch (v1.1.14 slim)

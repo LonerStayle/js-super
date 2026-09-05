@@ -1,6 +1,7 @@
 ---
 name: epic-close
 description: 커맨드 /epic-next 또는 finishing-a-development-branch 의 명시 invoke 로만 진입 — 자유 요청에서 자동 선택 금지. 큰 작업(에픽) 파트 마무리 — 에픽 파일 갱신·커밋 → 다음 파트 선택 → 다음 파트 워크트리 생성 → 자식 세션 인수인계 대기. 진행 중 에픽이 없거나 소속 표식이 없으면 아무 출력 없이 돌아간다.
+user-invocable: false
 ---
 
 # Epic Close — 파트 마무리와 다음 파트 워크트리

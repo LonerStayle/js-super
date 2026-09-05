@@ -18,8 +18,8 @@
 </p>
 
 <p>
-  <img alt="Commands" src="https://img.shields.io/badge/commands-29-06b6d4?style=flat-square&labelColor=0d1117">
-  <img alt="Skills" src="https://img.shields.io/badge/skills-27-06b6d4?style=flat-square&labelColor=0d1117">
+  <img alt="Commands" src="https://img.shields.io/badge/commands-36-06b6d4?style=flat-square&labelColor=0d1117">
+  <img alt="Skills" src="https://img.shields.io/badge/skills-26-06b6d4?style=flat-square&labelColor=0d1117">
   <img alt="Zero deps" src="https://img.shields.io/badge/dependencies-zero-22c55e?style=flat-square&labelColor=0d1117">
 </p>
 
@@ -749,7 +749,7 @@ flowchart LR
 </details>
 
 <details>
-<summary><b>전체 Skill 25 개</b></summary>
+<summary><b>전체 Skill 26 개</b></summary>
 
 <br/>
 
@@ -768,6 +768,8 @@ flowchart LR
 **워크트리 (3)** — setting-up-worktrees / worktree-merge-back / worktree-remove
 
 **디버깅 (1)** — systematic-debugging
+
+**큰 작업 (1)** — epic-close *(`/epic-next` 가 감싸는 파트 마무리 — 다음 파트 워크트리 생성 + 인수인계)*
 
 **리뷰·마무리 (3)** — requesting-code-review / receiving-code-review / finishing-a-development-branch
 

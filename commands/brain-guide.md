@@ -24,11 +24,12 @@ disable-model-invocation: true
 
 ## 2. 진행 중인 큰 작업 읽기
 
-`docs/epics/` 아래에서 상태 줄이 `완료` 가 아닌 큰 그림을 찾습니다. 상태 줄이 없으면
-진행 중으로 봅니다. `scripts/epic_scan.py` 와 브레인스토밍 스킬이 같은 기준을 씁니다.
+`docs/epics/` 아래에서 상태 줄이 `진행 중` 인 큰 그림을 찾습니다. 상태 줄이 없으면
+진행 중으로 봅니다. `scripts/epic_scan.py` 와 브레인스토밍 스킬이 같은 기준을 씁니다
+(상태 줄이 있는데 `진행 중` 이 아니면 — `완료` 든 다른 값이든 — 진행 중이 아닙니다).
 
 ```bash
-for f in docs/epics/*/overview.md; do [ -f "$f" ] || continue; grep -qE '^>[[:space:]]*\*\*상태\*\*:[[:space:]]*완료' "$f" && continue; echo "$(dirname "$f")"; done 2>/dev/null
+for f in docs/epics/*/overview.md; do [ -f "$f" ] || continue; if grep -qE '^>[[:space:]]*\*\*상태\*\*:' "$f" && ! grep -qE '^>[[:space:]]*\*\*상태\*\*:[[:space:]]*진행 중' "$f"; then continue; fi; echo "$(dirname "$f")"; done 2>/dev/null
 ```
 
 출력이 없으면 큰 작업 없는 상태로 판정합니다. 여럿이면 큰 그림을 가장 최근에 고친 것을

@@ -290,7 +290,7 @@ grep -cF '**검증**' skills/writing-plans/SKILL.md skills/auto-writing-plans/SK
 ### 영향 범위
 
 - plan 작성 (writing-plans / auto-writing-plans) + 실행 (executing-plans / js-super-sub-driven) 만.
-- og-* / code-pretty / plan_byte_check / verifying-spec / test-driven-development 영향 0 — 테스트 블록은 원래 라벨이 없어 검사 대상 밖.
+- og-* / code-pretty / plan_byte_check / verifying-spec 영향 0 — 테스트 블록은 원래 라벨이 없어 검사 대상 밖. (당시 목록에 있던 `test-driven-development` 스킬은 이후 삭제됐다 — "TDD 규율 스킬 제거 결합" 참조)
 - 6 manifest bump — dev 직접 (에이전트 임의 bump 금지).
 
 ## setting-up-worktrees ↔ commands/worktree.md 결합 (v2.0.2+)
@@ -2234,6 +2234,18 @@ grep -c "분할 계획서 예외 (하위 문서)" skills/change-history/SKILL.md
 - **마무리와 워크트리는 `epic-close` 가** — 브레인스토밍에 있던 마무리 단계 (8.5) 는 파트 실행이 끝난 뒤로 옮겨졌고, 다음 파트 워크트리도 거기서 만든다. "에픽 종료 워크트리 생성 결합" 참조
 - **자동 흐름 비적용** — `auto-brainstorming` 계열에는 넣지 않는다 (요구사항 범위 밖)
 
+### 회귀 패턴
+
+| 누락 / 변경 | 증상 |
+|---|---|
+| 소속 표식 형식만 한쪽에서 변경 | 피처가 목록에서 조용히 빠진다. 스캔이 표식 없는 피처 수를 함께 보고해 catch |
+| 진행 상태를 파일에 저장하는 방식으로 회귀 | 적힌 것과 실제가 어긋난다 |
+| 큰 작업이 없을 때 안내 문구 출력 | 큰 작업을 안 쓰는 사용자에게 매번 노이즈 |
+| 시작 단계가 예상도를 읽음 | 다음 주제가 예상을 따라가 폭포수로 굳는다 |
+| 갱신을 판정이 아니라 의무로 되돌림 | 바뀐 게 없는데 문구만 다듬는 변경이 쌓인다 |
+| 브레인스토밍 항목 번호를 밀어서 삽입 | 흐름도와 절차 상세의 번호 참조가 어긋난다. 0.5 를 쓴 이유 (옛 8.5 는 에픽 종료 워크트리 생성 결합에서 `epic-close` 로 옮겨져 없어졌다) |
+| 커맨드가 워크트리를 직접 생성 | 만들기와 되돌리기를 떠안고 기존 워크트리 절차와 둘로 갈린다 |
+
 ## 에픽 종료 워크트리 생성 결합
 
 큰 작업 파트의 실행이 끝나면 에픽 파일을 갱신·커밋하고 다음 파트 워크트리를 만든 뒤, 새 세션이 인사하면 인수인계를 보내 곧바로 다음 브레인스토밍이 시작되게 한 기능. 브레인스토밍에 있던 마무리 단계 (8.5) 는 여기로 옮겨져 없어졌다. spec: `docs/features/2026-09-05-에픽종료-워크트리생성/`.
@@ -2310,7 +2322,7 @@ grep -c "/epic-next" skills/tech-design/SKILL.md commands/epic.md
 ```
 
 ```bash
-test -f skills/js-super-sub-driven/tests/H27-epic-close/README.md && echo OK
+test -f skills/js-super-sub-driven/tests/H28-epic-close/README.md && echo OK
 # expected: OK
 ```
 
@@ -2349,16 +2361,6 @@ for c in commands/epic-next.md commands/epic-handoff.md; do n=$(basename "$c" .m
 
 | 누락 / 변경 | 증상 |
 |---|---|
-| 소속 표식 형식만 한쪽에서 변경 | 피처가 목록에서 조용히 빠진다. 스캔이 표식 없는 피처 수를 함께 보고해 catch |
-| 진행 상태를 파일에 저장하는 방식으로 회귀 | 적힌 것과 실제가 어긋난다 |
-| 큰 작업이 없을 때 안내 문구 출력 | 큰 작업을 안 쓰는 사용자에게 매번 노이즈 |
-| 시작 단계가 예상도를 읽음 | 다음 주제가 예상을 따라가 폭포수로 굳는다 |
-| 갱신을 판정이 아니라 의무로 되돌림 | 바뀐 게 없는데 문구만 다듬는 변경이 쌓인다 |
-| 브레인스토밍 항목 번호를 밀어서 삽입 | 흐름도와 절차 상세의 번호 참조가 어긋난다. 0.5 를 쓴 이유 (옛 8.5 는 에픽 종료 워크트리 생성 결합에서 `epic-close` 로 옮겨져 없어졌다) |
-| 커맨드가 워크트리를 직접 생성 | 만들기와 되돌리기를 떠안고 기존 워크트리 절차와 둘로 갈린다 |
-
-### 회귀 catch grep
-
 | 한쪽 스킬만 수정 | 실행 모드에 따라 검사 유무가 갈림 — 사용자가 원인을 알 수 없다 |
 | `--base HEAD` 를 뺌 | 브랜치 누적분을 매번 재서 같은 변이가 반복 노출, 시간도 누적 |
 | 호출 자리를 commit 뒤로 옮김 | working tree 가 비어 "변경된 파일이 없습니다" 로 매번 통과 |
@@ -2725,8 +2727,8 @@ og-* 는 체인이 없어서 커맨드 하나로 합쳤고, 그것이 합치기�
 ### 회귀 catch grep
 
 ```bash
-grep -lF "user-invocable: false" skills/brainstorming/SKILL.md skills/tech-design/SKILL.md skills/writing-plans/SKILL.md skills/executing-plans/SKILL.md skills/js-super-sub-driven/SKILL.md skills/setting-up-worktrees/SKILL.md skills/worktree-merge-back/SKILL.md skills/worktree-remove/SKILL.md skills/auto-brainstorming/SKILL.md skills/auto-tech-design/SKILL.md skills/auto-writing-plans/SKILL.md skills/auto-executing-plans/SKILL.md | wc -l
-# expected: 12
+grep -lF "user-invocable: false" skills/brainstorming/SKILL.md skills/tech-design/SKILL.md skills/writing-plans/SKILL.md skills/executing-plans/SKILL.md skills/js-super-sub-driven/SKILL.md skills/setting-up-worktrees/SKILL.md skills/worktree-merge-back/SKILL.md skills/worktree-remove/SKILL.md skills/auto-brainstorming/SKILL.md skills/auto-tech-design/SKILL.md skills/auto-writing-plans/SKILL.md skills/auto-executing-plans/SKILL.md skills/epic-close/SKILL.md | wc -l
+# expected: 13
 ```
 
 ```bash
@@ -2743,7 +2745,7 @@ grep -l "^user-invocable: false" commands/*.md | wc -l
 
 ```bash
 for f in skills/*/SKILL.md; do awk '/^---$/{c++; next} c==1 && /^user-invocable: false$/{found=1} END{exit found?0:1}' "$f" && echo "$f"; done | wc -l
-# expected: 12
+# expected: 13
 ```
 
 ## TDD 규율 스킬 제거 결합
@@ -2847,7 +2849,7 @@ grep -c "mutation-tools" skills/auto-executing-plans/SKILL.md commands/auto-exec
 ```
 
 ```bash
-grep -cF "MUTATION_TOOLS_ASK" scripts/preflight.py
+grep -cF 'print("MUTATION_TOOLS_ASK"' scripts/preflight.py
 # expected: 1
 ```
 

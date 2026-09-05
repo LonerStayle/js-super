@@ -8,7 +8,7 @@
 
 임시 파이썬 프로젝트 하나 (git 저장소, `.venv` 에 pytest 만 설치, mutmut 없음):
 
-```bash
+```text
 mkdir -p e2e/src e2e/tests && cd e2e && git init -q
 printf 'def add(a, b):\n    return a + b\n' > src/calc.py
 printf 'from src.calc import add\n\ndef test_add():\n    assert add(1, 2) == 3\n' > tests/test_calc.py
