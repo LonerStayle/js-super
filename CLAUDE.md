@@ -2358,7 +2358,7 @@ grep -c '변경분 검사 리포트\\n(커밋 직전, 막지 않음)' skills/exe
 - **S-8 산출물은 슬라이스 노트 하나** — `docs/slices/YYYY-MM.md` 에 슬라이스당 12줄 이하 한 블록. 존재 이유는 **면제한 것과 그 이유**를 남기는 것이다. 변경이력 꼬리말 · RISK 주석 · 용어집은 붙이지 않는다 (기존 흐름의 거버넌스를 끌어오면 두 흐름이 섞인다)
 - **S-9 아키텍처 정리는 권유만** — 세 슬라이스마다 캐묻기 질문 셋을 던져 답을 보여주는 데까지. 정리 자체는 하지 않는다. 원전이 자동화에 실패했다고 두 번 말한 자리다
 - **S-10 상호 호출 금지** — `/slice` 안에서 기존 흐름의 스킬을 부르지 않고, 기존 흐름에서 `/slice` 를 부르지 않는다. 나란히 두는 것이지 섞는 것이 아니다
-- **S-11 프롬프트 줄 수 상한** — 공통 35 / Specifier 60 / Coder 55 / Hardener 75. 한 역할에게 실제로 가는 프롬프트는 공통 + 역할이라 최대 110줄이고, 커맨드 본문 전체는 320줄이다. 원전이 "최초 프롬프트를 절대 최소로" 라고 못박은 자리라 이 상한이 이 흐름의 설계 원리다. 룰을 산문으로 늘리지 말고 도구가 판정하게 한다
+- **S-11 프롬프트 줄 수 상한** — 공통 35 / Specifier 60 / Coder 55 / Hardener 75. 한 역할에게 실제로 가는 프롬프트는 공통 + 역할이라 최대 110줄이고, 커맨드 본문 전체는 330줄 상한이다 (역할 프롬프트 블록 밖의 메인 절차 — Step 0 의 뮤테이션 도구 확인 — 가 들어가며 320 에서 올렸다. 보조 에이전트에게 가는 줄 수는 그대로다). 원전이 "최초 프롬프트를 절대 최소로" 라고 못박은 자리라 이 상한이 이 흐름의 설계 원리다. 룰을 산문으로 늘리지 말고 도구가 판정하게 한다
 
 ### 원전과 갈라선 지점 (정직성)
 
@@ -2411,10 +2411,10 @@ grep -c "GATE_ABSENT" commands/slice.md
 # expected: 3
 ```
 
-커맨드 본문 전체 상한 320줄.
+커맨드 본문 전체 상한 330줄.
 
 ```bash
-awk 'END{print (NR<=320)?0:1}' commands/slice.md
+awk 'END{print (NR<=330)?0:1}' commands/slice.md
 # expected: 0
 ```
 
@@ -2500,3 +2500,75 @@ grep -c "## 슬라이스 흐름 (\`/slice\`) — 두 번째 실행 흐름 결합
 - `hooks/` / `agents/` / `evals/` / 6 manifest 변경 0. 버전 bump 는 main 전용 룰에 따라 main 에서
 - 자동 발동 경로 없음 — `disable-model-invocation: true`, 명시 슬래시 호출만
 - 이 흐름이 만드는 유일한 산출물은 `docs/slices/YYYY-MM.md` 다. 기존 흐름의 `docs/features/` 구조와 겹치지 않는다
+
+## 뮤테이션 도구 사전 확인 결합 (`/execute-plan` · `/slice` 진입 시 한 번만 묻기)
+
+게이트는 도구가 없으면 C7 을 건너뛰고 설치 명령을 결과 표에 싣는데, 그 표는 커밋 직전에야 나와 그 회차는 이미 뮤테이션 없이 지나간 뒤다 (사용자 catch — "뭘 깔아야 하는지 안내를 해야 하는 거 아니냐"). 그래서 두 실행 흐름의 **진입 시점**에 `scripts/preflight.py mutation-tools` 로 먼저 보고, 없으면 `AskUserQuestion` 으로 한 번 묻고, 답을 `.js-super/mutation-tools.json` 에 언어별로 남겨 다시 묻지 않는다.
+
+### 핵심 룰
+
+- **묻는 자리는 둘** — `commands/execute-plan.md` § 0 (실행 모드 질문 앞) 과 `commands/slice.md` Step 0. 스킬 본문 (`executing-plans` / `js-super-sub-driven`) 에는 넣지 않는다. `/auto-execute-plan` 은 `js-super-sub-driven` 을 직접 부르므로 스킬에 넣으면 자동 흐름도 묻게 되고, 그것은 auto-* 의 "AskUserQuestion 호출 부재" 룰과 정면 충돌한다. **자동 흐름 제외는 사용자 결정**
+- **묻는 조건은 넷의 AND** — 지원 언어 파일 있음 · 테스트 있음 · 도구 없음 · 기록 없음. 테스트가 없는 프로젝트에서는 도구를 깔아도 못 재므로 묻지 않는다 (첫인상 소음 방지). 기본이 꺼진 언어 (자바 · 러스트) 는 묻지 않고 `.code-gate.json` 에 켜는 법만 한 번 안내한다 (`noted` 로 기록)
+- **기록은 `.js-super/mutation-tools.json`** — `.code-gate.json` 에 쓰지 않는다. 그 파일은 사람만 고친다 (게이트의 회피 방지 장치, `/slice` S-7). 결정값은 `declined` / `installed` / `install_failed` / `noted` 넷. 깨진 기록 파일은 없는 것으로 본다
+- **도구 유무와 설치 명령의 출처는 게이트와 어댑터** — `code_gate.probe_tools` / `resolve_python` / `detect_pytest_paths`, 어댑터 레지스트리 (`_registered_adapters`), 어댑터 모듈의 `MUTATION_*SUFFIXES` · `_INSTALL_HINT` · `STRYKER_RUNNER_PLUGINS` · `STRYKER_CONFIG_NAMES`. preflight 에 언어 이름이나 도구 이름을 손으로 적지 않는다 — 어댑터를 더하면 자동으로 따라온다. 게이트에는 인자를 더하지 않는다 (게이트 docstring 계약 4 — 흐름 구분 인자 없음)
+- **설치 범위를 거짓으로 적지 않는다** — 파이썬은 프로젝트 가상환경이 있을 때만 "프로젝트 로컬" 이고, 없으면 시스템 파이썬에 깔리므로 "사용자 환경" 으로 표기하고 안내를 붙인다. 고 (`go install` → GOPATH/bin) · C# (`dotnet tool install -g`) 은 게이트가 PATH 에서만 찾아 프로젝트 로컬 설치가 없다 — "사용자 환경 (프로젝트 밖)" 으로 표기하고 질문 본문에서 빼지 않는다. 사용자가 "예" 를 고른 뒤에만, 표의 명령을 **그대로** 실행한다 (전역 설치로 바꾸지 않는다)
+- **자바스크립트는 본체 + 러너 플러그인** — `@stryker-mutator/core` 만 있으면 게이트가 `command` 러너로 떨어져 재지 않는다. 러너 플러그인 디렉토리나 프로젝트 Stryker 설정이 있어야 "있음" 이고, 설치 명령은 package.json 의 러너에 맞는 플러그인을 함께 적는다
+- **막지 않는다** — 어느 답이든 흐름은 다음 단계로 간다. 스크립트를 못 찾으면 (`PREFLIGHT_ABSENT`) 한 줄 알리고 진행. critical 7 표에 행을 더하지 않는다
+- **`preflight.py` 는 추가 전용** — 기존 함수 시그니처 · exit code 규약 무변경 (3 skill 의 bash one-liner 동기 불필요). 게이트 import 는 함수 안에서 늦게 한다 (`_gate()`) — 다른 preflight 함수는 게이트를 모른다. `__main__` 진입점 (`mutation-tools` 하위 명령) 이 처음 생겼다
+
+### 회귀 패턴
+
+| 누락 / 변경 | 증상 |
+|---|---|
+| 확인 단계를 스킬 본문으로 옮김 | `/auto-execute-plan` 이 묻기 시작 — auto-* 의 도구 호출 0 룰 파괴 |
+| 기록을 `.code-gate.json` 에 씀 | 에이전트가 사람 전용 파일을 고치는 선례 — 회피 방지 장치 붕괴 |
+| "테스트 있음" 조건 삭제 | 테스트 없는 프로젝트에서 매번 설치를 물음 — 답해도 달라지는 게 없다 |
+| 스크립트에 언어 · 도구 이름 하드코딩 | 어댑터를 더해도 사전 확인이 그 언어를 모름 |
+| 설치 범위 표기 삭제 | 시스템 파이썬 · GOPATH 설치를 "프로젝트 로컬" 로 읽고 동의 |
+| 확인 결과로 흐름을 막음 | 도구 없는 프로젝트에서 실행 흐름 자체가 멈춤 |
+| Bash 호출 사이에 `$P` 재사용 | 셸 상태가 남지 않아 기록 명령이 빈 경로로 실패 |
+| `noted` 기록 없이 안내만 | 자바 · 러스트 안내가 매 회차 반복 |
+
+### 회귀 catch grep
+
+```bash
+grep -lF "mutation-tools" commands/execute-plan.md commands/slice.md | wc -l
+# expected: 2
+```
+
+```bash
+grep -c "mutation-tools" skills/auto-executing-plans/SKILL.md commands/auto-execute-plan.md skills/executing-plans/SKILL.md skills/js-super-sub-driven/SKILL.md
+# expected: 각 0
+```
+
+```bash
+grep -cF "MUTATION_TOOLS_ASK" scripts/preflight.py
+# expected: 1
+```
+
+```bash
+grep -cF "code-gate.json" scripts/preflight.py
+# expected: 2 (주석 1 + 기본 꺼짐 안내 문장 1 — 쓰기 경로가 생기면 회귀)
+```
+
+```bash
+python3 -c "from scripts.preflight import mutation_tools_check, record_mutation_decision, read_mutation_decisions, MUTATION_TOOLS_MARKER; print(MUTATION_TOOLS_MARKER)"
+# expected: .js-super/mutation-tools.json
+```
+
+```bash
+grep -cE "gremlins|cargo-mutants|dotnet-stryker|gradle|PIT" scripts/preflight.py
+# expected: 0 (고 · C# · 자바 · 러스트의 도구 이름은 어댑터에서만 온다. 파이썬 · 자바스크립트는 pip 이름과 Stryker 패키지 조립이 분기에 필요해 예외)
+```
+
+```bash
+test -f tests/eval-fixtures/H27-mutation-tools/README.md && echo OK
+# expected: OK
+```
+
+### 영향 범위
+
+- `scripts/preflight.py` (추가 전용) + `scripts/tests/test_mutation_tools_check.py` (신규) + 커맨드 2 (`execute-plan` / `slice`) + `README.md` 필요한 도구 섹션 + fixture H27 + CLAUDE.md (본 섹션 + `/slice` 상한 330). 버전 bump 는 main 전용 룰에 따라 main 에서
+- `scripts/code_gate.py` / `scripts/mutation/` 무변경 — 읽기만 한다
+- 스킬 본문 전체 변경 0. `/check-code` 변경 0 (수동 리포트 커맨드에는 묻는 자리가 없다)
+- `/slice` 의 S-10 (상호 호출 금지) 유지 — 스크립트를 부르는 것이지 스킬을 부르는 것이 아니다
