@@ -106,7 +106,7 @@ git add docs/epics/<에픽 폴더> && git commit -m "epic(<에픽 폴더>): part
 BR=$(git rev-parse --abbrev-ref HEAD); python3 "$C" next "$BR" "<다음 파트 작업명>"
 ```
 
-결과 (`<에픽 워크트리 이름>__ep_part<N+1>_<작업명>`) 를 보여주고 `AskUserQuestion` 으로 "이 이름으로" 또는 직접 입력 (Other) 을 받는다. 직접 입력한 이름은 그대로 쓴다.
+결과 (`<에픽 워크트리 이름>__ep_part<N+1>_<작업명>`) 를 보여주고 `AskUserQuestion` 으로 확정한다. 옵션은 둘이다 — "이 이름으로" 와 "다른 이름으로" (설명: Other 에 직접 입력). 도구는 옵션이 하나뿐인 질문을 거부하므로 두 번째 옵션을 빼면 안 된다. 사용자가 직접 입력한 이름은 그대로 쓴다.
 
 **워크트리 생성.** `js-super:setting-up-worktrees` 스킬을 Skill 도구로 부르되 인자에 확정한 이름을 넣는다 (예: `<이름> 워크트리 만들어줘`). 그 스킬이 현재 HEAD 에서 분기하고, 부모 브랜치를 git config 에 기록하고, 환경 파일과 메모리 심링크를 처리한다. 작업 트리가 dirty 면 그 스킬의 dirty 게이트가 묻는다.
 
