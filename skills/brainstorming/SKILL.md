@@ -76,7 +76,6 @@ You MUST create a TaskCreate task for each of these items and complete them in o
 6. **자체 점검** — 여섯 항목 단일 목록. "Self-Review" 참조.
 7. **사용자 검토** — 초안 전체를 한 번에 보여주고 승인받는다. 수정 요청이 오면 고쳐서 다시 보여준다.
 8. **변경이력 기록** — append first `[요구사항-수정]` entry via `change-history` skill
-8.5. **큰 작업 갱신** — 큰 작업이 있으면 큰 그림 갱신 판정 · 이월 항목 기록 · 예상 빗나감 판정을 수행한다. 바뀐 것이 없으면 파일을 고치지 않는다. "큰 작업 맥락" 섹션 참조.
 9. **개발방향 단계 자동 진행** — Right after the change-history entry is logged, auto-invoke `tech-design` via the Skill tool with a one-line interrupt-notice. On user "stop"/"멈춰"/"잠깐" → exit cleanly with notice telling the user to run /design-tech later.
 
 If you find yourself skipping ahead, stop and create the missing task.
@@ -160,7 +159,6 @@ digraph brainstorm_flow {
     "Self-review (7 items)" [shape=box];
     "블록 4 — 승인\n초안 전체 한 번에" [shape=diamond];
     "Invoke change-history\n(first entry: 요구사항-수정)" [shape=box];
-    "큰 작업 갱신\n(있을 때만)" [shape=box];
     "Auto-invoke /design-tech (no gate, v1.1.9+)" [shape=box];
     "Auto-invoke tech-design skill" [shape=doublecircle];
     "Exit: tell user to run /design-tech later" [shape=oval];
@@ -183,8 +181,7 @@ digraph brainstorm_flow {
 
     "블록 4 — 승인\n초안 전체 한 번에" -> "블록 3 — 문서 작성\n(자유 산문 + 요구 항목/요구 N)" [label="수정 요청 — 고쳐서 다시"];
     "블록 4 — 승인\n초안 전체 한 번에" -> "Invoke change-history\n(first entry: 요구사항-수정)" [label="승인"];
-    "Invoke change-history\n(first entry: 요구사항-수정)" -> "큰 작업 갱신\n(있을 때만)";
-    "큰 작업 갱신\n(있을 때만)" -> "Auto-invoke /design-tech (no gate, v1.1.9+)";
+    "Invoke change-history\n(first entry: 요구사항-수정)" -> "Auto-invoke /design-tech (no gate, v1.1.9+)";
     "Auto-invoke /design-tech (no gate, v1.1.9+)" -> "Auto-invoke tech-design skill" [label="continue"];
     "Auto-invoke /design-tech (no gate, v1.1.9+)" -> "Exit: tell user to run /design-tech later" [label="user: stop/멈춰"];
 }
@@ -246,16 +243,6 @@ When `AskUserQuestion` is unavailable, ask in prose:
 - 이유: 신규 피처 brainstorming 결과
 - 무엇이: <slug>-requirements.md 전체 (요구 1..N + 대화에서 나온 섹션들)
 - 영향범위: 없음 (최초 생성)
-
-**8.5. 큰 작업 갱신**
-
-큰 작업이 없으면 이 단계 전체를 건너뛴다. 있으면 셋을 차례로 한다.
-
-- **큰 그림 갱신 판정** — 항목이 없어졌거나 새로 생겼거나 순서가 뒤집혔을 때만 고쳐 쓴다. 표현을 다듬는 수정은 하지 않는다. 바뀐 것이 없으면 파일을 건드리지 않고 "큰 그림 변경 없음" 한 줄만 알린다
-- **이월 항목 기록** — 대화 중 모아둔 후보를 목록으로 보여주고 남길 것만 이월 노트 끝에 붙인다. 종류 (미룸 / 주의 / 기각 / 유보) 와 나온 곳을 함께 적는다
-- **예상 빗나감 판정** — 예상이 빗나갔을 때만 예상도 끝에 새 시점 블록을 붙인다. 무엇이 어떻게 빗나갔는지와 그렇게 판단한 근거를 함께 적고, 근거를 적을 수 없으면 기록하지 않는다
-
-착수 가능한 피처가 둘 이상이고 서로 건드리는 곳이 겹치지 않아 보이면 나란히 갈라내 동시에 진행하도록 제안한다. 판단 근거는 대화 내용이고, 코드를 뒤져 실제 충돌을 계산하지 않는다. 제안까지가 범위이고 워크트리는 만들지 않는다.
 
 **9. Auto-proceed to tech-design (v1.1.9+ — no gate)**
 
@@ -480,11 +467,11 @@ On first save of <slug>-requirements.md, write a `[요구사항-수정]` entry:
 
 여러 번의 브레인스토밍으로 나눠 진행하는 일 하나를 큰 작업이라 부른다. `docs/epics/` 아래에 큰 그림 (`overview.md`), 이월 노트 (`carry-over.md`), 예상도 (`forecast.md`) 세 파일로 산다. 만들고 조회하는 것은 `/epic` 커맨드가 한다.
 
-대화가 압축되면 앞에서 정한 것과 미룬 것이 요약에서 뭉개진다. 압축을 견디는 것은 파일뿐이라, 브레인스토밍은 시작할 때 이 파일들을 읽고 끝날 때 갱신한다.
+대화가 압축되면 앞에서 정한 것과 미룬 것이 요약에서 뭉개진다. 압축을 견디는 것은 파일뿐이라, 브레인스토밍은 시작할 때 이 파일들을 읽는다. 갱신은 파트 실행이 끝난 뒤 `epic-close` 가 한다.
 
 ### 있는지 확인하고 없으면 조용히 지나간다
 
-`docs/epics/` 가 없거나 상태 줄이 `진행 중` 인 큰 그림이 하나도 없으면 시작 단계와 마무리 단계를 통째로 건너뛴다. 안내 문구도 출력하지 않는다. 큰 작업 없이 피처 하나만 만드는 기존 사용법이 지금과 똑같이 동작해야 한다.
+`docs/epics/` 가 없거나 상태 줄이 `진행 중` 인 큰 그림이 하나도 없으면 시작 단계를 통째로 건너뛴다. 안내 문구도 출력하지 않는다. 큰 작업 없이 피처 하나만 만드는 기존 사용법이 지금과 똑같이 동작해야 한다.
 
 진행 중인 것이 여럿이면 큰 그림을 가장 최근에 고친 것을 쓰고 그 사실을 한 줄 알린다. 어느 것을 쓸지 사용자에게 묻지 않는다.
 
@@ -498,10 +485,29 @@ On first save of <slug>-requirements.md, write a `[요구사항-수정]` entry:
 
 진행 중인 큰 작업이 있으면 이번 피처의 요구사항 문서 머리에 한 줄을 넣는다. 다음 단계 안내 인용 줄과 나란히 둔다.
 
+```markdown
+# 요구사항: <피처 이름>
+
+> **큰 작업**: 2026-08-29-<큰 작업 슬러그>
+> **다음 단계 안내**: ...
+```
+
+이 줄이 유일한 소속 근거다. 빠지면 그 피처는 상태 목록에서 조용히 사라지고, 파트 실행이 끝났을 때 `epic-close` 가 이 피처를 찾지 못한다. 형식을 바꾸면 `scripts/epic_scan.py` 와 `commands/epic.md` 를 함께 고쳐야 한다.
+
+### 인수인계 메시지로 진입했을 때
+
+`/epic-handoff` 가 부모 세션의 인수인계 메시지를 받고 이 스킬을 불렀으면, 그 메시지의 "다음 파트" 가 피처 주제이고 "이번 파트에서 정한 것" 이 커버 목록의 답이다. 그 내용을 다시 묻지 않는다. 시작 단계 (0.5) 는 그대로 돈다 — 에픽 파일은 워크트리에 있다.
+
+### 마무리는 실행 끝에서
+
+큰 그림 갱신 · 이월 항목 기록 · 예상 빗나감 판정은 이 스킬이 하지 않는다. 파트 실행이 끝난 뒤 `epic-close` 스킬 (마무리 스킬 `finishing-a-development-branch` 가 부르거나 `/epic-next` 로 직접) 이 한다. 요구사항 직후에 갱신하면 다음 파트가 앞 파트의 코드 없이 시작하고, 실행 중 나온 미룬 항목이 이월 노트에 안 남는다.
+
+## Related Skills
 
 - `tech-design` — next step (technical spec)
 - `change-history` — first requirements entry
 - `change-propagation` — when the requirements doc is later edited, cascades to downstream MDs
+- `epic-close` — 파트 실행이 끝난 뒤의 에픽 갱신과 다음 파트 워크트리
 
 ## 승인 게이트 / multi-choice 결정 = AskUserQuestion 도구 (v2.3.6+)
 
