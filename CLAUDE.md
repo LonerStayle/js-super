@@ -2337,6 +2337,76 @@ for c in commands/epic-next.md commands/epic-handoff.md; do n=$(basename "$c" .m
 - `executing-plans` / `js-super-sub-driven` / `setting-up-worktrees` / `scripts/epic_scan.py` / hooks 본문 변경 0
 - og-\* / auto-\* / worktree 계열 영향 0 — 마무리 스킬을 거쳐도 발동 검사가 걸러낸다
 
+## 에픽 문서 두 지점 갱신 결합 (기술설계 진입 + 파트 마무리)
+
+에픽 문서 갱신 지점을 하나에서 둘로 늘렸다. 파트 마무리 (`epic-close`) 는 그대로이고, `tech-design` 진입 때 보조 에이전트가 백그라운드로 한 번 더 적는다 (사용자 결정 2026-09-21). 브레인스토밍에 마무리 단계를 되살린 것이 아니다 — 그 회귀 룰 (8.5 부활 금지) 은 그대로 유효하다.
+
+### 왜 두 지점인가
+
+`epic-close` 는 갱신 근거를 "이번 파트의 대화와 피처 문서" 로 잡는데, 실행은 보통 브레인스토밍과 다른 세션에서 끝난다. 그 시점에는 브레인스토밍 대화가 없어서 기각한 안과 주의사항을 복구할 수 없다. 요구사항 문서에 남는 것은 제외 항목 정도다. 그래서 대화가 살아 있을 가능성이 가장 높고 요구사항이 확정된 첫 자리 — 기술설계 진입 — 에서 한 번 적는다. 백그라운드라 설계 대화의 대기 시간과 메인 컨텍스트 소모가 둘 다 0 이다.
+
+### 핵심 룰
+
+- **앞 지점은 `tech-design` 1.5 단계 + `skills/tech-design/epic-midpoint-prompt.md`** — 둘은 한 쌍이다. 스킬 본문이 발동 판정과 dispatch 규칙을, 프롬프트 파일이 보조 에이전트가 할 일과 금지를 갖는다
+- **발동 조건은 소속 표식 + 진행 중** — 요구사항 문서 머리의 `> **큰 작업**:` 줄과 큰 그림 상태 줄. 없으면 아무 출력 없이 지나간다. 소속 표식 · 상태 줄 규약은 `scripts/epic_scan.py` · 브레인스토밍 · `/brain-guide` 와 같은 것이라 규약을 바꾸면 이 자리도 함께 고친다
+- **앞 지점은 묻지 않는다** — 보조 에이전트는 사용자에게 물을 수 없고, 메인이 대신 물으면 설계 대화를 막아 백그라운드로 뺀 이유가 사라진다. 자동 기록하고 나온 곳을 `<피처 폴더> 요구사항 시점` 으로 남긴다
+- **앞 지점의 범위는 좁다** — 이월 노트에 행 붙이기와 큰 그림에 새 항목 더하기까지. 이번 파트를 "정해진 것" 으로 옮기기 · 항목 삭제 · 순서 변경 · 예상도 열기는 전부 `epic-close` 전용이다 (파트가 아직 안 끝났다)
+- **커밋은 뒤 지점 하나** — 앞 지점은 커밋하지 않는다. `epic-close` 의 갱신 커밋이 에픽 폴더를 통째로 담으므로 양쪽 변경이 함께 들어간다
+- **뒤 지점이 중복을 막고 걸러낸다** — `epic-close` 는 이미 적힌 행을 후보에서 빼고, 자동으로 적힌 행을 함께 보여준다. 필요 없다고 한 행은 지우지 않고 상태 칸에 `철회` 를 적는다 (이월 노트는 붙이기 전용)
+- **메인은 에픽 파일을 직접 열지 않는다** — 판정은 `test -f` 와 `grep -q` 한 줄로 끝낸다
+- **`auto-tech-design` 비적용** — 큰 작업은 자동 흐름에 적용하지 않는다 ("에픽 단위 브레인스토밍 결합" 의 자동 흐름 비적용 룰 승계). 서술 수준 · 산출물 스타일 룰과 달리 이 단계는 두 스킬 동시 수정 대상이 **아니다**
+
+### 회귀 패턴
+
+| 누락 / 변경 | 증상 |
+|---|---|
+| 스킬 본문만 남고 프롬프트 파일 삭제 (또는 반대) | 없는 파일을 가리키는 dispatch — 매번 실패 한 줄 |
+| 앞 지점에 `AskUserQuestion` 추가 | 설계 질문 앞에 게이트가 하나 끼어 흐름을 막는다 |
+| 앞 지점이 끝나길 기다렸다가 설계 시작 | 백그라운드로 뺀 이유 소실 |
+| 프롬프트에서 범위 금지 (정해진 것 이동 · 예상도) 삭제 | 안 끝난 파트가 끝난 것으로 적히고, 예상도를 읽은 판정이 큰 그림에 들어온다 |
+| 앞 지점이 커밋 | 에픽 파일 커밋이 설계 도중에 끼어들고, 갱신 커밋이 둘로 갈린다 |
+| `epic-close` 의 중복 제외 문장 삭제 | 같은 항목이 이월 노트에 두 번 붙는다 |
+| `auto-tech-design` 에 같은 단계 복제 | 자동 흐름이 에픽 문서를 건드리기 시작한다 |
+| 발동 검사 약화 (표식 없을 때 안내 출력) | 단발성 피처마다 노이즈 |
+
+### 회귀 catch grep
+
+```bash
+test -f skills/tech-design/epic-midpoint-prompt.md && echo OK
+# expected: OK
+```
+
+```bash
+grep -c "epic-midpoint-prompt" skills/tech-design/SKILL.md
+# expected: 1
+```
+
+```bash
+grep -c "forecast.md 는 열지 않는다" skills/tech-design/epic-midpoint-prompt.md
+# expected: 1
+```
+
+```bash
+grep -c "git add / commit 을 하지 않는다" skills/tech-design/epic-midpoint-prompt.md
+# expected: 1
+```
+
+```bash
+grep -c "epic-midpoint\|큰 작업 중간 갱신" skills/auto-tech-design/SKILL.md
+# expected: 0
+```
+
+```bash
+grep -cF "요구사항 시점" skills/epic-close/SKILL.md skills/tech-design/epic-midpoint-prompt.md
+# expected: 각 2
+```
+
+### 영향 범위
+
+- 신규 1 (`skills/tech-design/epic-midpoint-prompt.md`) + 스킬 본문 3 (`tech-design` · `epic-close` · `brainstorming` 의 마무리 문단) + 커맨드 2 (`design-tech` · `epic` 안내문) + fixture H28 (시나리오 7 신설, 결합 검사는 8 로) + 본 섹션. 버전 bump 는 main 전용 룰에 따라 main 에서
+- `auto-tech-design` / `finishing-a-development-branch` / `scripts/` / hooks 변경 0
+- `tech-design` 의 절차 · 게이트 · 다음 단계 연결 변경 0 — 1.5 는 번호를 밀지 않고 끼웠다
+
 ## 검사 게이트 ↔ 두 실행 흐름 결합
 
 `scripts/code_gate.py` (0단계 6항목 + C7 뮤테이션) 를 실행 흐름 둘에 붙였다. 게이트를 부르는 곳이 하나도 없어 사용자가 직접 명령을 치기 전에는 아무 일도 일어나지 않던 상태를 없앤 것이다. 붙는 자리는 두 흐름 모두 **커밋 직전** — 커밋 뒤에 재면 변경분이 사라진다. 손으로 부르는 자리로 `commands/check-code.md` 를 함께 뒀다.

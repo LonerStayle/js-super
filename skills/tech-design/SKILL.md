@@ -62,6 +62,7 @@ critical 7 케이스 (파일 삭제 / `git push --force` / DB migration / mass c
 You MUST create a TaskCreate task for each of these items and complete them in order:
 
 1. **입력 확인** — confirm <slug>-requirements.md exists (HARD-GATE if not)
+1.5. **큰 작업 문서 중간 갱신 (있을 때만, 백그라운드)** — 요구사항 문서 머리에 소속 표식이 있고 그 큰 작업이 진행 중이면 보조 에이전트 하나를 백그라운드로 띄우고 기다리지 않는다. 없으면 아무 말 없이 건너뛴다. 자세한 룰은 "큰 작업 중간 갱신" 섹션 참조.
 2. **기존 코드 둘러보기** — `<slug>-requirements.md` 의 `## 요구 항목` 을 먼저 Read. 추가 grep/Read 는 tech-design 결정 (아키텍처 / data flow / pattern) 깊이 부족할 때만. (v1.1.15+ slim)
 3. **적응형 7-토픽 질의응답** — `<slug>-requirements.md` 읽고 활성/비활성 토픽 판정 후 한 줄 announce. 항상 활성 4개 (1 아키텍처 / 2 컴포넌트 / 5 결정+대안 / 6 위험), 조건부 3개 (3 데이터 모델 / 4 외부 인터페이스 / 7 테스트 전략). 자세한 룰은 "Adaptive Topics" 섹션 참조. (v1.1.15+, FR-1)
 4. **자체 점검** — 요구 항목 mapping coverage, alternatives present, risk categorization, 산출물 문서 스타일 + 도면 형식 (no user prompt yet)
@@ -155,6 +156,7 @@ mermaid 를 쓸 때도 절차 나열이 아니라 관계를 보이는 그림이�
 ```dot
 digraph design_flow {
     "Read <slug>-requirements.md" [shape=box];
+    "큰 작업 중간 갱신\n(소속 표식 있을 때만, background)" [shape=box];
     "Survey existing code\n(요구 항목 재활용 v1.1.15+)" [shape=box];
     "Step 0 announce\n활성/비활성 토픽 한 줄" [shape=box];
     "Q: architecture candidates (2-3)?" [shape=box];
@@ -173,7 +175,8 @@ digraph design_flow {
     "Record depth: 2 + exit (2개 확정)" [shape=oval];
     "Exit: tell user to run /write-plan later" [shape=oval];
 
-    "Read <slug>-requirements.md" -> "Survey existing code\n(요구 항목 재활용 v1.1.15+)";
+    "Read <slug>-requirements.md" -> "큰 작업 중간 갱신\n(소속 표식 있을 때만, background)";
+    "큰 작업 중간 갱신\n(소속 표식 있을 때만, background)" -> "Survey existing code\n(요구 항목 재활용 v1.1.15+)" [label="main does NOT wait"];
     "Survey existing code\n(요구 항목 재활용 v1.1.15+)" -> "Step 0 announce\n활성/비활성 토픽 한 줄";
     "Step 0 announce\n활성/비활성 토픽 한 줄" -> "Q: architecture candidates (2-3)?";
     "Step 0 announce\n활성/비활성 토픽 한 줄" -> "Q: data model changes?\n[활성 시만]" [label="활성"];
@@ -245,6 +248,8 @@ Step 3 의 7-topic dialogue 를 사용자 마찰 줄이기 위해 adaptive 진�
 - Confirm <slug>-requirements.md exists in the same feature folder. If not, HARD-GATE — instruct the user to run `/brainstorm` first.
 - **Locate the requirements** — find the `## 요구 항목` section and read its numbered items. Three generations exist and ALL are read the same way: `**요구 N**:` (current), `**FR-N**:` under `## 요구 항목` (previous), and `**FR-N**:` under `## 3. 기능 요구사항 (FR)` (oldest). Never rewrite an old doc's numbering — read it as-is.
 - If a doc has no numbered anchors at all, treat every sentence describing a behavior the system must have as one requirement, and say so in a one-line notice. Never reject a doc as "missing requirements".
+
+**1.5. 큰 작업 중간 갱신** — 1단계에서 읽은 요구사항 문서 머리에 `> **큰 작업**: <폴더>` 줄이 있을 때만. "큰 작업 중간 갱신" 섹션의 판정 명령을 돌려 `EPIC_ACTIVE` 면 보조 에이전트를 백그라운드로 띄우고 곧바로 2단계로 간다. 줄이 없거나 `EPIC_SKIP` 이면 아무 출력 없이 2단계로 간다.
 
 **2. Survey the codebase**
 - For each requirement item, Grep/Read to identify likely impacted code areas
@@ -334,6 +339,39 @@ Call `AskUserQuestion`:
 - On "여기서 종료 (2개 확정)" → `<slug>-tech-design.md` 맨 위에 frontmatter (`depth: 2` + `depth_reason: 사용자 선택`) 를 기록하고, `change-history` 로 [개발방향-수정] entry (이유: 2-doc 확정) 를 남긴 뒤 `ℹ️ 이 피처는 2개 문서로 확정됐습니다. 구현이 필요해지면 /write-plan 으로 승격하세요.` 를 출력하고 stop. 요구사항 문서 머리에 소속 표식 (`> **큰 작업**:`) 이 있으면 한 줄 더 붙인다: `ℹ️ 큰 작업에 속한 피처입니다. 구현이 끝나면 /epic-next 로 파트를 마무리하세요.`
 - On "나중에 결정" → emit `ℹ️ 알겠습니다. /write-plan 은 나중에 직접 실행해주세요.` and stop (표식 기록 없음).
 
+## 큰 작업 중간 갱신
+
+큰 작업(에픽)에 속한 피처는 에픽 문서를 두 번 갱신한다. 여기서 한 번 (요구사항 시점), 파트 실행이 끝난 뒤 `epic-close` 에서 한 번. 여기서 잡는 것은 브레인스토밍에서 나온 미룬 것 · 기각한 안 · 주의사항이다 — 실행이 끝날 때쯤이면 그 대화가 남아 있지 않아 `epic-close` 가 복구할 수 없다.
+
+### 발동 판정
+
+요구사항 문서 머리에 `> **큰 작업**: <폴더>` 줄이 없으면 이 섹션 전체를 건너뛴다. 있으면:
+
+```bash
+EP="docs/epics/<폴더>"; test -f "$EP/overview.md" && ! grep -q '^> \*\*상태\*\*: *완료' "$EP/overview.md" && echo EPIC_ACTIVE || echo EPIC_SKIP
+```
+
+`EPIC_SKIP` 이면 **아무 출력 없이** 다음 단계로 간다. 메인은 에픽 파일을 직접 열지 않는다 — 읽는 것은 보조 에이전트의 몫이다.
+
+### Dispatch 규칙
+
+- `Agent` 호출 하나, `run_in_background: true`, `model: "sonnet"`
+- 프롬프트 템플릿: `./epic-midpoint-prompt.md`. 자리표시자 셋 (요구사항 경로 · 큰 작업 폴더 · 이월 후보) 을 채워 넘긴다
+- **이월 후보** — 브레인스토밍과 같은 세션이면 메인이 대화에서 기억하는 기각한 안과 그 이유 · 주의사항 · 미룬 것 · 유보를 목록으로 적어 넘긴다. 새 세션이라 대화를 본 적이 없으면 `없음` 을 넘긴다. 지어내지 않는다
+- dispatch 직후 한 줄 안내: `ℹ️ 큰 작업 문서 갱신을 백그라운드로 맡겼습니다. 설계 대화는 그대로 진행합니다.`
+- **기다리지 않는다.** 결과 알림이 오면 다음 메시지 머리에 보조 에이전트의 보고를 한두 줄로 전하고 하던 질문을 이어간다. 실패했으면 "큰 작업 문서 갱신 실패 — 파트 마무리 때 다시 잡힙니다" 한 줄만 내고 재시도하지 않는다
+
+### 하지 않는 것
+
+| 금지 | 이유 |
+|---|---|
+| 이월 항목을 `AskUserQuestion` 으로 고르게 하기 | 설계 대화를 막는다. 이 시점은 자동 기록이고, 걸러내기는 `epic-close` 가 한다 |
+| 이번 파트를 "정해진 것" 으로 옮기기 / 예상도 (`forecast.md`) 열기 | 파트가 아직 안 끝났다. 둘 다 `epic-close` 전용 |
+| 에픽 파일 커밋 | `epic-close` 의 갱신 커밋이 양쪽 변경을 함께 담는다 |
+| 메인이 에픽 파일을 직접 읽고 고치기 | 설계 대화의 컨텍스트를 쓴다. 백그라운드로 뺀 이유가 사라진다 |
+| 소속 표식이 없을 때 안내 출력 | 단발성 피처마다 노이즈 |
+| `auto-tech-design` 에 같은 단계 추가 | 큰 작업은 자동 흐름에 적용하지 않는다 |
+
 ## Self-Review
 
 - Every `요구 N` in <slug>-requirements.md is mapped to either §2 (impacted components) or §4 (external IF) — 옛 문서의 `FR-N` 도 같은 항목으로 센다
@@ -416,6 +454,7 @@ This summarizes the corrected order (matches Process detail steps 5-8 above):
 - `writing-plans` — next step for 3개 트랙 (<slug>-implementation-plan.md); 2개 확정 시 미호출
 - `change-history` — entry recording
 - `risk-annotation` — risk category taxonomy
+- `epic-close` — 큰 작업 문서의 두 번째 갱신 (파트 실행이 끝난 뒤). 1.5 단계가 적은 항목을 후보에서 빼고 걸러낸다
 
 ## 승인 게이트 / multi-choice 결정 = AskUserQuestion 도구 (v2.3.6+)
 

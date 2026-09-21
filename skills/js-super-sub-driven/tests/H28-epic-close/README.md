@@ -88,7 +88,29 @@
 
 **실패로 볼 것**: 인사를 반복해서 보내거나 세션 목록을 반복 조회하는 경우.
 
-## 시나리오 7 — 결합 검사
+## 시나리오 7 — 기술설계 진입 때의 중간 갱신
+
+**준비**: 공통 준비 상태. 브레인스토밍에서 안 하나를 기각하고 ("X 방식은 안 쓴다 — 이유 …")
+항목 하나를 다음 파트로 미룬 뒤 요구사항 문서를 승인한다. 같은 세션에서 `/design-tech` 로 넘어간다.
+
+**기대** (순서대로):
+
+1. "큰 작업 문서 갱신을 백그라운드로 맡겼습니다" 한 줄이 나오고 곧바로 설계 질문이 시작된다
+2. 이월 항목을 고르라는 질문은 **나오지 않는다**
+3. 얼마 뒤 메시지 머리에 보조 에이전트의 보고가 한두 줄로 나오고 하던 질문이 이어진다
+4. `carry-over.md` 표 끝에 기각한 안과 미룬 항목이 행으로 붙어 있고, 나온 곳이
+   `<피처 폴더> 요구사항 시점`, 상태 칸은 비어 있다
+5. `overview.md` 의 "정해진 것" 은 그대로다 (이번 파트가 옮겨지지 않았다)
+6. `git log` 에 새 커밋이 없다
+7. 그 파트를 실행까지 끝내 마무리 스킬이 돌면, 이월 후보 목록에 위 행과 같은 내용이 다시
+   나오지 않고, 위 행들이 "자동으로 적힌 것" 으로 함께 보인다
+
+**음성 사례**: 소속 표식이 없는 단발성 피처에서 `/design-tech` 를 돌리면 위 1번 안내가 나오지 않는다.
+
+**실패로 볼 것**: 설계 질문이 보조 에이전트를 기다렸다가 시작되는 경우. `forecast.md` 가 열린 경우
+(보조 에이전트의 도구 호출 기록으로 확인). 같은 항목이 이월 노트에 두 번 붙은 경우.
+
+## 시나리오 8 — 결합 검사
 
 ```bash
 grep -c "js-super:epic-close" skills/finishing-a-development-branch/SKILL.md
@@ -99,4 +121,8 @@ grep -c "^## Related Skills" skills/brainstorming/SKILL.md
 # expected: 1
 python3 -c "from scripts.epic_chain import next_branch_name; print(next_branch_name('결제__ep_part2_환불', '정산'))"
 # expected: 결제__ep_part3_정산
+grep -c "epic-midpoint-prompt" skills/tech-design/SKILL.md
+# expected: 1
+grep -c "epic-midpoint\|큰 작업 중간 갱신" skills/auto-tech-design/SKILL.md
+# expected: 0
 ```
