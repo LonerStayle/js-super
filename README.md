@@ -10,7 +10,7 @@
 <br/>
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-4.1.0-7c3aed?style=for-the-badge&labelColor=0d1117">
+  <img alt="Version" src="https://img.shields.io/badge/version-4.2.0-7c3aed?style=for-the-badge&labelColor=0d1117">
   <img alt="Upstream" src="https://img.shields.io/badge/upstream-superpowers%205.0.7-f97316?style=for-the-badge&labelColor=0d1117">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge&labelColor=0d1117">
   <img alt="Language" src="https://img.shields.io/badge/lang-한국어-3b82f6?style=for-the-badge&labelColor=0d1117">
@@ -851,6 +851,7 @@ og-* 흐름은 변경이력 / 위험 주석 / 검증 게이트가 **안 따라�
 
 | 버전 | 무엇이 바뀌었나요 |
 |---|---|
+| **v4.2.0** | 큰 작업 문서 **두 지점 갱신** — `/design-tech` 에 들어갈 때 보조 에이전트가 백그라운드로 이월 노트와 큰 그림의 새 항목을 먼저 적어둠 (브레인스토밍에서 기각한 안 · 미룬 것이 실행이 끝날 때쯤 사라지던 문제). 묻지 않고 자동 기록하며 설계 대화는 기다리지 않음. 파트 마무리가 중복을 빼고 자동 기록된 항목을 걸러냄 |
 | **v4.1.0** | 큰 작업 **파트 마무리** (`/epic-next` · `/epic-handoff` · `epic-close` 스킬 — 에픽 파일 갱신 → 다음 파트 워크트리 → 자식 세션 인수인계) + `/brain-guide` (brainstorm / epic / fast-tasks 중 무엇을 쓸지 안내) + 커맨드가 감싸는 스킬을 `/` 메뉴에서 숨김 + **TDD 규율 스킬 제거** (테스트 먼저 순서는 실행 단계에 유지) + `/execute-plan` · `/slice` 진입 시 뮤테이션 도구 사전 확인 + `/worktree` 재분기 판별을 출력값으로만 |
 | **v4.0.0** | **두 번째 실행 흐름 `/slice`** (Specifier → Coder → Hardener, 엉클밥 인터뷰 기반) + 커밋 직전 **변경분 검사 게이트** (`/check-code`, 뮤테이션 포함) + 큰 작업 단위 **에픽 브레인스토밍** (`/epic`) + 구현계획서 **코드 강제 + 위키형 분할** + 워크트리 머지백이 **직계 부모** 기준 + 재분기 브랜치 **AI 네이밍** (`부모__자식`) + 서브에이전트 **sonnet 하한** + 산출물 문서 스타일 (`FR-N` → `요구 N`) + 용어집 `/glossary` 커맨드화 + `/tech-teach-me` 문체 개편 |
 | **v3.1.0** | `/understand` 계열 5 개 신규 — 코드베이스를 지식 그래프로 분석해 질의응답·영향 범위·딥다이브·온보딩 문서까지 + `/list-skills` 가 홈 전체(다른 프로젝트 포함)를 훑도록 확장 |
