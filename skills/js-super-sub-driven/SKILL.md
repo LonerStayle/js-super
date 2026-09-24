@@ -1,6 +1,6 @@
 ---
 name: js-super-sub-driven
-description: 서브에이전트 실행 경로 (1인 개발 + 사전 검증 게이트 가정). v1.1.14+ wave-parallel — 메인이 plan 분석으로 DAG 추론 → wave 단위 pair-parallel dispatch (implementer + spec reviewer). 메인이 wave 끝에서 직렬 commit + post-hoc 충돌 검출. quality reviewer는 사전 verifying-spec + TDD + RISK + 변경이력으로 분산 흡수.
+description: 서브에이전트 실행 경로 (1인 개발 + 사전 검증 게이트 가정). v1.1.14+ wave-parallel — 메인이 plan 분석으로 DAG 추론 → wave 단위 pair-parallel dispatch (implementer + spec reviewer). 메인이 wave 끝에서 직렬 commit + post-hoc 충돌 검출. quality reviewer는 사전 verifying-spec + TDD + RISK + 변경이력으로 분산 흡수. 마지막 wave 까지 확인 없이 자동 진행 (critical 케이스만 멈춤).
 user-invocable: false
 ---
 
@@ -9,6 +9,15 @@ user-invocable: false
 js-super 워크플로에 최적화된 서브에이전트 경로. 1인 개발 + 사전 검증 게이트(verifying-spec) 가정. v1.1.14+ 부터 plan task 들이 file-disjoint + dependency-free 조건을 만족하는 그룹은 wave 단위 병렬 dispatch.
 
 **Announce at start:** "I'm using the js-super-sub-driven skill to execute this plan with wave-parallel subagents + main-agent governance."
+
+## 끝까지 실행 (Run to Completion)
+
+사용자가 실행을 시작하면 계획서의 마지막 task 까지 멈추지 않고 달린다. 멈춰도 되는 자리는 아래 "Critical / Non-critical 판정 룰" 의 룰 1 (critical 7 케이스) 뿐이다.
+
+- **진행 보고는 멈추는 자리가 아니다.** 보고문을 쓴 같은 턴 안에서 다음 task 의 도구 호출을 이어간다. "이어서 진행하겠습니다" 로 턴을 닫지 않는다 — 도구 호출 없이 턴이 끝나면 사용자가 "계속" 을 쳐야 흐름이 다시 돈다.
+- **남은 시간 · 컨텍스트 · 사용량 걱정은 멈출 이유가 아니다.** 걱정되면 보고에 한 줄 적고 계속 간다. 중간에 끊기면 사용자가 이어서 부른다.
+- **도구 호출 없이 턴을 끝내도 되는 경우는 백그라운드 보조 에이전트의 완료 알림을 기다릴 때뿐이다.** 알림이 오면 확인 없이 다음 단계로 바로 이어간다.
+- 정말 멈춰야 할 때는 prose 로 멈추지 않고 `AskUserQuestion` 을 부른다 (룰 1). 알람이 울려야 자리를 비운 사용자가 안다.
 
 ## Why this shape
 
@@ -537,7 +546,7 @@ subagent execute 흐름의 핵심 UX 룰. 사용자가 subagent 모드를 선택
 | task 안 보조 결정 (변수명 / format / order of imports) | plan 의 `**원본**` + `**수정본**` byte-copy 우선, 없으면 implementer 자율 |
 | implementer dispatch model | plan `**Model**:` 값 자동 적용 — 생략 시 sonnet, 하한 sonnet. 게이트 없이 자동 |
 | wave 완료 후 다음 wave 진입 타이밍 | 자동 진입 (게이트 X) |
-| 중간 결과 보고 빈도 | 매 task X, 매 wave 단위 OR BLOCKED 시만 |
+| 중간 결과 보고 빈도 | 매 task X, 매 wave 단위 OR BLOCKED 시만. 보고 후 같은 턴에서 다음 wave 도구 호출을 이어간다 (보고로 턴을 닫지 않음 — 보조 에이전트 완료 알림 대기만 예외) |
 
 ### 룰 3: 모드 선택 = 사용자 위임 신호
 
@@ -575,6 +584,9 @@ prose 질문 좁은 예외:
 |---|---|
 | "wave 3 부터 병렬로 진행해도 될까요?" 류 게이트 | 룰 2 위반. plan dependencies 만족 시 자율 wave-parallel. |
 | 매 wave 완료 후 "다음 wave 진입할까요?" 게이트 | 룰 3 위반. 모드 선택 = 진행 위임. |
+| 진행 보고 후 도구 호출 없이 턴 종료 ("이어서 진행하겠습니다" 로 끝맺음) | 끝까지 실행 위반. 사용자가 "계속" 을 쳐야 재개됨. 턴 종료는 보조 에이전트 완료 알림 대기일 때만. |
+| 보조 에이전트가 끊겨 메인이 직접 이어받은 뒤 task 마다 보고하고 턴 종료 | 끝까지 실행 위반. 실행 주체가 바뀌어도 룰은 같다 — 같은 턴에서 다음 task 로. |
+| 남은 시간 · 컨텍스트 · 사용량 걱정으로 멈춤 | 끝까지 실행 위반. 보고에 한 줄 적고 계속. |
 | "같은 파일이라 묶을까요?" 게이트 | 룰 2 위반. 3-AND 룰 (v2.0.1+) 으로 자동 판정. |
 | BLOCKED → 곧장 사용자 재질문 (reorder skip) | 룰 4 위반. reorder dispatch 자동 시도 우선. |
 | implementer model 변경 시 게이트 | 룰 2 위반. plan **Model**: 값 (생략 시 sonnet, 하한 sonnet) 으로 자동 판정. |
