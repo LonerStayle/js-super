@@ -3,9 +3,9 @@ description: upstream superpowers 원본 executing-plans 흐름. /og-write-plan 
 disable-model-invocation: true
 ---
 
-# /og-execute-plan — 원본 executing-plans (upstream superpowers 5.0.7)
+# /og-execute-plan — 원본 executing-plans (upstream superpowers)
 
-이 커맨드는 **upstream superpowers 5.0.7 의 원본 executing-plans 흐름**을 그대로 재현합니다. 아래 절차를 따르세요.
+이 커맨드는 **upstream superpowers 의 원본 executing-plans 흐름**을 그대로 재현합니다. 아래 절차를 따르세요.
 
 전제: `/og-write-plan` 으로 작성된 plan 이 `docs/superpowers/plans/` 아래에 존재.
 

@@ -3,9 +3,9 @@ description: upstream superpowers 원본 writing-plans 흐름. /og-brainstorm �
 disable-model-invocation: true
 ---
 
-# /og-write-plan — 원본 writing-plans (upstream superpowers 5.0.7)
+# /og-write-plan — 원본 writing-plans (upstream superpowers)
 
-이 커맨드는 **upstream superpowers 5.0.7 의 원본 writing-plans 흐름**을 그대로 재현합니다. 아래 절차를 따르세요.
+이 커맨드는 **upstream superpowers 의 원본 writing-plans 흐름**을 그대로 재현합니다. 아래 절차를 따르세요.
 
 전제: `/og-brainstorm` 으로 작성된 design doc 이 `docs/superpowers/specs/` 아래에 존재.
 

@@ -778,7 +778,7 @@ v2.5.2+ 에서 9 skill body 에 `## Checklist` 섹션 신규 추가 — `using-s
 
 ### og-* mirror 룰 예외 (D-4)
 
-`og-writing-plans` / `og-executing-plans` 는 upstream `superpowers` 5.0.7 mirror — 본문 변경 절대 X 가 기본 룰 (다른 CLAUDE.md 섹션에 명시). v2.5.2+ 가 이 룰의 명시 예외:
+`og-writing-plans` / `og-executing-plans` 는 upstream `superpowers` mirror — 본문 변경 절대 X 가 기본 룰 (다른 CLAUDE.md 섹션에 명시). v2.5.2+ 가 이 룰의 명시 예외:
 
 - **Checklist 섹션 한정 추가만 예외**. 다른 영역 (Procedure / Anti-Patterns / Related Skills / 영어 식별자 / 본문 룰) 변경 절대 X
 - 향후 upstream 본문 변경 시 mirror 답습은 그대로. Checklist 섹션만 js-super 고유 추가로 유지
