@@ -2689,7 +2689,7 @@ grep -c "brain-guide" README.md
 
 Claude Code 가 커맨드를 스킬에 통합하면서 **모든 스킬이 기본으로 `/` 메뉴에 뜬다.** 그래서 `/brainstorm` (커맨드) 과 `/brainstorming` (스킬) 이 사용자에게 나란히 보였다 (2026-09-05 사용자 catch). 커맨드가 감싸는 스킬의 프론트매터에 `user-invocable: false` 를 넣어 메뉴에서만 숨겼다. 모델은 그대로 부를 수 있다 (공식 문서: "Claude Code hides it from the `/` menu and doesn't run it when you type `/name`" — Skill 도구 호출과 체인 invoke 는 영향 없음).
 
-### 적용한 12 스킬 (커맨드 11개가 감싼다)
+### 적용한 14 스킬 (커맨드 13개가 감싼다)
 
 | 사용자가 치는 커맨드 | 숨긴 스킬 |
 |---|---|
@@ -2704,6 +2704,8 @@ Claude Code 가 커맨드를 스킬에 통합하면서 **모든 스킬이 기본
 | `/auto-design-tech` | `auto-tech-design` |
 | `/auto-write-plan` | `auto-writing-plans` |
 | `/auto-execute-plan` | `auto-executing-plans` |
+| `/epic-next` | `epic-close` |
+| `/brainstorm-design` | `paired-spec-writing` |
 
 커맨드 없이 메뉴에만 뜨는 내부 스킬 (`change-history` / `verifying-spec` / `code-pretty` 등 14개) 은 이번에 손대지 않았다. 숨길지는 별도 결정.
 
@@ -2727,8 +2729,8 @@ og-* 는 체인이 없어서 커맨드 하나로 합쳤고, 그것이 합치기�
 ### 회귀 catch grep
 
 ```bash
-grep -lF "user-invocable: false" skills/brainstorming/SKILL.md skills/tech-design/SKILL.md skills/writing-plans/SKILL.md skills/executing-plans/SKILL.md skills/js-super-sub-driven/SKILL.md skills/setting-up-worktrees/SKILL.md skills/worktree-merge-back/SKILL.md skills/worktree-remove/SKILL.md skills/auto-brainstorming/SKILL.md skills/auto-tech-design/SKILL.md skills/auto-writing-plans/SKILL.md skills/auto-executing-plans/SKILL.md skills/epic-close/SKILL.md | wc -l
-# expected: 13
+grep -lF "user-invocable: false" skills/brainstorming/SKILL.md skills/tech-design/SKILL.md skills/writing-plans/SKILL.md skills/executing-plans/SKILL.md skills/js-super-sub-driven/SKILL.md skills/setting-up-worktrees/SKILL.md skills/worktree-merge-back/SKILL.md skills/worktree-remove/SKILL.md skills/auto-brainstorming/SKILL.md skills/auto-tech-design/SKILL.md skills/auto-writing-plans/SKILL.md skills/auto-executing-plans/SKILL.md skills/epic-close/SKILL.md skills/paired-spec-writing/SKILL.md | wc -l
+# expected: 14
 ```
 
 ```bash
@@ -2745,7 +2747,7 @@ grep -l "^user-invocable: false" commands/*.md | wc -l
 
 ```bash
 for f in skills/*/SKILL.md; do awk '/^---$/{c++; next} c==1 && /^user-invocable: false$/{found=1} END{exit found?0:1}' "$f" && echo "$f"; done | wc -l
-# expected: 13
+# expected: 14
 ```
 
 ## TDD 규율 스킬 제거 결합
@@ -2879,3 +2881,95 @@ test -f tests/eval-fixtures/H27-mutation-tools/README.md && echo OK
 - `scripts/code_gate.py` / `scripts/mutation/` 무변경 — 읽기만 한다
 - 스킬 본문 전체 변경 0. `/check-code` 변경 0 (수동 리포트 커맨드에는 묻는 자리가 없다)
 - `/slice` 의 S-10 (상호 호출 금지) 유지 — 스크립트를 부르는 것이지 스킬을 부르는 것이 아니다
+
+## 요구설계 병렬생성 결합 (`/brainstorm-design`)
+
+요구사항 대화와 기술설계 대화를 한 번으로 합치고, 대화가 끝나면 두 문서를 보조 에이전트 둘이 동시에 쓰는 흐름. 기존 `/brainstorm` → `/design-tech` 옆에 둔다 (교체 아님 — 품질 확인 후 별도 판단, 사용자 결정). spec: `docs/features/2026-09-24-요구설계-병렬생성/`.
+
+### 핵심 룰
+
+- **커맨드 + 숨긴 스킬** — `commands/brainstorm-design.md` (`disable-model-invocation: true`) 가 `skills/paired-spec-writing/` (`user-invocable: false`) 에 위임한다. 스킬로 둔 이유는 자기 폴더의 지시문 두 파일을 확실히 읽기 위해서다 — 슬래시 커맨드 환경에서는 플러그인 경로가 안 채워진다
+- **문서 형식 규칙은 사본 없이 원본을 읽는다** — 작성 에이전트가 기존 `brainstorming` / `tech-design` 스킬 본문을 섹션 제목으로 찾아 읽는다. 그래서 두 스킬의 아래 제목을 바꾸면 이 흐름의 지시문 (`requirements-writer-prompt.md` / `design-writer-prompt.md`) 과 스킬 본문도 함께 고쳐야 한다. 못 찾으면 에이전트는 SECTION_MISSING 으로 멈추고 메인이 직접 쓴다 (조용히 추측하지 않음)
+
+| 규칙 원본 | 이 흐름이 읽는 섹션 제목 | 읽는 쪽 |
+|---|---|---|
+| `skills/brainstorming/SKILL.md` | `## Document Schema` · `## 산출물 문서 스타일` · `## Self-Review` | 요구사항 작성 에이전트 |
+| 같은 파일 | `## 큰 작업 맥락` · `## Socratic Procedure` | 메인 |
+| `skills/tech-design/SKILL.md` | `## Schema` · `## 산출물 문서 스타일` · `### 도면 형식` · `## 서술 수준 — 이름보다 역할` · `## Self-Review` | 기술설계 작성 에이전트 |
+| 같은 파일 | `## Adaptive Topics` | 메인 |
+
+- **두 작성자는 같은 요약을 받는다** — 요구 번호는 메인이 요약에서 매긴다. 두 문서의 결정 일치는 이 한 요약이 1차 장치, `verifying-spec` 대조가 2차 장치다
+- **두 작성 호출은 한 메시지, `model` 인자 없음** — 나누면 대기가 합쳐지고, 고정 모델은 sonnet 하한 룰과 판정 불일치 변명 문제를 부른다
+- **검토의 순서** — 자체 점검은 각 작성 에이전트 안에서 동시에, `verifying-spec` 만 두 문서가 끝난 뒤 (요구사항서가 있어야 대조 가능). 요구사항서에 추가 검증을 붙이지 않는다 (기존 흐름과 같음)
+- **승인 한 번, 변경이력 두 건, 깊이 선택은 기존 게이트와 같은 의미** — 산출물 깊이 결합 (`depth: 2` 표식) 규약을 그대로 쓴다
+- **`--no-ask` 미지원** — 그 플래그의 적용 범위는 "--no-ask 플래그 ↔ 8 skill body 결합" 의 개수 검사로 고정돼 있다. 넣으려면 그 섹션과 함께 고친다
+- **자동 흐름 비적용** — auto-* 에는 넣지 않는다
+
+### 회귀 패턴
+
+| 누락 / 변경 | 증상 |
+|---|---|
+| 기존 두 스킬의 위 섹션 제목 변경 | 작성 에이전트가 SECTION_MISSING — 매번 메인이 직접 써서 동시 작성 의미 소실 |
+| 두 지시문에 다른 요약 | 두 문서의 결정·번호 불일치 |
+| 스킬에서 `user-invocable: false` 제거 | 같은 기능이 메뉴에 두 번 |
+| 커맨드에서 `disable-model-invocation` 제거 | 대화 중 자동 발동 |
+| 기존 두 스킬 본문에 이 흐름의 분기 삽입 | "옆에 둔다" 결정 붕괴 — 두 흐름이 섞임 |
+| 요구사항만 고친 뒤 재검증 생략 | 대조 결과가 낡은 채 승인 |
+
+### 회귀 catch grep
+
+```bash
+test -f commands/brainstorm-design.md && test -f skills/paired-spec-writing/SKILL.md && test -f skills/paired-spec-writing/requirements-writer-prompt.md && test -f skills/paired-spec-writing/design-writer-prompt.md && echo OK
+# expected: OK
+```
+
+```bash
+grep -c "disable-model-invocation: true" commands/brainstorm-design.md
+# expected: 1
+```
+
+```bash
+grep -c "js-super:paired-spec-writing" commands/brainstorm-design.md
+# expected: 1
+```
+
+```bash
+test ! -d skills/brainstorm-design && test ! -f commands/paired-spec-writing.md && echo NO_COLLISION
+# expected: NO_COLLISION
+```
+
+```bash
+grep -cE "^## Document Schema|^## 산출물 문서 스타일|^## Self-Review|^## 큰 작업 맥락|^## Socratic Procedure" skills/brainstorming/SKILL.md
+# expected: 5
+```
+
+```bash
+grep -cE "^## Schema|^## 산출물 문서 스타일|^### 도면 형식|^## 서술 수준 — 이름보다 역할|^## Self-Review|^## Adaptive Topics" skills/tech-design/SKILL.md
+# expected: 6
+```
+
+```bash
+grep -l "paired-spec-writing\|brainstorm-design" skills/brainstorming/SKILL.md skills/tech-design/SKILL.md | wc -l
+# expected: 0
+```
+
+```bash
+grep -cF "한 메시지에" skills/paired-spec-writing/SKILL.md
+# expected: >= 1
+```
+
+```bash
+grep -c "Adaptive Topics" skills/paired-spec-writing/design-writer-prompt.md
+# expected: 0
+```
+
+```bash
+test -f skills/js-super-sub-driven/tests/H29-paired-spec/README.md && echo OK
+# expected: OK
+```
+
+### 영향 범위
+
+- 신규 5 (커맨드 1 + 스킬 본문 1 + 지시문 2 + fixture H29) + 수정 3 (`README.md` 표 1행 · fixture 인덱스 · 본 파일의 메뉴 숨김 목록과 본 섹션)
+- `brainstorming` / `tech-design` / `verifying-spec` / `change-history` / `writing-plans` / auto-* / `scripts/` / `hooks/` 변경 0
+- 기존 피처 문서 소급 없음. 버전 bump 는 main 전용 룰에 따라 main 에서
