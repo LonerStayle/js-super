@@ -1004,3 +1004,22 @@ git commit -m "docs(claude-md): 요구설계 병렬생성 결합 메모 + 메뉴
 - **무엇이**: 요구설계-병렬생성-implementation-plan.md 전체 (Task 1~7 + §2 위험 코드 지점 + §3 영향 범위). 검증 반영분 — README 사용 안내 문단 step 추가, SECTION_MISSING 대체 규칙, 플래그 토큰 분리, 지시문 <SLUG> 치환 자리, 메인이 읽는 섹션 수 정정, Task 1·2·3 확인 명령을 문자열별 검사로 교체
 - **영향범위**: 없음 (최초 생성)
 - **연관 항목**: CH-20260924-001, CH-20260924-002
+
+### [2026-09-24 19:38] [코드-수정] (batch: tasks 1..7)
+- **id**: CH-20260924-004
+- **이유**: 서브에이전트 모드 task batch 종합 (end-of-run consolidation)
+- **무엇이**: CLAUDE.md, README.md, commands/brainstorm-design.md, skills/js-super-sub-driven/tests/H29-paired-spec/README.md, skills/js-super-sub-driven/tests/README.md, skills/paired-spec-writing/SKILL.md, skills/paired-spec-writing/design-writer-prompt.md, skills/paired-spec-writing/requirements-writer-prompt.md
+- **영향범위**: 누적 (task별 세부 참조)
+- **위험 카테고리**: none
+- **task별 세부 (7건)**:
+  - Task 1: `skills/paired-spec-writing/requirements-writer-prompt.md:1-68` — 신규 지시문 (`none`) — commits: `114d8ca`
+  - Task 2: `skills/paired-spec-writing/design-writer-prompt.md:1-72` — 신규 지시문 (`none`) — commits: `d46a9bd`
+  - Task 3: `skills/paired-spec-writing/SKILL.md:1-281` — 신규 스킬 (`none`) — commits: `784d62e`
+  - Task 4: `commands/brainstorm-design.md:1-32` — 신규 커맨드 (`none`) — commits: `fa8a049`
+  - Task 5: `skills/js-super-sub-driven/tests/H29-paired-spec/README.md:1-61` — 신규 fixture (`none`) — commits: `8b72914`
+  - Task 5: `skills/js-super-sub-driven/tests/README.md:67,81-82` — H29 인덱스 행 + 범위 제목 (`none`) — commits: `8b72914`
+  - Task 6: `README.md:512-529` — /brainstorm-design 행 + 안내 문단 (`none`) — commits: `94904d1`
+  - Task 7: `CLAUDE.md:2692-2881 (edits) + 2882-2976 (new section appended)` — 메뉴 숨김 목록 14 + 새 결합 메모 섹션 (`none`) — commits: `18ac62d`
+- **연관 commits**: 55d3db0..18ac62d
+- **변경 전/후 코드**: 생략 — `git show <SHA>` 로 조회
+- **비고**: Task 2 확인 명령의 기대값 `grep -c "<slug>"` = 0 은 계획서 오류다. 지시문이 기존 기술설계 스킬의 자체 점검 문구를 인용한 한 줄에 소문자 `<slug>` 가 남는 것이 의도이며, 파일은 계획서 블록과 byte 일치. spec 검토는 보조 에이전트 대신 메인이 계획서 블록과 파일을 byte 대조로 확인했다 (7 task 모두 일치)
