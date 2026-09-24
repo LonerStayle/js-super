@@ -2884,23 +2884,23 @@ test -f tests/eval-fixtures/H27-mutation-tools/README.md && echo OK
 
 ## 요구설계 병렬생성 결합 (`/brainstorm-design`)
 
-요구사항 대화와 기술설계 대화를 한 번으로 합치고, 대화가 끝나면 두 문서를 보조 에이전트 둘이 동시에 쓰는 흐름. 기존 `/brainstorm` → `/design-tech` 옆에 둔다 (교체 아님 — 품질 확인 후 별도 판단, 사용자 결정). spec: `docs/features/2026-09-24-요구설계-병렬생성/`.
+요구사항 대화와 기술설계 대화를 한 번으로 합치고, 대화가 끝나면 메인이 두 문서를 연달아 쓴 뒤 두 문서의 검증을 한 번에 돌리는 흐름. 기존 `/brainstorm` → `/design-tech` 옆에 둔다 (교체 아님 — 품질 확인 후 별도 판단, 사용자 결정). spec: `docs/features/2026-09-24-요구설계-병렬생성/`.
 
 ### 핵심 룰
 
-- **커맨드 + 숨긴 스킬** — `commands/brainstorm-design.md` (`disable-model-invocation: true`) 가 `skills/paired-spec-writing/` (`user-invocable: false`) 에 위임한다. 스킬로 둔 이유는 자기 폴더의 지시문 두 파일을 확실히 읽기 위해서다 — 슬래시 커맨드 환경에서는 플러그인 경로가 안 채워진다
-- **문서 형식 규칙은 사본 없이 원본을 읽는다** — 작성 에이전트가 기존 `brainstorming` / `tech-design` 스킬 본문을 섹션 제목으로 찾아 읽는다. 그래서 두 스킬의 아래 제목을 바꾸면 이 흐름의 지시문 (`requirements-writer-prompt.md` / `design-writer-prompt.md`) 과 스킬 본문도 함께 고쳐야 한다. 못 찾으면 에이전트는 SECTION_MISSING 으로 멈추고 메인이 직접 쓴다 (조용히 추측하지 않음)
+- **커맨드 + 숨긴 스킬** — `commands/brainstorm-design.md` (`disable-model-invocation: true`) 가 `skills/paired-spec-writing/` (`user-invocable: false`) 에 위임한다. 스킬로 둔 이유는 규칙 원본 (옆 스킬 폴더) 과 검증자 지시문의 경로를 Base directory 로 확실히 만들기 위해서다 — 슬래시 커맨드 환경에서는 플러그인 경로가 안 채워진다
+- **문서 형식 규칙은 사본 없이 원본을 읽는다** — 메인이 기존 `brainstorming` / `tech-design` 스킬 본문을 섹션 제목으로 찾아 읽는다. 그래서 두 스킬의 아래 제목을 바꾸면 이 흐름의 스킬 본문 (규칙 원본 경로 표) 도 함께 고쳐야 한다. 못 찾으면 역할이 같은 섹션을 찾아 쓰고 승인 메시지에 대신 쓴 제목을 한 줄 적는다
 
 | 규칙 원본 | 이 흐름이 읽는 섹션 제목 | 읽는 쪽 |
 |---|---|---|
-| `skills/brainstorming/SKILL.md` | `## Document Schema` · `## 산출물 문서 스타일` · `## Self-Review` | 요구사항 작성 에이전트 |
-| 같은 파일 | `## 큰 작업 맥락` · `## Socratic Procedure` | 메인 |
-| `skills/tech-design/SKILL.md` | `## Schema` · `## 산출물 문서 스타일` · `### 도면 형식` · `## 서술 수준 — 이름보다 역할` · `## Self-Review` | 기술설계 작성 에이전트 |
-| 같은 파일 | `## Adaptive Topics` | 메인 |
+| `skills/brainstorming/SKILL.md` | `## Document Schema` · `## 산출물 문서 스타일` · `## Self-Review` | 메인 (요구사항서 작성) |
+| 같은 파일 | `## 큰 작업 맥락` · `## Socratic Procedure` | 메인 (대화) |
+| `skills/tech-design/SKILL.md` | `## Schema` · `## 산출물 문서 스타일` · `### 도면 형식` · `## 서술 수준 — 이름보다 역할` · `## Self-Review` | 메인 (기술설계서 작성) |
+| 같은 파일 | `## Adaptive Topics` | 메인 (토픽 판정) |
 
-- **두 작성자는 같은 요약을 받는다** — 요구 번호는 메인이 요약에서 매긴다. 두 문서의 결정 일치는 이 한 요약이 1차 장치, `verifying-spec` 대조가 2차 장치다
-- **두 작성 호출은 한 메시지, `model` 인자 없음** — 나누면 대기가 합쳐지고, 고정 모델은 sonnet 하한 룰과 판정 불일치 변명 문제를 부른다
-- **검토의 순서** — 자체 점검은 각 작성 에이전트 안에서 동시에, `verifying-spec` 만 두 문서가 끝난 뒤 (요구사항서가 있어야 대조 가능). 요구사항서에 추가 검증을 붙이지 않는다 (기존 흐름과 같음)
+- **작성은 메인이 연달아** — 요구사항서 먼저 (요구 번호를 여기서 매김), 기술설계서가 그 번호와 결정을 그대로 이어 받는다. 보조 에이전트 둘에게 동시 작성을 맡기던 첫 구현은 실측 (2026-09-24) 뒤 폐기했다 — 동시 작성이 아끼는 시간은 짧은 문서 몫 30초~1분뿐인데, 작성자에게 넘길 대화 요약 단계가 생기고 두 작성자가 같은 요약을 다르게 옮겨 문서가 어긋났다. 이 근거를 지우면 다음 세션이 "병렬이 빠르다" 로 되돌린다
+- **검증은 두 문서를 한 번에** — `verifying-spec` (대상 기술설계서, 상위 요구사항서) 의 검증자 둘과 요구사항서 단독 검증자 하나를 **한 메시지**에 띄운다. 요구사항서 검증자는 `verifying-spec/clean-solo-prompt.md` 를 빌려 쓴다 (사본 없음). `model` 인자 없음. `--no-clean-verify` 면 셋 다 안 띄운다
+- **사실 결함 재대조는 한 번** — 승인 전에 고친 뒤 고친 자리만 다시 대조한다. `verifying-spec` 전체를 다시 부르지 않고, 또 걸린 것은 승인 메시지에 "남은 결함" 으로 싣는다 (반복 상한)
 - **승인 한 번, 변경이력 두 건, 깊이 선택은 기존 게이트와 같은 의미** — 산출물 깊이 결합 (`depth: 2` 표식) 규약을 그대로 쓴다
 - **`--no-ask` 미지원** — 그 플래그의 적용 범위는 "--no-ask 플래그 ↔ 8 skill body 결합" 의 개수 검사로 고정돼 있다. 넣으려면 그 섹션과 함께 고친다
 - **자동 흐름 비적용** — auto-* 에는 넣지 않는다
@@ -2909,8 +2909,10 @@ test -f tests/eval-fixtures/H27-mutation-tools/README.md && echo OK
 
 | 누락 / 변경 | 증상 |
 |---|---|
-| 기존 두 스킬의 위 섹션 제목 변경 | 작성 에이전트가 SECTION_MISSING — 매번 메인이 직접 써서 동시 작성 의미 소실 |
-| 두 지시문에 다른 요약 | 두 문서의 결정·번호 불일치 |
+| 기존 두 스킬의 위 섹션 제목 변경 | 메인이 규칙을 못 찾아 대체 섹션을 추측 — 문서 형식이 흔들린다 |
+| 작성을 보조 에이전트로 되돌림 | 요약 단계 부활 + 두 문서 불일치 재발 (실측으로 속도 이점 없음) |
+| 요구사항서 검증자를 따로 띄움 | 검증 대기가 두 번 |
+| 재대조 상한 제거 | 수정 · 검증 반복이 끝나지 않음 |
 | 스킬에서 `user-invocable: false` 제거 | 같은 기능이 메뉴에 두 번 |
 | 커맨드에서 `disable-model-invocation` 제거 | 대화 중 자동 발동 |
 | 기존 두 스킬 본문에 이 흐름의 분기 삽입 | "옆에 둔다" 결정 붕괴 — 두 흐름이 섞임 |
@@ -2919,7 +2921,7 @@ test -f tests/eval-fixtures/H27-mutation-tools/README.md && echo OK
 ### 회귀 catch grep
 
 ```bash
-test -f commands/brainstorm-design.md && test -f skills/paired-spec-writing/SKILL.md && test -f skills/paired-spec-writing/requirements-writer-prompt.md && test -f skills/paired-spec-writing/design-writer-prompt.md && echo OK
+test -f commands/brainstorm-design.md && test -f skills/paired-spec-writing/SKILL.md && test ! -f skills/paired-spec-writing/requirements-writer-prompt.md && test ! -f skills/paired-spec-writing/design-writer-prompt.md && echo OK
 # expected: OK
 ```
 
@@ -2959,8 +2961,13 @@ grep -cF "한 메시지에" skills/paired-spec-writing/SKILL.md
 ```
 
 ```bash
-grep -c "Adaptive Topics" skills/paired-spec-writing/design-writer-prompt.md
-# expected: 0
+grep -cF "clean-solo-prompt.md" skills/paired-spec-writing/SKILL.md
+# expected: >= 1
+```
+
+```bash
+grep -cF "고친 자리만" skills/paired-spec-writing/SKILL.md
+# expected: >= 1
 ```
 
 ```bash
@@ -2970,6 +2977,6 @@ test -f skills/js-super-sub-driven/tests/H29-paired-spec/README.md && echo OK
 
 ### 영향 범위
 
-- 신규 5 (커맨드 1 + 스킬 본문 1 + 지시문 2 + fixture H29) + 수정 3 (`README.md` 표 1행 · fixture 인덱스 · 본 파일의 메뉴 숨김 목록과 본 섹션)
-- `brainstorming` / `tech-design` / `verifying-spec` / `change-history` / `writing-plans` / auto-* / `scripts/` / `hooks/` 변경 0
+- 신규 3 (커맨드 1 + 스킬 본문 1 + fixture H29) + 수정 3 (`README.md` 표 1행 · fixture 인덱스 · 본 파일의 메뉴 숨김 목록과 본 섹션)
+- `brainstorming` / `tech-design` / `verifying-spec` (단독 검증자 지시문은 읽기만) / `change-history` / `writing-plans` / auto-* / `scripts/` / `hooks/` 변경 0
 - 기존 피처 문서 소급 없음. 버전 bump 는 main 전용 룰에 따라 main 에서
