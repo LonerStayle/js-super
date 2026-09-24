@@ -2975,6 +2975,20 @@ test -f skills/js-super-sub-driven/tests/H29-paired-spec/README.md && echo OK
 # expected: OK
 ```
 
+승인 메시지는 전문 대신 경로와 요약만 싣는다. 전문을 싣는 문구가 돌아오면 승인 메시지가 다시 수백 줄로 늘어난다 (실측 372줄).
+
+```bash
+grep -c "RAW 전체" skills/paired-spec-writing/SKILL.md
+# expected: 0
+```
+
+대안을 내기 전에 그 전제를 저장소 실데이터로 확인하는 규칙 (4 단계) 과 5.5 표의 해당 행.
+
+```bash
+grep -cF "저장소 실데이터" skills/paired-spec-writing/SKILL.md
+# expected: >= 3
+```
+
 ### 영향 범위
 
 - 신규 3 (커맨드 1 + 스킬 본문 1 + fixture H29) + 수정 3 (`README.md` 표 1행 · fixture 인덱스 · 본 파일의 메뉴 숨김 목록과 본 섹션)
