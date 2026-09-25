@@ -1,6 +1,6 @@
 ---
 name: executing-plans
-description: Use when you have a written implementation plan (<slug>-implementation-plan.md) to execute in a separate session with review checkpoints. js-superpowers extension — picks git-fast mode (default, uses `git diff HEAD` against working tree pre-commit for before/after extraction so per-edit Read snapshot is skipped; commits code only per task, with a single end-of-run `[log] all tasks` commit for the plan footer) or memory-fallback mode (when no git or commits forbidden). Per-edit: risk-annotation 3-checklist + RISK comments. Change-history: git-fast batches ALL tasks into ONE end-of-run consolidated [코드-수정] entry; memory-fallback writes one consolidated entry per task — either way drastically reducing 구현계획서.md Read/Edit cost.
+description: Use when you have a written implementation plan (<slug>-implementation-plan.md) to execute end-to-end in a separate session — runs through the last task without per-task confirmation, stopping only for critical cases. js-superpowers extension — picks git-fast mode (default, uses `git diff HEAD` against working tree pre-commit for before/after extraction so per-edit Read snapshot is skipped; commits code only per task, with a single end-of-run `[log] all tasks` commit for the plan footer) or memory-fallback mode (when no git or commits forbidden). Per-edit: risk-annotation 3-checklist + RISK comments. Change-history: git-fast batches ALL tasks into ONE end-of-run consolidated [코드-수정] entry; memory-fallback writes one consolidated entry per task — either way drastically reducing 구현계획서.md Read/Edit cost.
 user-invocable: false
 ---
 
@@ -11,6 +11,14 @@ user-invocable: false
 Load plan, review critically, execute all tasks task-by-task, with strict per-edit discipline that captures before/after code and risk annotations into <slug>-implementation-plan.md change-history.
 
 **Announce at start:** "executing-plans skill 로 본 계획을 task-by-task 실행하겠습니다."
+
+## 끝까지 실행 (Run to Completion)
+
+사용자가 실행을 시작하면 계획서의 마지막 task 까지 멈추지 않고 달린다. 멈춰도 되는 자리는 아래 "Critical / Non-critical 판정 룰" 의 룰 1 (critical 7 케이스) 뿐이다.
+
+- **진행 보고는 멈추는 자리가 아니다.** 보고문을 쓴 같은 턴 안에서 다음 task 의 도구 호출을 이어간다. "이어서 진행하겠습니다" 로 턴을 닫지 않는다 — 도구 호출 없이 턴이 끝나면 사용자가 "계속" 을 쳐야 흐름이 다시 돈다.
+- **남은 시간 · 컨텍스트 · 사용량 걱정은 멈출 이유가 아니다.** 걱정되면 보고에 한 줄 적고 계속 간다. 중간에 끊기면 사용자가 이어서 부른다.
+- 정말 멈춰야 할 때는 prose 로 멈추지 않고 `AskUserQuestion` 을 부른다 (룰 1). 알람이 울려야 자리를 비운 사용자가 안다.
 
 **Note (subagent path):** This skill is the **inline** execution mode. If subagents are available (Claude Code, Codex) AND the user wants to preserve main context for large features, the recommended subagent path is `js-super-sub-driven` (slim 2-stage: implementer + spec reviewer + main post-processing for RISK / 변경이력 / atomic commit). The original upstream `subagent-driven-development` (3-stage: + quality reviewer) is also available for compatibility but duplicates governance js-super already provides via `verifying-spec` + TDD + RISK + 변경이력.
 
@@ -285,7 +293,7 @@ digraph exec_flow {
     "[memory-fallback] BATCHED LOG:\nONE [코드-수정] entry for this task\n(Read+Edit 구현계획서.md once)" -> "[memory-fallback] Commit if possible";
     "[memory-fallback] Commit if possible" -> "Mark task [x]";
     "Mark task [x]" -> "All tasks done?";
-    "All tasks done?" -> "Pick next [ ] task" [label="no"];
+    "All tasks done?" -> "Pick next [ ] task" [label="no — 같은 턴에서 바로 이어감\n(보고해도 턴을 닫지 않음)"];
     "All tasks done?" -> "[git-fast] End-of-run consolidator:\nONE batch [코드-수정] entry\n+ [log] all tasks commit" [label="yes (git-fast)"];
     "[git-fast] End-of-run consolidator:\nONE batch [코드-수정] entry\n+ [log] all tasks commit" -> "Use finishing-a-development-branch";
     "All tasks done?" -> "Use finishing-a-development-branch" [label="yes (memory-fallback)"];
@@ -294,13 +302,12 @@ digraph exec_flow {
 
 ## When to Stop and Ask for Help
 
-**STOP executing immediately when:**
-- Hit a blocker (missing dependency, test fails repeatedly, instruction unclear)
-- Plan has critical gaps preventing the next task
-- A 위험 카테고리 is genuinely ambiguous AND the trigger seems significant
-- Verification fails after two retries
+**Stop only for 룰 1 (critical 7) cases** — see "Critical / Non-critical 판정 룰" below. Concretely:
+- Blocker (missing dependency, test fails repeatedly, verification keeps failing, instruction unclear) → self-correct up to **3 attempts** first (룰 4). Only then ask via `AskUserQuestion`.
+- Plan has critical gaps preventing the next task → this is 룰 1 (task 범위 확장 / task 간 충돌). Ask via `AskUserQuestion`.
+- A 위험 카테고리 is ambiguous → do NOT stop. Attach the RISK comment conservatively (risk-annotation self-check), mention it in the next progress report, keep going.
 
-Ask the user rather than guessing.
+Everything else is NOT a stop point — finishing a task, finishing a batch of tasks, writing a progress report, worrying about remaining time or context. Keep calling tools until the last task is done (see "끝까지 실행").
 
 ## When to Revisit Earlier Steps
 
@@ -352,7 +359,7 @@ After all tasks complete and verified:
 - Don't skip verifications — if a step says "run X, expect Y", run X and confirm Y
 - Reference skills when the plan says to (e.g., "use risk-annotation here")
 - Never start implementation on main/master without explicit user consent
-- Ask when blocked
+- Stop only for 룰 1 critical cases (blockers: after 3 self-correct attempts). Progress reports are not stop points — run to the last task
 
 ## Related Skills
 
@@ -388,7 +395,7 @@ execute-plan 실행 흐름의 핵심 UX 룰. 사용자가 모드 (inline / subag
 | task 안 보조 결정 (변수명 / format / order of imports) | plan 의 `**원본**` + `**수정본**` byte-copy 우선, 없으면 LLM 자율 |
 | dispatch model 선택 | (subagent 모드) plan 의 `**Model**:` 값 자동 적용 — 생략 시 sonnet, 하한 sonnet (`js-super-sub-driven` Model Selection 참조). 게이트 없이 자동 |
 | task 완료 후 다음 task 진입 타이밍 | 자동 진입 (게이트 X) |
-| 중간 결과 보고 빈도 | 매 task X, 매 wave (3-5 task) 단위 OR BLOCKED 시만 |
+| 중간 결과 보고 빈도 | 매 task X, 매 wave (3-5 task) 단위 OR BLOCKED 시만. 보고 후 같은 턴에서 다음 task 도구 호출을 이어간다 (보고로 턴을 닫지 않음) |
 
 ### 룰 3: 모드 선택 = 사용자 위임 신호
 
@@ -436,6 +443,8 @@ prose 질문 좁은 예외:
 |---|---|
 | "T3~T5 병렬로 진행해도 될까요?" 류 게이트 | 룰 2 위반. plan dependencies 만족 시 자율 진행. |
 | 매 task 완료 후 "다음 task 진입할까요?" 게이트 | 룰 3 위반. 모드 선택 = 진행 위임. |
+| 진행 보고 후 도구 호출 없이 턴 종료 ("이어서 진행하겠습니다" 로 끝맺음) | 끝까지 실행 위반. 사용자가 "계속" 을 쳐야 재개됨 — 질문 게이트와 결과가 같다. 같은 턴에서 다음 task 로. |
+| 남은 시간 · 컨텍스트 · 사용량 걱정으로 멈춤 | 끝까지 실행 위반. 보고에 한 줄 적고 계속. |
 | "같은 파일이라 묶을까요?" 게이트 | 룰 2 위반. 3-AND 룰 (v2.0.1+) 으로 자동 판정. |
 | BLOCKED → 곧장 사용자 재질문 (self-correct skip) | 룰 4 위반. 자가 복구 우선. |
 | dispatch model 변경 시 게이트 | 룰 2 위반. (subagent 모드) plan **Model**: 값 (생략 시 sonnet, 하한 sonnet) 으로 자동 판정. |

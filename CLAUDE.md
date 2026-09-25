@@ -545,6 +545,41 @@ grep -nE "이렇게.*할까요\?|어느.*쪽.*인가요\?" \
 
 요약: 4 파일 (executing-plans/SKILL.md + js-super-sub-driven/SKILL.md + using-superpowers/SKILL.md + CLAUDE.md) atomic patch. 6+ 파일 동시 push (4 + 6 manifest + 백로그 mv).
 
+### 끝까지 실행 분기 — 보고로 턴을 닫지 않는다 (2026-09-24+)
+
+"task 마다 다시 확인해야 한다" 는 보고 (사용자 catch) 를 받고 세션 기록 12개를 조사했다. task 사이 `AskUserQuestion` 은 0건이었다. 실제로 사람이 재촉해야 했던 멈춤은 **진행 보고문 ("…이어서 진행하겠습니다") 을 쓴 뒤 도구 호출 없이 턴을 닫은 것**이었다 (사용자 응답: "이어서 안하니"). 질문 게이트가 아니어도 턴이 끝나면 결과는 같다. 사용자가 "계속" 을 쳐야 한다. 기존 룰은 "게이트 금지" 만 말했고, "보고 후 턴 종료" 는 막지 않았다.
+
+- 두 실행 스킬 상단에 `## 끝까지 실행 (Run to Completion)` 섹션을 넣었다. 룰 1~4 가 파일 맨 끝에 있어 실행 중인 모델의 시야에서 멀었기 때문이다. 멈춤 자리는 룰 1 뿐이고, 진행 보고와 남은 시간 걱정은 멈출 이유가 아니다. sub-driven 은 보조 에이전트 완료 알림 대기만 턴 종료를 허용한다
+- `executing-plans` description 의 "with review checkpoints" 를 제거했다. upstream 의 "3 task 마다 보고 후 대기" 방식에서 넘어온 문구다. "When to Stop" 섹션은 룰 1 로 한정했다. 재시도 횟수도 "two retries" 에서 룰 4 와 같은 3회로 맞췄다
+- `using-superpowers` 에 "진행 보고는 결정 지점이 아니다" 한 문단을 넣었다. 스킬 흐름 밖에서 메인이 직접 이어받은 경우까지 덮는 전역 캐리어다 (실제 사고가 보조 에이전트가 끊긴 뒤 메인이 즉흥 실행하던 중에 났다)
+
+| 누락 | 증상 |
+|---|---|
+| 상단 섹션을 한 스킬에서만 삭제 | 그 실행 모드에서만 보고 후 멈춤이 재발한다 |
+| "review checkpoints" 부활 | 설명만 보고 진입한 모델이 체크포인트마다 멈춘다 |
+| sub-driven 의 "완료 알림 대기" 예외 삭제 | 백그라운드 대기 턴 종료까지 위반으로 읽혀 폴링 루프가 생긴다 |
+| using-superpowers 문단 삭제 | 스킬 흐름 밖 (메인 직접 이어받기) 에서 멈춤이 재발한다 |
+
+```bash
+grep -cF "## 끝까지 실행 (Run to Completion)" skills/executing-plans/SKILL.md skills/js-super-sub-driven/SKILL.md
+# expected: 각 1
+```
+
+```bash
+grep -c "review checkpoints\|two retries" skills/executing-plans/SKILL.md
+# expected: 0
+```
+
+```bash
+grep -cF "A progress report is not a decision point" skills/using-superpowers/SKILL.md
+# expected: 1
+```
+
+```bash
+grep -cF "완료 알림을 기다릴 때뿐이다" skills/js-super-sub-driven/SKILL.md
+# expected: 1
+```
+
 ## 한국어 친화 안내 톤 (v2.4+)
 
 js-super 의 사용자 노출 안내문 (메인이 사용자에게 직접 보여주는 모든 문구) 은 다음 룰을 따른다.
@@ -743,7 +778,7 @@ v2.5.2+ 에서 9 skill body 에 `## Checklist` 섹션 신규 추가 — `using-s
 
 ### og-* mirror 룰 예외 (D-4)
 
-`og-writing-plans` / `og-executing-plans` 는 upstream `superpowers` 5.0.7 mirror — 본문 변경 절대 X 가 기본 룰 (다른 CLAUDE.md 섹션에 명시). v2.5.2+ 가 이 룰의 명시 예외:
+`og-writing-plans` / `og-executing-plans` 는 upstream `superpowers` mirror — 본문 변경 절대 X 가 기본 룰 (다른 CLAUDE.md 섹션에 명시). v2.5.2+ 가 이 룰의 명시 예외:
 
 - **Checklist 섹션 한정 추가만 예외**. 다른 영역 (Procedure / Anti-Patterns / Related Skills / 영어 식별자 / 본문 룰) 변경 절대 X
 - 향후 upstream 본문 변경 시 mirror 답습은 그대로. Checklist 섹션만 js-super 고유 추가로 유지

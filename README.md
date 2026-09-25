@@ -11,7 +11,7 @@
 
 <p>
   <img alt="Version" src="https://img.shields.io/badge/version-4.1.0-7c3aed?style=for-the-badge&labelColor=0d1117">
-  <img alt="Upstream" src="https://img.shields.io/badge/upstream-superpowers%205.0.7-f97316?style=for-the-badge&labelColor=0d1117">
+  <img alt="Upstream" src="https://img.shields.io/badge/upstream-superpowers-f97316?style=for-the-badge&labelColor=0d1117">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge&labelColor=0d1117">
   <img alt="Language" src="https://img.shields.io/badge/lang-한국어-3b82f6?style=for-the-badge&labelColor=0d1117">
   <img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-Plugin-a78bfa?style=for-the-badge&labelColor=0d1117">
@@ -23,7 +23,7 @@
   <img alt="Zero deps" src="https://img.shields.io/badge/dependencies-zero-22c55e?style=flat-square&labelColor=0d1117">
 </p>
 
-<sub>upstream <a href="https://github.com/obra/superpowers">superpowers</a> 5.0.7 (MIT, Jesse Vincent) 의 프로덕션 안전성 확장</sub>
+<sub>upstream <a href="https://github.com/obra/superpowers">superpowers</a> (MIT, Jesse Vincent) 의 프로덕션 안전성 확장</sub>
 
 </div>
 
@@ -827,7 +827,7 @@ flowchart LR
 
 ## upstream superpowers 와의 관계
 
-이 저장소는 [superpowers](https://github.com/obra/superpowers) v5.0.7 에서 갈라져 나온 포크에 **프로덕션 안전성 확장** 을 얹은 형태입니다 (v2.8.1 부터 og 스킬을 커맨드로 인라인하며 upstream 과 완전 분리). 단계별 확인 게이트 / 변경이력 자동 footer / 위험 주석 / 서브에이전트 wave-parallel 실행 / 보안·거버넌스 감사 — 실무에서 발생하는 검토 부담 / AI 자동승인 폭주 / 문서·코드 정합 문제를 풀기 위한 확장입니다. 게이트 UI 는 한국어로 노출됩니다. upstream 업데이트는 수동 머지로 따라갑니다.
+이 저장소는 [superpowers](https://github.com/obra/superpowers) 에서 갈라져 나온 포크에 **프로덕션 안전성 확장** 을 얹은 형태입니다 (v2.8.1 부터 og 스킬을 커맨드로 인라인하며 upstream 과 완전 분리). 단계별 확인 게이트 / 변경이력 자동 footer / 위험 주석 / 서브에이전트 wave-parallel 실행 / 보안·거버넌스 감사 — 실무에서 발생하는 검토 부담 / AI 자동승인 폭주 / 문서·코드 정합 문제를 풀기 위한 확장입니다. 게이트 UI 는 한국어로 노출됩니다. upstream 업데이트는 수동 머지로 따라갑니다.
 
 **`/og-*` — upstream 원본 흐름이 필요할 때**:
 
