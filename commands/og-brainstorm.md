@@ -3,9 +3,9 @@ description: upstream superpowers 원본 brainstorming(자유 탐색 Socratic �
 disable-model-invocation: true
 ---
 
-# /og-brainstorm — 원본 brainstorming (upstream superpowers 5.0.7)
+# /og-brainstorm — 원본 brainstorming (upstream superpowers)
 
-이 커맨드는 **upstream superpowers 5.0.7 의 원본 brainstorming 흐름**을 그대로 재현합니다. js-super 확장(변경이력 / 위험주석 / 검증 게이트)을 우회합니다. 아래 절차를 따르세요.
+이 커맨드는 **upstream superpowers 의 원본 brainstorming 흐름**을 그대로 재현합니다. js-super 확장(변경이력 / 위험주석 / 검증 게이트)을 우회합니다. 아래 절차를 따르세요.
 
 피처명을 인수로 주거나(`/og-brainstorm 잔액 출금`) 인수 없이 호출하면 자유 탐색 대화로 시작합니다.
 

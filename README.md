@@ -10,8 +10,8 @@
 <br/>
 
 <p>
-  <img alt="Version" src="https://img.shields.io/badge/version-4.2.0-7c3aed?style=for-the-badge&labelColor=0d1117">
-  <img alt="Upstream" src="https://img.shields.io/badge/upstream-superpowers%205.0.7-f97316?style=for-the-badge&labelColor=0d1117">
+  <img alt="Version" src="https://img.shields.io/badge/version-4.3.0-7c3aed?style=for-the-badge&labelColor=0d1117">
+  <img alt="Upstream" src="https://img.shields.io/badge/upstream-superpowers-f97316?style=for-the-badge&labelColor=0d1117">
   <img alt="License" src="https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge&labelColor=0d1117">
   <img alt="Language" src="https://img.shields.io/badge/lang-한국어-3b82f6?style=for-the-badge&labelColor=0d1117">
   <img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-Plugin-a78bfa?style=for-the-badge&labelColor=0d1117">
@@ -23,7 +23,7 @@
   <img alt="Zero deps" src="https://img.shields.io/badge/dependencies-zero-22c55e?style=flat-square&labelColor=0d1117">
 </p>
 
-<sub>upstream <a href="https://github.com/obra/superpowers">superpowers</a> 5.0.7 (MIT, Jesse Vincent) 의 프로덕션 안전성 확장</sub>
+<sub>upstream <a href="https://github.com/obra/superpowers">superpowers</a> (MIT, Jesse Vincent) 의 프로덕션 안전성 확장</sub>
 
 </div>
 
@@ -510,6 +510,7 @@ flowchart TD
 |---|---|---|
 | `/brainstorm <주제>` | `요구사항.md` | 소크라테스 대화 → 요구사항 정리 |
 | `/design-tech` | `기술설계.md` | 요구사항 기반 기술 설계 |
+| `/brainstorm-design <주제>` | `요구사항.md` + `기술설계.md` | 두 단계의 대화를 한 번에 끝내고 두 문서를 연달아 작성, 검증은 두 문서를 한 번에. 승인은 한 번 |
 | `/write-plan` | `구현계획.md` | task 단위로 잘게 쪼개기 |
 | `/execute-plan` | 코드 + 흔적 | 인라인 / 서브에이전트 모드 선택 |
 | `/auto-*` 4 개 | 같은 결과물 | 게이트 최소화 자동 진행 |
@@ -524,6 +525,8 @@ flowchart TD
 > **`/slice` 는 나란히 있는 두 번째 흐름입니다.** 위 네 단계를 대체하지 않고 섞이지도 않습니다. 시작은 `/slice "하고 싶은 것 한 줄"` 한 번입니다. 밖에서 판정하는 인수 테스트 1~3 개를 먼저 쓰고, 그것이 통과하도록 구현합니다.
 >
 > 그 다음 `/check-code` 와 같은 검사 게이트를 최대 세 바퀴 돌며 고칩니다. 요구사항 · 설계 · 계획 문서는 만들지 않고, 남는 것은 `docs/slices/YYYY-MM.md` 의 12 줄짜리 장부 한 블록뿐입니다. 사람이 오는 자리는 세 곳입니다. 요청이 모호할 때, 슬라이스가 끝났을 때, 슬라이스 세 개마다 아키텍처를 볼지 물을 때입니다. 그 밖에 프로젝트당 한 번, 뮤테이션 도구가 없으면 설치할지 묻습니다. 어느 쪽이 손에 맞는지는 둘 다 써 본 뒤에 정하시면 됩니다.
+
+> **`/brainstorm-design` 은 `/brainstorm` → `/design-tech` 을 한 번에 하는 흐름입니다.** 두 명령은 그대로 있습니다. 요구사항과 기술설계에 필요한 질문을 한 대화에서 모두 묻고, 대화가 끝나면 두 문서를 연달아 쓰고, 두 문서의 검증을 한 번에 돌립니다. 두 문서와 검증 보고서를 한 번에 보여주고 한 번 승인받은 뒤, 기존과 같은 산출물 깊이 선택으로 이어집니다.
 
 ### 유틸리티
 
@@ -824,7 +827,7 @@ flowchart LR
 
 ## upstream superpowers 와의 관계
 
-이 저장소는 [superpowers](https://github.com/obra/superpowers) v5.0.7 에서 갈라져 나온 포크에 **프로덕션 안전성 확장** 을 얹은 형태입니다 (v2.8.1 부터 og 스킬을 커맨드로 인라인하며 upstream 과 완전 분리). 단계별 확인 게이트 / 변경이력 자동 footer / 위험 주석 / 서브에이전트 wave-parallel 실행 / 보안·거버넌스 감사 — 실무에서 발생하는 검토 부담 / AI 자동승인 폭주 / 문서·코드 정합 문제를 풀기 위한 확장입니다. 게이트 UI 는 한국어로 노출됩니다. upstream 업데이트는 수동 머지로 따라갑니다.
+이 저장소는 [superpowers](https://github.com/obra/superpowers) 에서 갈라져 나온 포크에 **프로덕션 안전성 확장** 을 얹은 형태입니다 (v2.8.1 부터 og 스킬을 커맨드로 인라인하며 upstream 과 완전 분리). 단계별 확인 게이트 / 변경이력 자동 footer / 위험 주석 / 서브에이전트 wave-parallel 실행 / 보안·거버넌스 감사 — 실무에서 발생하는 검토 부담 / AI 자동승인 폭주 / 문서·코드 정합 문제를 풀기 위한 확장입니다. 게이트 UI 는 한국어로 노출됩니다. upstream 업데이트는 수동 머지로 따라갑니다.
 
 **`/og-*` — upstream 원본 흐름이 필요할 때**:
 
@@ -851,7 +854,8 @@ og-* 흐름은 변경이력 / 위험 주석 / 검증 게이트가 **안 따라�
 
 | 버전 | 무엇이 바뀌었나요 |
 |---|---|
-| **v4.2.0** | 큰 작업 문서 **두 지점 갱신** — `/design-tech` 에 들어갈 때 보조 에이전트가 백그라운드로 이월 노트와 큰 그림의 새 항목을 먼저 적어둠 (브레인스토밍에서 기각한 안 · 미룬 것이 실행이 끝날 때쯤 사라지던 문제). 묻지 않고 자동 기록하며 설계 대화는 기다리지 않음. 파트 마무리가 중복을 빼고 자동 기록된 항목을 걸러냄 |
+| **v4.3.0** | 큰 작업 문서 **두 지점 갱신** — `/design-tech` 에 들어갈 때 보조 에이전트가 백그라운드로 이월 노트와 큰 그림의 새 항목을 먼저 적어둠 (브레인스토밍에서 기각한 안 · 미룬 것이 실행이 끝날 때쯤 사라지던 문제). 묻지 않고 자동 기록하며 설계 대화는 기다리지 않음. 파트 마무리가 중복을 빼고 자동 기록된 항목을 걸러냄 |
+| **v4.2.0** | **요구사항 + 기술설계 한 번에** (`/brainstorm-design` — 통합 소크라테스 대화 후 두 문서 동시 작성 · 한 번에 검증·승인, 기존 흐름 옆에 추가) + `/execute-plan` **끝까지 실행** (진행 보고 후 멈추지 않고 마지막 task 까지 — 멈춤은 critical 케이스만) + upstream 5.0.7 버전 표기 제거 |
 | **v4.1.0** | 큰 작업 **파트 마무리** (`/epic-next` · `/epic-handoff` · `epic-close` 스킬 — 에픽 파일 갱신 → 다음 파트 워크트리 → 자식 세션 인수인계) + `/brain-guide` (brainstorm / epic / fast-tasks 중 무엇을 쓸지 안내) + 커맨드가 감싸는 스킬을 `/` 메뉴에서 숨김 + **TDD 규율 스킬 제거** (테스트 먼저 순서는 실행 단계에 유지) + `/execute-plan` · `/slice` 진입 시 뮤테이션 도구 사전 확인 + `/worktree` 재분기 판별을 출력값으로만 |
 | **v4.0.0** | **두 번째 실행 흐름 `/slice`** (Specifier → Coder → Hardener, 엉클밥 인터뷰 기반) + 커밋 직전 **변경분 검사 게이트** (`/check-code`, 뮤테이션 포함) + 큰 작업 단위 **에픽 브레인스토밍** (`/epic`) + 구현계획서 **코드 강제 + 위키형 분할** + 워크트리 머지백이 **직계 부모** 기준 + 재분기 브랜치 **AI 네이밍** (`부모__자식`) + 서브에이전트 **sonnet 하한** + 산출물 문서 스타일 (`FR-N` → `요구 N`) + 용어집 `/glossary` 커맨드화 + `/tech-teach-me` 문체 개편 |
 | **v3.1.0** | `/understand` 계열 5 개 신규 — 코드베이스를 지식 그래프로 분석해 질의응답·영향 범위·딥다이브·온보딩 문서까지 + `/list-skills` 가 홈 전체(다른 프로젝트 포함)를 훑도록 확장 |

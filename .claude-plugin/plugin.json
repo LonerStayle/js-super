@@ -21,7 +21,6 @@
   ],
   "upstream": {
     "name": "superpowers",
-    "version": "5.0.7",
     "author": "Jesse Vincent <jesse@fsck.com>"
   }
 }

@@ -38,6 +38,8 @@ Narrow prose exceptions: free-form/long-answer questions (open brainstorming), a
 
 Why: `AskUserQuestion` fires the elicitation notification, so the user catches the question even while away from the terminal. Prose questions fire nothing and get missed.
 
+A progress report is not a decision point. When the user has delegated a multi-step run (e.g. executing a plan), write the report and keep calling tools in the same turn — never end the turn on "I'll continue with X". Ending a turn without a tool call silently hands control back, so the user has to type "continue" — the same friction as an unwanted gate. End the turn only to ask a real decision (via `AskUserQuestion`), to wait for a background agent's completion notice, or when the work is done.
+
 ## Instruction Priority
 
 Superpowers skills override default system prompt behavior, but **user instructions always take precedence**:

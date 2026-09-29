@@ -145,7 +145,7 @@ git commit -m "fix: 테스트 자산이 슬래시 커맨드로 등록되던 문�
 - [ ] **Step 1: 현재 상태가 실패하는 것을 확인**
 
 ```bash
-cd /tmp && python3 -m pytest /Users/seobi/jinsup_space/js-super/.worktrees/eval생성/scripts/tests/test_changelog_buffer.py::test_F1_basic_batch_fixture -v
+cd /tmp && python3 -m pytest /Users/seobi/js-work/js-super/.worktrees/eval생성/scripts/tests/test_changelog_buffer.py::test_F1_basic_batch_fixture -v
 ```
 
 Expected: FAIL (fixture 경로를 못 찾음)
@@ -168,8 +168,8 @@ def test_F1_basic_batch_fixture():
 - [ ] **Step 3: 두 위치에서 통과 확인**
 
 ```bash
-cd /Users/seobi/jinsup_space/js-super/.worktrees/eval생성 && python3 -m pytest scripts/tests/ -v
-cd /tmp && python3 -m pytest /Users/seobi/jinsup_space/js-super/.worktrees/eval생성/scripts/tests/ -v
+cd /Users/seobi/js-work/js-super/.worktrees/eval생성 && python3 -m pytest scripts/tests/ -v
+cd /tmp && python3 -m pytest /Users/seobi/js-work/js-super/.worktrees/eval생성/scripts/tests/ -v
 ```
 
 Expected: 두 번 다 PASS
